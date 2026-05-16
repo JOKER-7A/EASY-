@@ -262,12 +262,12 @@ export default function PracticeSession({ section, onExit, mode }: PracticeSessi
         </div>
 
         <div className="flex flex-col sm:flex-row gap-6">
-          <Button onClick={() => window.location.reload()} size="lg" className="flex-1 h-24 text-3xl font-black bg-goldenrod text-midnight rounded-[35px] hover:scale-[1.05] transition-all">
+          <button onClick={() => window.location.reload()} className="flex-1 h-24 text-3xl font-black bg-goldenrod text-midnight rounded-[35px] hover:scale-[1.05] transition-all flex items-center justify-center">
             <RotateCcw className="ml-3" /> إعادة المحاولة
-          </Button>
-          <Button onClick={onExit} variant="outline" size="lg" className="flex-1 h-24 text-3xl font-black border-4 border-goldenrod text-goldenrod hover:bg-goldenrod/10 rounded-[35px]">
+          </button>
+          <button onClick={onExit} className="flex-1 h-24 text-3xl font-black border-4 border-goldenrod text-goldenrod hover:bg-goldenrod/10 rounded-[35px] flex items-center justify-center">
             خروج للرئيسية
-          </Button>
+          </button>
         </div>
       </div>
     );
@@ -494,7 +494,7 @@ export default function PracticeSession({ section, onExit, mode }: PracticeSessi
       </div>
 
       <div className="flex justify-end pt-12">
-        <Button 
+        <button 
           onClick={handleNext} 
           disabled={!isGroupAnswered && !isExamNight}
           className={cn(
@@ -507,7 +507,7 @@ export default function PracticeSession({ section, onExit, mode }: PracticeSessi
           {section.questions.findIndex(q => q.id === currentGroup[currentGroup.length - 1]?.id) === section.questions.length - 1 
             ? 'إنهاء 🏁' 
             : 'التالي 🚀'}
-        </Button>
+        </button>
       </div>
     </div>
   );

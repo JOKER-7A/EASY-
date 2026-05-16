@@ -202,28 +202,12 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-24">
-          {[
-            { icon: <Target className="text-green-400" />, label: 'تصحيح فوري', desc: 'إجابات مباشرة' },
-            { icon: <Award className="text-goldenrod" />, label: 'نتيجة كاملة', desc: 'تحليل دقيق' },
-            { icon: <History className="text-blue-400" />, label: 'سجل الأخطاء', desc: 'تتبع تلقائي' },
-            { icon: <Zap className="text-vermillion" />, label: 'أنماط متعددة', desc: 'حسب اختيارك' },
-          ].map((stat, i) => (
-            <Card key={i} className="p-8 glass rounded-[35px] text-center space-y-3 group hover:border-goldenrod/30 transition-all">
-              <div className="mx-auto w-12 h-12 flex items-center justify-center rounded-2xl bg-white/5 group-hover:scale-110 transition">{stat.icon}</div>
-              <h3 className="font-black text-xl">{stat.label}</h3>
-              <p className="text-sm opacity-60 font-medium">{stat.desc}</p>
-            </Card>
-          ))}
-        </div>
-
         <section className="space-y-12 mb-24">
           <div className="flex items-center justify-between">
             <h2 className="text-5xl font-headline font-black text-goldenrod underline decoration-vermillion/50 decoration-8 underline-offset-8">الأقسام التدريبية</h2>
             <Badge className="bg-goldenrod/10 text-goldenrod text-lg px-6 py-2 border border-goldenrod/20 rounded-full">{sections.length + 1} نماذج حقيقية</Badge>
           </div>
           <div className="grid lg:grid-cols-2 gap-10">
-            {/* بطاقة القسم 215 قريباً */}
             <Card className="group relative bg-gradient-to-br from-white/5 to-transparent border-2 border-white/5 backdrop-blur-2xl rounded-[50px] p-10 shadow-2xl overflow-hidden opacity-80 grayscale hover:grayscale-0 transition-all cursor-not-allowed">
               <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-gray-500 to-gray-700" />
               <div className="flex justify-between items-start mb-10">
