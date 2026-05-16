@@ -1,3 +1,4 @@
+
 export interface Question {
   id: string;
   question: string;
@@ -14,6 +15,7 @@ export interface ReadingPassage {
 
 export interface Section {
   id: number;
+  firebaseId?: string; // Optional field for database reference
   title: string;
   readingPassages?: ReadingPassage[];
   questions: Question[];
