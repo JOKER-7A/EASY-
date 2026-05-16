@@ -8,13 +8,15 @@ import {
   deleteDoc, 
   doc, 
   query, 
-  orderBy,
-  getDoc
+  orderBy 
 } from "firebase/firestore";
 import { Section } from "./practice-data";
 
 const SECTIONS_COLLECTION = "sections";
 
+/**
+ * جلب جميع الأقسام من قاعدة البيانات مرتبة حسب المعرف التنازلي
+ */
 export const getSectionsFromDb = async (): Promise<Section[]> => {
   try {
     const q = query(collection(db, SECTIONS_COLLECTION), orderBy("id", "desc"));
@@ -29,18 +31,26 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
   }
 };
 
+/**
+ * إضافة قسم جديد لقاعدة البيانات
+ */
 export const addSectionToDb = async (section: any) => {
-  // Ensure we don't save firebaseId as a field inside the document
   const { firebaseId, ...data } = section;
-  return await addDoc(collection(db, SECTIONS_COLLECTION), data);
+  // التأكد من أن البيانات متوافقة مع Firestore
+  const cleanData = {
+    ...data,
+    id: Number(data.id),
+    questions: data.questions.map((q: any) => ({
+      ...q,
+      options: q.options.filter((o: string) => o.trim() !== '')
+    }))
+  };
+  return await addDoc(collection(db, SECTIONS_COLLECTION), cleanData);
 };
 
-export const updateSectionInDb = async (firebaseId: string, section: Partial<Section>) => {
-  const { firebaseId: _, ...data } = section;
-  const sectionRef = doc(db, SECTIONS_COLLECTION, firebaseId);
-  return await updateDoc(sectionRef, data);
-};
-
+/**
+ * حذف قسم من قاعدة البيانات
+ */
 export const deleteSectionFromDb = async (firebaseId: string) => {
   const sectionRef = doc(db, SECTIONS_COLLECTION, firebaseId);
   return await deleteDoc(sectionRef);

@@ -25,18 +25,18 @@ import {
   FileText,
   HelpCircle,
   PlusCircle,
-  FileDown
+  Loader2
 } from 'lucide-react';
 
 export default function AdminPage() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [sections, setSections] = useState<Section[]>([]);
   const { toast } = useToast();
 
-  const [isSaving, setIsSaving] = useState(false);
   const [newSection, setNewSection] = useState<Partial<Section>>({
     id: 0,
     title: '',
@@ -62,15 +62,18 @@ export default function AdminPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
       toast({ title: "تم تسجيل الدخول بنجاح ✅" });
     } catch (error: any) {
       toast({ 
         title: "خطأ في تسجيل الدخول", 
-        description: "تأكد من تفعيل Auth في Firebase Console وإضافة حساب الأدمن.",
+        description: "يرجى التأكد من تفعيل Email/Password في Firebase Console وإضافة حسابك.",
         variant: "destructive" 
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -81,16 +84,16 @@ export default function AdminPage() {
       toast({ title: "يرجى إدخال عنوان ورقم النموذج", variant: "destructive" });
       return;
     }
-    setIsSaving(true);
+    setIsSubmitting(true);
     try {
       await addSectionToDb(newSection);
       setNewSection({ id: 0, title: '', questions: [], readingPassages: [], duration: 13, pdfUrl: '' });
       await fetchSections();
-      toast({ title: "تم حفظ النموذج ونشره بنجاح! 🚀" });
+      toast({ title: "تم نشر النموذج بنجاح! 🚀" });
     } catch (error) {
       toast({ title: "حدث خطأ أثناء الحفظ", variant: "destructive" });
     } finally {
-      setIsSaving(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -99,7 +102,7 @@ export default function AdminPage() {
     if (confirm('هل أنت متأكد من حذف هذا النموذج نهائياً؟')) {
       await deleteSectionFromDb(firebaseId);
       await fetchSections();
-      toast({ title: "تم حذف النموذج من قاعدة البيانات" });
+      toast({ title: "تم الحذف بنجاح" });
     }
   };
 
@@ -119,20 +122,25 @@ export default function AdminPage() {
     setNewSection(prev => ({ ...prev, readingPassages: [...(prev.readingPassages || []), p] }));
   };
 
-  if (loading) return <div className="min-h-screen bg-midnight flex items-center justify-center text-goldenrod font-black text-2xl">جاري الاتصال بـ EASY Database...</div>;
+  if (loading) return (
+    <div className="min-h-screen bg-midnight flex items-center justify-center">
+      <Loader2 className="w-12 h-12 text-goldenrod animate-spin" />
+    </div>
+  );
 
   if (!user) {
     return (
       <main className="min-h-screen bg-midnight flex items-center justify-center p-4">
-        <Card className="w-full max-w-md p-8 glass border-goldenrod/20 rounded-[40px]">
-          <h1 className="text-4xl font-black text-white text-center mb-8">لوحة تحكم EASY 🔐</h1>
+        <Card className="w-full max-w-md p-8 glass border-goldenrod/20 rounded-[40px] animate-in fade-in zoom-in">
+          <h1 className="text-4xl font-black text-white text-center mb-8">دخول المشرف 🔐</h1>
           <form onSubmit={handleLogin} className="space-y-6">
             <Input 
               type="email" 
-              placeholder="بريد الأدمن" 
+              placeholder="البريد الإلكتروني" 
               value={email} 
               onChange={(e) => setEmail(e.target.value)}
               className="h-14 rounded-2xl bg-white/5 border-white/10 text-white"
+              required
             />
             <Input 
               type="password" 
@@ -140,11 +148,11 @@ export default function AdminPage() {
               value={password} 
               onChange={(e) => setPassword(e.target.value)}
               className="h-14 rounded-2xl bg-white/5 border-white/10 text-white"
+              required
             />
-            <Button type="submit" className="w-full h-14 rounded-2xl bg-goldenrod text-midnight font-black text-xl hover:scale-[1.02] transition-all">
-              دخول المشرف 🚀
+            <Button disabled={isSubmitting} type="submit" className="w-full h-14 rounded-2xl bg-goldenrod text-midnight font-black text-xl hover:scale-[1.02] transition-all">
+              {isSubmitting ? <Loader2 className="animate-spin" /> : "دخول 🚀"}
             </Button>
-            <p className="text-xs text-center text-muted-foreground">تأكد من تفعيل Email/Password في Firebase Console</p>
           </form>
         </Card>
       </main>
@@ -160,8 +168,8 @@ export default function AdminPage() {
               <Settings className="text-midnight w-8 h-8" />
             </div>
             <div>
-              <h1 className="text-4xl font-black text-white">إدارة المحتوى الديناميكي</h1>
-              <p className="text-muted-foreground font-bold">أضف النماذج لتظهر فوراً لجميع الطلاب</p>
+              <h1 className="text-4xl font-black text-white">لوحة التحكم</h1>
+              <p className="text-muted-foreground font-bold">إدارة المحتوى الديناميكي للمنصة</p>
             </div>
           </div>
           <Button variant="outline" onClick={handleLogout} className="rounded-2xl font-black border-vermillion/30 text-vermillion hover:bg-vermillion hover:text-white transition-all">
@@ -170,24 +178,23 @@ export default function AdminPage() {
         </header>
 
         <div className="grid gap-12">
-          {/* New Section Form */}
           <Card className="p-10 glass border-white/10 rounded-[50px] space-y-8">
             <div className="flex justify-between items-center border-b border-white/10 pb-6">
               <h2 className="text-3xl font-black text-white flex items-center gap-2">
-                <Plus className="text-goldenrod w-8 h-8" /> إنشاء نموذج جديد
+                <Plus className="text-goldenrod w-8 h-8" /> إضافة نموذج جديد
               </h2>
               <Button 
                 onClick={handleSaveSection} 
-                disabled={isSaving}
+                disabled={isSubmitting}
                 className="h-14 px-10 bg-goldenrod text-midnight font-black rounded-2xl text-xl hover:scale-105 transition-all"
               >
-                {isSaving ? "جاري الرفع..." : "حفظ ونشر النموذج 🚀"}
+                {isSubmitting ? <Loader2 className="animate-spin" /> : "نشر النموذج 🚀"}
               </Button>
             </div>
 
             <div className="grid md:grid-cols-4 gap-6">
               <div className="space-y-2">
-                <label className="text-white font-bold mr-2">رقم النموذج</label>
+                <label className="text-white font-bold mr-2 text-sm">رقم النموذج</label>
                 <Input 
                   type="number"
                   placeholder="220" 
@@ -197,7 +204,7 @@ export default function AdminPage() {
                 />
               </div>
               <div className="space-y-2 md:col-span-2">
-                <label className="text-white font-bold mr-2">عنوان النموذج</label>
+                <label className="text-white font-bold mr-2 text-sm">عنوان النموذج</label>
                 <Input 
                   placeholder="مثلاً: الإمام مالك والملح الصخري" 
                   value={newSection.title || ''}
@@ -206,7 +213,7 @@ export default function AdminPage() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-white font-bold mr-2">رابط ملف الـ PDF</label>
+                <label className="text-white font-bold mr-2 text-sm">رابط PDF (اختياري)</label>
                 <Input 
                   placeholder="https://..." 
                   value={newSection.pdfUrl || ''}
@@ -238,14 +245,14 @@ export default function AdminPage() {
                     className="bg-midnight border-white/10 text-white font-bold"
                   />
                   <Textarea 
-                    placeholder="نص القطعة" 
+                    placeholder="نص القطعة الكامل بدون اختصار" 
                     value={p.text}
                     onChange={(e) => {
                       const updated = [...(newSection.readingPassages || [])];
                       updated[idx].text = e.target.value;
                       setNewSection(prev => ({ ...prev, readingPassages: updated }));
                     }}
-                    className="bg-midnight border-white/10 text-white h-32"
+                    className="bg-midnight border-white/10 text-white h-48 leading-relaxed"
                   />
                 </Card>
               ))}
@@ -271,7 +278,7 @@ export default function AdminPage() {
                         updated[idx].question = e.target.value;
                         setNewSection(prev => ({ ...prev, questions: updated }));
                       }}
-                      className="bg-midnight border-white/10 text-white font-bold md:col-span-2"
+                      className="bg-midnight border-white/10 text-white font-bold md:col-span-2 h-14"
                     />
                     <select 
                       value={q.type}
@@ -280,7 +287,7 @@ export default function AdminPage() {
                         updated[idx].type = e.target.value as any;
                         setNewSection(prev => ({ ...prev, questions: updated }));
                       }}
-                      className="bg-midnight border-white/10 text-white rounded-xl h-10 px-3"
+                      className="bg-midnight border-white/10 text-white rounded-xl h-12 px-3 outline-none"
                     >
                       <option value="analogy">تناظر لفظي</option>
                       <option value="error">خطأ سياقي</option>
@@ -289,7 +296,7 @@ export default function AdminPage() {
                     </select>
                     {q.type === 'reading' && (
                       <Input 
-                        placeholder="عنوان القطعة المرتبطة" 
+                        placeholder="عنوان القطعة المرتبطة (يجب أن يتطابق مع عنوان القطعة أعلاه)" 
                         value={q.passageTitle || ''}
                         onChange={(e) => {
                           const updated = [...(newSection.questions || [])];
@@ -316,7 +323,7 @@ export default function AdminPage() {
                     ))}
                   </div>
                   <Input 
-                    placeholder="الإجابة الصحيحة (يجب أن تطابق الخيار تماماً)" 
+                    placeholder="الإجابة الصحيحة (يجب أن تطابق أحد الخيارات تماماً)" 
                     value={q.correct}
                     onChange={(e) => {
                       const updated = [...(newSection.questions || [])];
@@ -330,26 +337,20 @@ export default function AdminPage() {
             </div>
           </Card>
 
-          {/* Existing Sections List */}
           <div className="space-y-6 pt-12">
             <h2 className="text-4xl font-black text-white flex items-center gap-4">
-              <LayoutDashboard className="text-goldenrod w-10 h-10" /> النماذج الحالية
+              <LayoutDashboard className="text-goldenrod w-10 h-10" /> النماذج المنشورة
             </h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {sections.map((section) => (
-                <Card key={section.firebaseId} className="p-8 glass border-white/5 rounded-[40px] flex justify-between items-center group">
+                <Card key={section.firebaseId} className="p-8 glass border-white/5 rounded-[40px] flex justify-between items-center group hover:border-goldenrod/20 transition-all">
                   <div className="flex items-center gap-6">
-                    <div className="w-16 h-16 bg-white/5 rounded-3xl flex items-center justify-center font-black text-3xl text-goldenrod border border-white/10">
+                    <div className="w-16 h-16 bg-white/5 rounded-3xl flex items-center justify-center font-black text-3xl text-goldenrod border border-white/10 group-hover:bg-goldenrod group-hover:text-midnight transition-all">
                       {section.id}
                     </div>
                     <div>
                       <h3 className="text-xl font-black text-white line-clamp-1">{section.title}</h3>
-                      <div className="flex gap-4 mt-2">
-                        <span className="text-xs text-muted-foreground flex items-center gap-1 bg-white/5 px-2 py-1 rounded-full">
-                          <HelpCircle className="w-3 h-3" /> {section.questions.length} سؤال
-                        </span>
-                        {section.pdfUrl && <FileDown className="w-4 h-4 text-goldenrod" />}
-                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">{section.questions.length} سؤال</p>
                     </div>
                   </div>
                   <Button 

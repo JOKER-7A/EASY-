@@ -3,7 +3,8 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 
-// إعدادات Firebase مع معالجة ذكية للقيم المفقودة لمنع توقف السيرفر
+// إعدادات Firebase - سيتم استبدال القيم تلقائياً عند الربط الفعلي
+// تم وضع قيم افتراضية لضمان عدم توقف السيرفر أثناء التشغيل الأولي
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSy_Placeholder",
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "easy-prep.firebaseapp.com",
@@ -17,8 +18,6 @@ let app;
 try {
   app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 } catch (e) {
-  console.error("Firebase initialization error:", e);
-  // Fallback app to prevent crash
   app = getApps().length > 0 ? getApp() : initializeApp({
     apiKey: "AIzaSy_fallback",
     authDomain: "fallback.firebaseapp.com",
