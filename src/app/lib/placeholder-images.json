@@ -1,0 +1,17 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "hero-bg",
+      "description": "Abstract technological background with warm glows",
+      "imageUrl": "https://picsum.photos/seed/prep1/1200/600",
+      "imageHint": "abstract tech"
+    },
+    {
+      "id": "practice-icon",
+      "description": "Creative learning and practice icon",
+      "imageUrl": "https://picsum.photos/seed/prep2/400/400",
+      "imageHint": "learning education"
+    }
+  ]
+}
