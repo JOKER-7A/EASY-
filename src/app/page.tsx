@@ -228,7 +228,7 @@ export default function Home() {
               <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-gray-500 to-gray-700" />
               <div className="flex justify-between items-start mb-10">
                 <div className="space-y-2">
-                  <Badge variant="outline" className="px-4 py-1 text-sm font-black rounded-full border-gray-500 text-gray-500">قريباً 🔥</Badge>
+                  <Badge variant="outline" className="px-4 py-1 text-sm font-black rounded-full border-gray-500 text-gray-500">بالتوفيق 🔥</Badge>
                   <h2 className="text-5xl font-black text-white/50 transition-colors">🔥 نموذج 215</h2>
                   <p className="text-xl text-muted-foreground font-bold italic">جاري تحضير المحتوى...</p>
                 </div>
