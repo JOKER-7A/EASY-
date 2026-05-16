@@ -19,7 +19,8 @@ import {
   XCircle,
   CheckCircle2,
   Moon,
-  Clock
+  Clock,
+  Timer as TimerIcon
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -27,6 +28,7 @@ import { cn } from '@/lib/utils';
 export type PracticeMode = 'normal' | 'pressure' | 'exam-night';
 
 export default function Home() {
+  const [mounted, setMounted] = useState(false);
   const [activeView, setActiveView] = useState<'landing' | 'practice' | 'mistakes' | 'favorites'>('landing');
   const [selectedSection, setSelectedSection] = useState<Section | null>(null);
   const [currentMode, setCurrentMode] = useState<PracticeMode>('normal');
@@ -35,6 +37,7 @@ export default function Home() {
   const { toast } = useToast();
 
   useEffect(() => {
+    setMounted(true);
     const savedMistakes = JSON.parse(localStorage.getItem('easy-mistakes') || '[]');
     const savedFavIds = JSON.parse(localStorage.getItem('easy-favorites') || '[]');
     const allQuestions: Question[] = sections.flatMap(s => s.questions);
@@ -42,6 +45,8 @@ export default function Home() {
     setMistakes(savedMistakes);
     setFavorites(savedFavs);
   }, [activeView]);
+
+  if (!mounted) return <div className="min-h-screen bg-midnight" />;
 
   const startPractice = (section: Section, mode: PracticeMode) => {
     setSelectedSection(section);
@@ -215,9 +220,37 @@ export default function Home() {
         <section className="space-y-12 mb-24">
           <div className="flex items-center justify-between">
             <h2 className="text-5xl font-headline font-black text-goldenrod underline decoration-vermillion/50 decoration-8 underline-offset-8">الأقسام التدريبية</h2>
-            <Badge className="bg-goldenrod/10 text-goldenrod text-lg px-6 py-2 border border-goldenrod/20 rounded-full">{sections.length} نماذج حقيقية</Badge>
+            <Badge className="bg-goldenrod/10 text-goldenrod text-lg px-6 py-2 border border-goldenrod/20 rounded-full">{sections.length + 1} نماذج حقيقية</Badge>
           </div>
           <div className="grid lg:grid-cols-2 gap-10">
+            {/* بطاقة القسم 215 قريباً */}
+            <Card className="group relative bg-gradient-to-br from-white/5 to-transparent border-2 border-white/5 backdrop-blur-2xl rounded-[50px] p-10 shadow-2xl overflow-hidden opacity-80 grayscale hover:grayscale-0 transition-all cursor-not-allowed">
+              <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-gray-500 to-gray-700" />
+              <div className="flex justify-between items-start mb-10">
+                <div className="space-y-2">
+                  <Badge variant="outline" className="px-4 py-1 text-sm font-black rounded-full border-gray-500 text-gray-500">قريباً 🔥</Badge>
+                  <h2 className="text-5xl font-black text-white/50 transition-colors">🔥 نموذج 215</h2>
+                  <p className="text-xl text-muted-foreground font-bold italic">جاري تحضير المحتوى...</p>
+                </div>
+                <div className="bg-white/5 border border-white/10 text-white/40 px-6 py-3 rounded-2xl font-black text-xl backdrop-blur-md">
+                  <Clock className="inline-block ml-2 w-5 h-5" /> قريباً
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-6 mb-10">
+                <div className="bg-white/5 p-6 rounded-3xl border border-white/5">
+                  <p className="text-muted-foreground text-sm font-bold mb-1">الأسئلة</p>
+                  <p className="text-3xl font-black text-white/30">--</p>
+                </div>
+                <div className="bg-white/5 p-6 rounded-3xl border border-white/5">
+                  <p className="text-muted-foreground text-sm font-bold mb-1">النمط</p>
+                  <p className="text-3xl font-black text-gray-600">لفظي</p>
+                </div>
+              </div>
+              <Button disabled className="w-full h-20 rounded-[30px] text-3xl font-black bg-gray-800 text-gray-500 cursor-not-allowed">
+                انتظرونا ⏳
+              </Button>
+            </Card>
+
             {sections.map((section) => (
               <Card key={section.id} className={cn(
                 "group relative bg-gradient-to-br from-white/10 to-transparent border-2 border-white/5 backdrop-blur-2xl rounded-[50px] p-10 shadow-2xl overflow-hidden transition-all",

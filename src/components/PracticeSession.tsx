@@ -36,15 +36,20 @@ export default function PracticeSession({ section, onExit, mode }: PracticeSessi
   const [userAnswers, setUserAnswers] = useState<Record<string, string>>({});
   const [isFinished, setIsFinished] = useState(false);
   const [showIntro, setShowIntro] = useState(mode === 'exam-night');
-  const [timeLeft, setTimeLeft] = useState(mode === 'pressure' ? 13 * 60 : 180); // 13m or 3m per screen
-  const [startTime] = useState(Date.now());
+  const [timeLeft, setTimeLeft] = useState(mode === 'pressure' ? 13 * 60 : 180); 
+  const [startTime, setStartTime] = useState<number | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
   const { toast } = useToast();
   
   const isPressureMode = mode === 'pressure';
   const isExamNight = mode === 'exam-night';
 
-  // Intro message for Exam Night mode
+  useEffect(() => {
+    setStartTime(Date.now());
+    const savedFavs = localStorage.getItem('easy-favorites');
+    if (savedFavs) setFavorites(JSON.parse(savedFavs));
+  }, []);
+
   useEffect(() => {
     if (showIntro) {
       const timer = setTimeout(() => setShowIntro(false), 2500);
@@ -52,8 +57,8 @@ export default function PracticeSession({ section, onExit, mode }: PracticeSessi
     }
   }, [showIntro]);
 
-  // Group questions by passage or single question blocks
   const currentGroup = useMemo(() => {
+    if (!section.questions[currentQuestionIndex]) return [];
     const q = section.questions[currentQuestionIndex];
     if (q.type !== 'reading' || !q.passageTitle) return [q];
     return section.questions.filter(item => item.passageTitle === q.passageTitle);
@@ -64,13 +69,8 @@ export default function PracticeSession({ section, onExit, mode }: PracticeSessi
   const isTimeLow = (isPressureMode && timeLeft < 120) || (isExamNight && timeLeft < 30);
   const isCriticalTime = (isPressureMode && timeLeft < 60) || (isExamNight && timeLeft < 10);
 
-  useEffect(() => {
-    const savedFavs = localStorage.getItem('easy-favorites');
-    if (savedFavs) setFavorites(JSON.parse(savedFavs));
-  }, []);
-
   const finishSession = useCallback(() => {
-    if (isFinished) return;
+    if (isFinished || !startTime) return;
     setIsFinished(true);
     
     const mistakes: Question[] = [];
@@ -114,14 +114,15 @@ export default function PracticeSession({ section, onExit, mode }: PracticeSessi
         variant: "destructive"
       });
     }
-  }, [isFinished, section, userAnswers, mode, timeLeft, toast, startTime]);
+  }, [isFinished, section, userAnswers, mode, timeLeft, toast, startTime, isPressureMode]);
 
   const handleNext = useCallback(() => {
+    if (currentGroup.length === 0) return;
     const lastIndexInGroup = section.questions.findIndex(q => q.id === currentGroup[currentGroup.length - 1].id);
     if (lastIndexInGroup < section.questions.length - 1) {
       setCurrentQuestionIndex(lastIndexInGroup + 1);
       if (isExamNight) {
-        setTimeLeft(180 * currentGroup.length); 
+        setTimeLeft(180); 
       }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
@@ -182,7 +183,7 @@ export default function PracticeSession({ section, onExit, mode }: PracticeSessi
 
   const isGroupAnswered = currentGroup.every(q => !!userAnswers[q.id]);
 
-  if (isFinished) {
+  if (isFinished && startTime) {
     let correct = 0;
     section.questions.forEach((q) => {
       if (userAnswers[q.id] === q.correct) correct++;
@@ -272,7 +273,7 @@ export default function PracticeSession({ section, onExit, mode }: PracticeSessi
     );
   }
 
-  const associatedPassage = section.readingPassages?.find(p => p.title === currentGroup[0].passageTitle);
+  const associatedPassage = section.readingPassages?.find(p => p.title === currentGroup[0]?.passageTitle);
 
   return (
     <div className={cn(
@@ -281,7 +282,6 @@ export default function PracticeSession({ section, onExit, mode }: PracticeSessi
       isExamNight && "bg-[radial-gradient(circle_at_50%_0%,rgba(99,102,241,0.08),transparent_50%)]"
     )} dir="rtl">
       
-      {/* Exam Night Splash Intro */}
       {showIntro && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-midnight/90 backdrop-blur-xl animate-in fade-in duration-700">
           <div className="text-center space-y-6 animate-in zoom-in-95 duration-700 px-4">
@@ -337,7 +337,7 @@ export default function PracticeSession({ section, onExit, mode }: PracticeSessi
             "text-4xl", 
             isPressureMode ? "text-vermillion" : isExamNight ? "text-indigo-400" : "text-goldenrod"
           )}>
-            {section.questions.findIndex(q => q.id === currentGroup[currentGroup.length - 1].id) + 1}
+            {section.questions.findIndex(q => q.id === currentGroup[currentGroup.length - 1]?.id) + 1}
           </span>
           <span className="text-muted-foreground"> / {section.questions.length}</span>
         </div>
@@ -379,7 +379,7 @@ export default function PracticeSession({ section, onExit, mode }: PracticeSessi
             <Separator className="bg-white/10 mb-20" />
 
             <div className="space-y-20">
-              {currentGroup.map((q, qIndex) => (
+              {currentGroup.map((q) => (
                 <div key={q.id} className="space-y-12">
                   <div className="flex justify-between items-start gap-8">
                     <h2 className="text-4xl md:text-5xl font-headline font-black leading-tight text-white flex-1">
@@ -504,7 +504,7 @@ export default function PracticeSession({ section, onExit, mode }: PracticeSessi
             "bg-goldenrod text-midnight shadow-[0_20px_50px_rgba(230,172,0,0.3)]"
           )}
         >
-          {section.questions.findIndex(q => q.id === currentGroup[currentGroup.length - 1].id) === section.questions.length - 1 
+          {section.questions.findIndex(q => q.id === currentGroup[currentGroup.length - 1]?.id) === section.questions.length - 1 
             ? 'إنهاء 🏁' 
             : 'التالي 🚀'}
         </Button>
