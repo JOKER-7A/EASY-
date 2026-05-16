@@ -8,22 +8,28 @@ import {
   deleteDoc, 
   doc, 
   query, 
-  orderBy 
+  orderBy,
+  getDoc
 } from "firebase/firestore";
 import { Section } from "./practice-data";
 
 const SECTIONS_COLLECTION = "sections";
 
 export const getSectionsFromDb = async (): Promise<Section[]> => {
-  const q = query(collection(db, SECTIONS_COLLECTION), orderBy("id", "desc"));
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({
-    firebaseId: doc.id,
-    ...doc.data()
-  } as unknown as Section));
+  try {
+    const q = query(collection(db, SECTIONS_COLLECTION), orderBy("id", "desc"));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      firebaseId: doc.id,
+      ...doc.data()
+    } as unknown as Section));
+  } catch (error) {
+    console.error("Error fetching sections:", error);
+    return [];
+  }
 };
 
-export const addSectionToDb = async (section: Omit<Section, "id"> & { id: number }) => {
+export const addSectionToDb = async (section: any) => {
   return await addDoc(collection(db, SECTIONS_COLLECTION), section);
 };
 

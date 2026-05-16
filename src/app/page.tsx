@@ -231,14 +231,28 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Dynamic Sections Section */}
         <section className="space-y-12 mb-24">
           <div className="flex items-center justify-between">
             <h2 className="text-5xl font-headline font-black text-goldenrod underline decoration-vermillion/50 decoration-8 underline-offset-8">الأقسام التدريبية</h2>
             <Badge className="bg-goldenrod/10 text-goldenrod text-lg px-6 py-2 border border-goldenrod/20 rounded-full">{allSections.length} نماذج حقيقية</Badge>
           </div>
           <div className="grid lg:grid-cols-2 gap-10">
+            {/* القسم 215 قريبا */}
+            <Card className="group relative bg-white/5 border-2 border-white/5 backdrop-blur-2xl rounded-[50px] p-10 shadow-2xl overflow-hidden opacity-50 cursor-not-allowed">
+               <div className="absolute inset-0 flex items-center justify-center bg-midnight/40 z-20">
+                  <span className="text-6xl font-black text-white drop-shadow-2xl">قريباً ✨</span>
+               </div>
+               <div className="flex justify-between items-start mb-10">
+                  <div className="space-y-2">
+                    <h2 className="text-5xl font-black text-white/30">🔥 نموذج 215</h2>
+                    <p className="text-xl text-white/20 font-bold">جاري العمل عليه...</p>
+                  </div>
+                </div>
+            </Card>
+
             {allSections.map((section) => (
-              <Card key={section.id} className={cn(
+              <Card key={section.firebaseId || section.id} className={cn(
                 "group relative bg-gradient-to-br from-white/10 to-transparent border-2 border-white/5 backdrop-blur-2xl rounded-[50px] p-10 shadow-2xl overflow-hidden transition-all",
                 currentMode === 'pressure' && "hover:border-vermillion/40",
                 currentMode === 'exam-night' && "hover:border-indigo-400/40",
