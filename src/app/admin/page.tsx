@@ -9,7 +9,7 @@ import {
   signOut,
   User 
 } from 'firebase/auth';
-import { getSectionsFromDb, addSectionToDb, deleteSectionFromDb, updateSectionInDb } from '@/lib/db-service';
+import { getSectionsFromDb, addSectionToDb, deleteSectionFromDb } from '@/lib/db-service';
 import { Section, Question, ReadingPassage } from '@/lib/practice-data';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,9 +24,8 @@ import {
   LayoutDashboard,
   FileText,
   HelpCircle,
-  Save,
-  X,
-  PlusCircle
+  PlusCircle,
+  FileDown
 } from 'lucide-react';
 
 export default function AdminPage() {
@@ -37,14 +36,14 @@ export default function AdminPage() {
   const [sections, setSections] = useState<Section[]>([]);
   const { toast } = useToast();
 
-  // Form states
-  const [isAdding, setIsAdding] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [newSection, setNewSection] = useState<Partial<Section>>({
     id: 0,
     title: '',
     questions: [],
     readingPassages: [],
-    duration: 13
+    duration: 13,
+    pdfUrl: ''
   });
 
   useEffect(() => {
@@ -65,11 +64,11 @@ export default function AdminPage() {
     e.preventDefault();
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      toast({ title: "تم تسجيل الدخول بنجاح" });
+      toast({ title: "تم تسجيل الدخول بنجاح ✅" });
     } catch (error: any) {
       toast({ 
         title: "خطأ في تسجيل الدخول", 
-        description: "تأكد من تفعيل Auth في Firebase Console",
+        description: "تأكد من تفعيل Auth في Firebase Console وإضافة حساب الأدمن.",
         variant: "destructive" 
       });
     }
@@ -79,28 +78,28 @@ export default function AdminPage() {
 
   const handleSaveSection = async () => {
     if (!newSection.title || !newSection.id) {
-      toast({ title: "يرجى ملء البيانات الأساسية", variant: "destructive" });
+      toast({ title: "يرجى إدخال عنوان ورقم النموذج", variant: "destructive" });
       return;
     }
-    setIsAdding(true);
+    setIsSaving(true);
     try {
       await addSectionToDb(newSection);
-      setNewSection({ id: 0, title: '', questions: [], readingPassages: [], duration: 13 });
-      fetchSections();
-      toast({ title: "تمت إضافة القسم بنجاح ✅" });
+      setNewSection({ id: 0, title: '', questions: [], readingPassages: [], duration: 13, pdfUrl: '' });
+      await fetchSections();
+      toast({ title: "تم حفظ النموذج ونشره بنجاح! 🚀" });
     } catch (error) {
-      toast({ title: "خطأ في الحفظ", variant: "destructive" });
+      toast({ title: "حدث خطأ أثناء الحفظ", variant: "destructive" });
     } finally {
-      setIsAdding(false);
+      setIsSaving(false);
     }
   };
 
   const handleDelete = async (firebaseId: string | undefined) => {
     if (!firebaseId) return;
-    if (confirm('هل أنت متأكد من حذف هذا القسم؟')) {
+    if (confirm('هل أنت متأكد من حذف هذا النموذج نهائياً؟')) {
       await deleteSectionFromDb(firebaseId);
-      fetchSections();
-      toast({ title: "تم حذف القسم" });
+      await fetchSections();
+      toast({ title: "تم حذف النموذج من قاعدة البيانات" });
     }
   };
 
@@ -120,7 +119,7 @@ export default function AdminPage() {
     setNewSection(prev => ({ ...prev, readingPassages: [...(prev.readingPassages || []), p] }));
   };
 
-  if (loading) return <div className="min-h-screen bg-midnight flex items-center justify-center text-white font-black text-2xl">جاري التحميل...</div>;
+  if (loading) return <div className="min-h-screen bg-midnight flex items-center justify-center text-goldenrod font-black text-2xl">جاري الاتصال بـ EASY Database...</div>;
 
   if (!user) {
     return (
@@ -130,7 +129,7 @@ export default function AdminPage() {
           <form onSubmit={handleLogin} className="space-y-6">
             <Input 
               type="email" 
-              placeholder="البريد الإلكتروني" 
+              placeholder="بريد الأدمن" 
               value={email} 
               onChange={(e) => setEmail(e.target.value)}
               className="h-14 rounded-2xl bg-white/5 border-white/10 text-white"
@@ -142,10 +141,10 @@ export default function AdminPage() {
               onChange={(e) => setPassword(e.target.value)}
               className="h-14 rounded-2xl bg-white/5 border-white/10 text-white"
             />
-            <Button type="submit" className="w-full h-14 rounded-2xl bg-goldenrod text-midnight font-black text-xl hover:bg-goldenrod/90 transition-all">
-              دخول للأدمن
+            <Button type="submit" className="w-full h-14 rounded-2xl bg-goldenrod text-midnight font-black text-xl hover:scale-[1.02] transition-all">
+              دخول المشرف 🚀
             </Button>
-            <p className="text-xs text-center text-muted-foreground">تأكد من تفعيل Email/Password Auth في Firebase</p>
+            <p className="text-xs text-center text-muted-foreground">تأكد من تفعيل Email/Password في Firebase Console</p>
           </form>
         </Card>
       </main>
@@ -161,40 +160,40 @@ export default function AdminPage() {
               <Settings className="text-midnight w-8 h-8" />
             </div>
             <div>
-              <h1 className="text-4xl font-black text-white">إدارة المنصة الديناميكية</h1>
-              <p className="text-muted-foreground font-bold">أضف الأقسام والأسئلة لتظهر فوراً للمستخدمين</p>
+              <h1 className="text-4xl font-black text-white">إدارة المحتوى الديناميكي</h1>
+              <p className="text-muted-foreground font-bold">أضف النماذج لتظهر فوراً لجميع الطلاب</p>
             </div>
           </div>
           <Button variant="outline" onClick={handleLogout} className="rounded-2xl font-black border-vermillion/30 text-vermillion hover:bg-vermillion hover:text-white transition-all">
-            <LogOut className="ml-2 w-5 h-5" /> تسجيل خروج
+            <LogOut className="ml-2 w-5 h-5" /> خروج
           </Button>
         </header>
 
-        <div className="grid lg:grid-cols-1 gap-8">
-          {/* Add Section Form */}
+        <div className="grid gap-12">
+          {/* New Section Form */}
           <Card className="p-10 glass border-white/10 rounded-[50px] space-y-8">
             <div className="flex justify-between items-center border-b border-white/10 pb-6">
               <h2 className="text-3xl font-black text-white flex items-center gap-2">
-                <Plus className="text-goldenrod w-8 h-8" /> إنشاء نموذج جديد بالكامل
+                <Plus className="text-goldenrod w-8 h-8" /> إنشاء نموذج جديد
               </h2>
               <Button 
                 onClick={handleSaveSection} 
-                disabled={isAdding}
+                disabled={isSaving}
                 className="h-14 px-10 bg-goldenrod text-midnight font-black rounded-2xl text-xl hover:scale-105 transition-all"
               >
-                {isAdding ? "جاري الحفظ..." : "حفظ القسم ونشره 🚀"}
+                {isSaving ? "جاري الرفع..." : "حفظ ونشر النموذج 🚀"}
               </Button>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-6">
+            <div className="grid md:grid-cols-4 gap-6">
               <div className="space-y-2">
                 <label className="text-white font-bold mr-2">رقم النموذج</label>
                 <Input 
                   type="number"
-                  placeholder="مثلاً 220" 
+                  placeholder="220" 
                   value={newSection.id || ''}
                   onChange={(e) => setNewSection(prev => ({ ...prev, id: parseInt(e.target.value) }))}
-                  className="bg-white/5 border-white/10 text-white h-14 rounded-xl text-xl font-black"
+                  className="bg-white/5 border-white/10 text-white h-14 rounded-xl font-black"
                 />
               </div>
               <div className="space-y-2 md:col-span-2">
@@ -203,12 +202,20 @@ export default function AdminPage() {
                   placeholder="مثلاً: الإمام مالك والملح الصخري" 
                   value={newSection.title || ''}
                   onChange={(e) => setNewSection(prev => ({ ...prev, title: e.target.value }))}
-                  className="bg-white/5 border-white/10 text-white h-14 rounded-xl text-xl font-black"
+                  className="bg-white/5 border-white/10 text-white h-14 rounded-xl font-black"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-white font-bold mr-2">رابط ملف الـ PDF</label>
+                <Input 
+                  placeholder="https://..." 
+                  value={newSection.pdfUrl || ''}
+                  onChange={(e) => setNewSection(prev => ({ ...prev, pdfUrl: e.target.value }))}
+                  className="bg-white/5 border-white/10 text-white h-14 rounded-xl"
                 />
               </div>
             </div>
 
-            {/* Reading Passages Section */}
             <div className="space-y-6 pt-6">
               <div className="flex justify-between items-center">
                 <h3 className="text-2xl font-black text-goldenrod flex items-center gap-2">
@@ -218,35 +225,32 @@ export default function AdminPage() {
                   <PlusCircle className="ml-2 w-4 h-4" /> إضافة قطعة
                 </Button>
               </div>
-              <div className="space-y-4">
-                {newSection.readingPassages?.map((p, idx) => (
-                  <Card key={idx} className="p-6 bg-white/5 border-white/10 rounded-3xl space-y-4">
-                    <Input 
-                      placeholder="عنوان القطعة" 
-                      value={p.title}
-                      onChange={(e) => {
-                        const updated = [...(newSection.readingPassages || [])];
-                        updated[idx].title = e.target.value;
-                        setNewSection(prev => ({ ...prev, readingPassages: updated }));
-                      }}
-                      className="bg-midnight border-white/10 text-white font-bold"
-                    />
-                    <Textarea 
-                      placeholder="نص القطعة كاملاً" 
-                      value={p.text}
-                      onChange={(e) => {
-                        const updated = [...(newSection.readingPassages || [])];
-                        updated[idx].text = e.target.value;
-                        setNewSection(prev => ({ ...prev, readingPassages: updated }));
-                      }}
-                      className="bg-midnight border-white/10 text-white h-32"
-                    />
-                  </Card>
-                ))}
-              </div>
+              {newSection.readingPassages?.map((p, idx) => (
+                <Card key={idx} className="p-6 bg-white/5 border-white/10 rounded-3xl space-y-4">
+                  <Input 
+                    placeholder="عنوان القطعة" 
+                    value={p.title}
+                    onChange={(e) => {
+                      const updated = [...(newSection.readingPassages || [])];
+                      updated[idx].title = e.target.value;
+                      setNewSection(prev => ({ ...prev, readingPassages: updated }));
+                    }}
+                    className="bg-midnight border-white/10 text-white font-bold"
+                  />
+                  <Textarea 
+                    placeholder="نص القطعة" 
+                    value={p.text}
+                    onChange={(e) => {
+                      const updated = [...(newSection.readingPassages || [])];
+                      updated[idx].text = e.target.value;
+                      setNewSection(prev => ({ ...prev, readingPassages: updated }));
+                    }}
+                    className="bg-midnight border-white/10 text-white h-32"
+                  />
+                </Card>
+              ))}
             </div>
 
-            {/* Questions Section */}
             <div className="space-y-6 pt-6">
               <div className="flex justify-between items-center">
                 <h3 className="text-2xl font-black text-vermillion flex items-center gap-2">
@@ -256,115 +260,108 @@ export default function AdminPage() {
                   <PlusCircle className="ml-2 w-4 h-4" /> إضافة سؤال
                 </Button>
               </div>
-              <div className="space-y-6">
-                {newSection.questions?.map((q, idx) => (
-                  <Card key={idx} className="p-8 bg-white/5 border-white/10 rounded-[35px] space-y-6">
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <Input 
-                        placeholder="السؤال" 
-                        value={q.question}
-                        onChange={(e) => {
-                          const updated = [...(newSection.questions || [])];
-                          updated[idx].question = e.target.value;
-                          setNewSection(prev => ({ ...prev, questions: updated }));
-                        }}
-                        className="bg-midnight border-white/10 text-white font-bold md:col-span-2"
-                      />
-                      <select 
-                        value={q.type}
-                        onChange={(e) => {
-                          const updated = [...(newSection.questions || [])];
-                          updated[idx].type = e.target.value as any;
-                          setNewSection(prev => ({ ...prev, questions: updated }));
-                        }}
-                        className="bg-midnight border-white/10 text-white rounded-xl h-10 px-3 outline-none"
-                      >
-                        <option value="analogy">تناظر لفظي</option>
-                        <option value="error">خطأ سياقي</option>
-                        <option value="context">إكمال جمل</option>
-                        <option value="reading">استيعاب مقروء</option>
-                      </select>
-                      {q.type === 'reading' && (
-                        <Input 
-                          placeholder="عنوان القطعة المرتبطة" 
-                          value={q.passageTitle || ''}
-                          onChange={(e) => {
-                            const updated = [...(newSection.questions || [])];
-                            updated[idx].passageTitle = e.target.value;
-                            setNewSection(prev => ({ ...prev, questions: updated }));
-                          }}
-                          className="bg-midnight border-white/10 text-white"
-                        />
-                      )}
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      {q.options.map((opt, oIdx) => (
-                        <Input 
-                          key={oIdx}
-                          placeholder={`خيار ${oIdx + 1}`} 
-                          value={opt}
-                          onChange={(e) => {
-                            const updated = [...(newSection.questions || [])];
-                            updated[idx].options[oIdx] = e.target.value;
-                            setNewSection(prev => ({ ...prev, questions: updated }));
-                          }}
-                          className="bg-midnight border-white/10 text-white"
-                        />
-                      ))}
-                    </div>
+              {newSection.questions?.map((q, idx) => (
+                <Card key={idx} className="p-8 bg-white/5 border-white/10 rounded-[35px] space-y-6">
+                  <div className="grid md:grid-cols-2 gap-4">
                     <Input 
-                      placeholder="الإجابة الصحيحة (يجب أن تطابق أحد الخيارات حرفياً)" 
-                      value={q.correct}
+                      placeholder="نص السؤال" 
+                      value={q.question}
                       onChange={(e) => {
                         const updated = [...(newSection.questions || [])];
-                        updated[idx].correct = e.target.value;
+                        updated[idx].question = e.target.value;
                         setNewSection(prev => ({ ...prev, questions: updated }));
                       }}
-                      className="bg-midnight border-goldenrod/30 text-goldenrod font-black"
+                      className="bg-midnight border-white/10 text-white font-bold md:col-span-2"
                     />
-                  </Card>
-                ))}
-              </div>
+                    <select 
+                      value={q.type}
+                      onChange={(e) => {
+                        const updated = [...(newSection.questions || [])];
+                        updated[idx].type = e.target.value as any;
+                        setNewSection(prev => ({ ...prev, questions: updated }));
+                      }}
+                      className="bg-midnight border-white/10 text-white rounded-xl h-10 px-3"
+                    >
+                      <option value="analogy">تناظر لفظي</option>
+                      <option value="error">خطأ سياقي</option>
+                      <option value="context">إكمال جمل</option>
+                      <option value="reading">استيعاب مقروء</option>
+                    </select>
+                    {q.type === 'reading' && (
+                      <Input 
+                        placeholder="عنوان القطعة المرتبطة" 
+                        value={q.passageTitle || ''}
+                        onChange={(e) => {
+                          const updated = [...(newSection.questions || [])];
+                          updated[idx].passageTitle = e.target.value;
+                          setNewSection(prev => ({ ...prev, questions: updated }));
+                        }}
+                        className="bg-midnight border-white/10 text-white"
+                      />
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    {q.options.map((opt, oIdx) => (
+                      <Input 
+                        key={oIdx}
+                        placeholder={`خيار ${oIdx + 1}`} 
+                        value={opt}
+                        onChange={(e) => {
+                          const updated = [...(newSection.questions || [])];
+                          updated[idx].options[oIdx] = e.target.value;
+                          setNewSection(prev => ({ ...prev, questions: updated }));
+                        }}
+                        className="bg-midnight border-white/10 text-white"
+                      />
+                    ))}
+                  </div>
+                  <Input 
+                    placeholder="الإجابة الصحيحة (يجب أن تطابق الخيار تماماً)" 
+                    value={q.correct}
+                    onChange={(e) => {
+                      const updated = [...(newSection.questions || [])];
+                      updated[idx].correct = e.target.value;
+                      setNewSection(prev => ({ ...prev, questions: updated }));
+                    }}
+                    className="bg-midnight border-goldenrod/30 text-goldenrod font-black"
+                  />
+                </Card>
+              ))}
             </div>
           </Card>
 
-          {/* Sections List */}
+          {/* Existing Sections List */}
           <div className="space-y-6 pt-12">
             <h2 className="text-4xl font-black text-white flex items-center gap-4">
-              <LayoutDashboard className="text-goldenrod w-10 h-10" /> النماذج الحالية في قاعدة البيانات
+              <LayoutDashboard className="text-goldenrod w-10 h-10" /> النماذج الحالية
             </h2>
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {sections.map((section) => (
-                <Card key={section.firebaseId} className="p-8 glass border-white/5 rounded-[40px] flex justify-between items-center group hover:border-goldenrod/30 transition-all">
+                <Card key={section.firebaseId} className="p-8 glass border-white/5 rounded-[40px] flex justify-between items-center group">
                   <div className="flex items-center gap-6">
                     <div className="w-16 h-16 bg-white/5 rounded-3xl flex items-center justify-center font-black text-3xl text-goldenrod border border-white/10">
                       {section.id}
                     </div>
                     <div>
-                      <h3 className="text-2xl font-black text-white">{section.title}</h3>
+                      <h3 className="text-xl font-black text-white line-clamp-1">{section.title}</h3>
                       <div className="flex gap-4 mt-2">
-                        <span className="text-sm text-muted-foreground flex items-center gap-1 bg-white/5 px-3 py-1 rounded-full">
-                          <HelpCircle className="w-4 h-4" /> {section.questions.length} سؤال
+                        <span className="text-xs text-muted-foreground flex items-center gap-1 bg-white/5 px-2 py-1 rounded-full">
+                          <HelpCircle className="w-3 h-3" /> {section.questions.length} سؤال
                         </span>
-                        <span className="text-sm text-muted-foreground flex items-center gap-1 bg-white/5 px-3 py-1 rounded-full">
-                          <FileText className="w-4 h-4" /> {section.readingPassages?.length || 0} قطع
-                        </span>
+                        {section.pdfUrl && <FileDown className="w-4 h-4 text-goldenrod" />}
                       </div>
                     </div>
                   </div>
                   <Button 
                     variant="ghost" 
                     onClick={() => handleDelete(section.firebaseId)}
-                    className="text-vermillion hover:bg-vermillion/10 rounded-2xl w-14 h-14"
+                    className="text-vermillion hover:bg-vermillion/10 rounded-2xl w-12 h-12"
                   >
-                    <Trash2 className="w-7 h-7" />
+                    <Trash2 className="w-6 h-6" />
                   </Button>
                 </Card>
               ))}
             </div>
-            {sections.length === 0 && (
-              <div className="text-center py-20 opacity-30 font-black text-3xl">لا يوجد أقسام في Firestore حالياً</div>
-            )}
           </div>
         </div>
       </div>

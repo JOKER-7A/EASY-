@@ -52,7 +52,6 @@ export default function Home() {
       try {
         const dbSections = await getSectionsFromDb();
         // Combine static (hardcoded) and dynamic (firebase)
-        // Ensure no duplicates by ID
         const combined = [...dbSections];
         staticSections.forEach(s => {
           if (!combined.find(c => c.id === s.id)) {

@@ -30,12 +30,15 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
 };
 
 export const addSectionToDb = async (section: any) => {
-  return await addDoc(collection(db, SECTIONS_COLLECTION), section);
+  // Ensure we don't save firebaseId as a field inside the document
+  const { firebaseId, ...data } = section;
+  return await addDoc(collection(db, SECTIONS_COLLECTION), data);
 };
 
 export const updateSectionInDb = async (firebaseId: string, section: Partial<Section>) => {
+  const { firebaseId: _, ...data } = section;
   const sectionRef = doc(db, SECTIONS_COLLECTION, firebaseId);
-  return await updateDoc(sectionRef, section);
+  return await updateDoc(sectionRef, data);
 };
 
 export const deleteSectionFromDb = async (firebaseId: string) => {
