@@ -208,12 +208,16 @@ export default function Home() {
             <Badge className="bg-goldenrod/10 text-goldenrod text-lg px-6 py-2 border border-goldenrod/20 rounded-full">{sections.length + 1} نماذج حقيقية</Badge>
           </div>
           <div className="grid lg:grid-cols-2 gap-10">
-            <Card className="group relative bg-gradient-to-br from-white/5 to-transparent border-2 border-white/5 backdrop-blur-2xl rounded-[50px] p-10 shadow-2xl overflow-hidden opacity-80 grayscale hover:grayscale-0 transition-all cursor-not-allowed">
-              <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-gray-500 to-gray-700" />
+            {/* القسم 215 - قريباً */}
+            <Card className={cn(
+              "group relative bg-gradient-to-br from-white/10 to-transparent border-2 border-white/5 backdrop-blur-2xl rounded-[50px] p-10 shadow-2xl overflow-hidden transition-all opacity-80 grayscale hover:grayscale-0",
+              "hover:border-gray-500/40"
+            )}>
+              <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-gray-500 via-gray-400 to-gray-600" />
               <div className="flex justify-between items-start mb-10">
                 <div className="space-y-2">
                   <Badge variant="outline" className="px-4 py-1 text-sm font-black rounded-full border-gray-500 text-gray-500">بالتوفيق 🔥</Badge>
-                  <h2 className="text-5xl font-black text-white/50 transition-colors">🔥 نموذج 215</h2>
+                  <h2 className="text-5xl font-black text-white/50 transition-colors group-hover:text-white">🔥 نموذج 215</h2>
                   <p className="text-xl text-muted-foreground font-bold italic">جاري تحضير المحتوى...</p>
                 </div>
                 <div className="bg-white/5 border border-white/10 text-white/40 px-6 py-3 rounded-2xl font-black text-xl backdrop-blur-md">
@@ -221,17 +225,17 @@ export default function Home() {
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-6 mb-10">
-                <div className="bg-white/5 p-6 rounded-3xl border border-white/5">
+                <div className="bg-white/5 p-6 rounded-3xl border border-white/5 group-hover:bg-white/10 transition">
                   <p className="text-muted-foreground text-sm font-bold mb-1">الأسئلة</p>
                   <p className="text-3xl font-black text-white/30">--</p>
                 </div>
-                <div className="bg-white/5 p-6 rounded-3xl border border-white/5">
+                <div className="bg-white/5 p-6 rounded-3xl border border-white/5 group-hover:bg-white/10 transition">
                   <p className="text-muted-foreground text-sm font-bold mb-1">النمط</p>
                   <p className="text-3xl font-black text-gray-600">لفظي</p>
                 </div>
               </div>
               <Button disabled className="w-full h-20 rounded-[30px] text-3xl font-black bg-gray-800 text-gray-500 cursor-not-allowed">
-                انتظرونا ⏳
+                قريباً ✨
               </Button>
             </Card>
 
