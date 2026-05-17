@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -11,9 +12,7 @@ import {
   Flame, 
   LayoutDashboard,
   Loader2,
-  Moon,
-  Zap,
-  Play
+  PlayCircle
 } from 'lucide-react';
 
 export type PracticeMode = 'normal' | 'pressure' | 'exam-night';
@@ -23,7 +22,6 @@ export default function Home() {
   const [activeView, setActiveView] = useState<'landing' | 'practice'>('landing');
   const [allSections, setAllSections] = useState<Section[]>([]);
   const [selectedSection, setSelectedSection] = useState<Section | null>(null);
-  const [currentMode, setCurrentMode] = useState<PracticeMode>('normal');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -50,18 +48,16 @@ export default function Home() {
 
   if (!mounted) return <div className="min-h-screen bg-midnight" />;
 
-  const startPractice = (section: Section, mode: PracticeMode) => {
+  const handleStartClick = (section: Section) => {
     setSelectedSection(section);
-    setCurrentMode(mode);
     setActiveView('practice');
   };
 
   if (activeView === 'practice' && selectedSection) {
     return (
-      <main className="min-h-screen p-4 md:p-8 bg-midnight">
+      <main className="min-h-screen p-0 bg-midnight">
         <PracticeSession 
           section={selectedSection} 
-          mode={currentMode}
           onExit={() => setActiveView('landing')} 
         />
       </main>
@@ -77,7 +73,7 @@ export default function Home() {
             <Flame className="w-4 h-4 fill-goldenrod" /> منصة EASY التدريبية 🔥
           </div>
           <h1 className="text-8xl md:text-9xl font-headline font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-goldenrod to-vermillion">EASY</h1>
-          <p className="text-2xl md:text-3xl font-bold opacity-80 leading-relaxed max-w-4xl mx-auto">تحدَّ نفسك في ليلة الاختبار أو وضع الضغط أو تدرب بهدوء</p>
+          <p className="text-2xl md:text-3xl font-bold opacity-80 leading-relaxed max-w-4xl mx-auto">تعلّم بذكاء.. أهم شيء الفهم وليس الحفظ</p>
         </header>
 
         <section className="space-y-12 mb-24">
@@ -97,29 +93,16 @@ export default function Home() {
               {allSections.map((section) => (
                 <Card key={section.firebaseId || section.id} className="group relative bg-white/5 border-2 border-white/5 rounded-[50px] p-10 shadow-2xl overflow-hidden transition-all hover:border-goldenrod/40">
                   <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-goldenrod to-vermillion" />
-                  <div className="mb-10">
-                    <h2 className="text-5xl font-black text-white group-hover:text-goldenrod">🔥 نموذج {section.id}</h2>
-                    <p className="text-xl text-muted-foreground font-bold mt-2">{section.title}</p>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="flex flex-col md:flex-row justify-between items-center gap-8">
+                    <div>
+                      <h2 className="text-5xl font-black text-white group-hover:text-goldenrod">🔥 نموذج {section.id}</h2>
+                      <p className="text-xl text-muted-foreground font-bold mt-2">{section.title}</p>
+                    </div>
                     <Button 
-                      onClick={() => startPractice(section, 'exam-night')} 
-                      className="h-20 rounded-3xl text-xl font-black bg-indigo-600 text-white hover:bg-indigo-700"
+                      onClick={() => handleStartClick(section)} 
+                      className="h-24 px-12 rounded-[35px] text-3xl font-black bg-goldenrod text-midnight hover:scale-105 transition-all shadow-xl"
                     >
-                      <Moon className="ml-2" /> ليلة الاختبار
-                    </Button>
-                    <Button 
-                      onClick={() => startPractice(section, 'pressure')} 
-                      className="h-20 rounded-3xl text-xl font-black bg-vermillion text-white hover:bg-red-600"
-                    >
-                      <Zap className="ml-2" /> وضع الضغط
-                    </Button>
-                    <Button 
-                      onClick={() => startPractice(section, 'normal')} 
-                      className="h-20 rounded-3xl text-xl font-black bg-goldenrod text-midnight hover:bg-yellow-500"
-                    >
-                      <Play className="ml-2" /> تدريب حر
+                      <PlayCircle className="ml-3 w-10 h-10" /> ابدأ التدريب
                     </Button>
                   </div>
                 </Card>

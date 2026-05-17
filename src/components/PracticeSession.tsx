@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -6,85 +7,84 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { 
   ChevronLeft, 
   Timer, 
   Star, 
   Trophy, 
   RotateCcw, 
-  CheckCircle2, 
-  XCircle, 
   PartyPopper,
   Flame,
-  AlertTriangle,
   BookOpen,
   Moon,
   Clock,
+  Zap,
+  Play
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { PracticeMode } from '@/app/page';
 import { saveAttemptToDb } from '@/lib/db-service';
+
+type Phase = 'intro' | 'mode-selection' | 'practicing' | 'finished';
+type PracticeMode = 'normal' | 'pressure' | 'exam-night';
 
 interface PracticeSessionProps {
   section: Section;
   onExit: () => void;
-  mode: PracticeMode;
 }
 
-export default function PracticeSession({ section, onExit, mode }: PracticeSessionProps) {
+export default function PracticeSession({ section, onExit }: PracticeSessionProps) {
+  const [phase, setPhase] = useState<Phase>('intro');
+  const [mode, setMode] = useState<PracticeMode>('normal');
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState<Record<string, string>>({});
-  const [isFinished, setIsFinished] = useState(false);
-  const [showIntro, setShowIntro] = useState(mode === 'exam-night');
-  
-  // منطق التايمر حسب الوضع:
-  // Full Mode (exam-night): 180s total
-  // Pressure Mode (pressure): 60s per question
-  // Free Mode (normal): No timer
-  const getInitialTime = useCallback(() => {
-    if (mode === 'exam-night') return 180;
-    if (mode === 'pressure') return 60;
-    return 0;
-  }, [mode]);
-
-  const [timeLeft, setTimeLeft] = useState(getInitialTime()); 
+  const [timeLeft, setTimeLeft] = useState(0); 
   const [startTime, setStartTime] = useState<number | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
   const { toast } = useToast();
-  
-  const isPressureMode = mode === 'pressure';
-  const isExamNight = mode === 'exam-night';
-  const isFreeMode = mode === 'normal';
+
+  // Intro Logic
+  useEffect(() => {
+    if (phase === 'intro') {
+      const timer = setTimeout(() => {
+        setPhase('mode-selection');
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [phase]);
+
+  const selectMode = (selectedMode: PracticeMode) => {
+    setMode(selectedMode);
+    if (selectedMode === 'exam-night') setTimeLeft(180);
+    else if (selectedMode === 'pressure') setTimeLeft(60);
+    else setTimeLeft(0);
+    
+    setStartTime(Date.now());
+    setPhase('practicing');
+  };
 
   useEffect(() => {
-    setStartTime(Date.now());
     const savedFavs = localStorage.getItem('easy-favorites');
     if (savedFavs) setFavorites(JSON.parse(savedFavs));
   }, []);
 
-  useEffect(() => {
-    if (showIntro) {
-      const timer = setTimeout(() => setShowIntro(false), 2500);
-      return () => clearTimeout(timer);
-    }
-  }, [showIntro]);
-
   const currentGroup = useMemo(() => {
-    if (!section.questions[currentQuestionIndex]) return [];
+    if (phase !== 'practicing' || !section.questions[currentQuestionIndex]) return [];
     const q = section.questions[currentQuestionIndex];
     if (q.type !== 'reading' || !q.passageTitle) return [q];
     return section.questions.filter(item => item.passageTitle === q.passageTitle);
-  }, [section.questions, currentQuestionIndex]);
+  }, [section.questions, currentQuestionIndex, phase]);
 
   const progress = ((currentQuestionIndex + 1) / section.questions.length) * 100;
   
+  const isPressureMode = mode === 'pressure';
+  const isExamNight = mode === 'exam-night';
+  const isFreeMode = mode === 'normal';
   const isTimeLow = timeLeft < 20;
 
   const finishSession = useCallback(async () => {
-    if (isFinished || !startTime) return;
-    setIsFinished(true);
+    if (phase === 'finished' || !startTime) return;
+    setPhase('finished');
     
     let correct = 0;
     section.questions.forEach((q) => {
@@ -94,7 +94,6 @@ export default function PracticeSession({ section, onExit, mode }: PracticeSessi
     const score = Math.round((correct / section.questions.length) * 100);
     const durationInSeconds = Math.floor((Date.now() - startTime) / 1000);
     
-    // حفظ في Firestore
     await saveAttemptToDb({
       sectionId: section.id,
       mode,
@@ -104,31 +103,14 @@ export default function PracticeSession({ section, onExit, mode }: PracticeSessi
       durationSeconds: durationInSeconds,
       answers: userAnswers
     });
-
-    // حفظ محلي للطوارئ
-    const historyItem = {
-      sectionId: section.id,
-      date: new Date().toISOString(),
-      score,
-      mode,
-      durationMinutes: Math.floor(durationInSeconds / 60),
-      total: section.questions.length,
-      correct: correct
-    };
-    const savedHistory = JSON.parse(localStorage.getItem('easy-history') || '[]');
-    localStorage.setItem('easy-history', JSON.stringify([historyItem, ...savedHistory]));
-
-  }, [isFinished, section, userAnswers, mode, startTime]);
+  }, [phase, section, userAnswers, mode, startTime]);
 
   const handleNext = useCallback(() => {
     if (currentGroup.length === 0) return;
     const lastIndexInGroup = section.questions.findIndex(q => q.id === currentGroup[currentGroup.length - 1].id);
     if (lastIndexInGroup < section.questions.length - 1) {
       setCurrentQuestionIndex(lastIndexInGroup + 1);
-      // ريست التايمر في وضع الضغط فقط لكل سؤال
-      if (isPressureMode) {
-        setTimeLeft(60);
-      }
+      if (isPressureMode) setTimeLeft(60);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
       finishSession();
@@ -136,7 +118,7 @@ export default function PracticeSession({ section, onExit, mode }: PracticeSessi
   }, [section.questions, currentGroup, isPressureMode, finishSession]);
 
   useEffect(() => {
-    if (isFreeMode || isFinished || showIntro) return;
+    if (isFreeMode || phase !== 'practicing') return;
 
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
@@ -149,22 +131,19 @@ export default function PracticeSession({ section, onExit, mode }: PracticeSessi
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isFreeMode, isFinished, showIntro]);
+  }, [isFreeMode, phase]);
 
-  // منطق انتهاء الوقت
   useEffect(() => {
-    if (!isFreeMode && timeLeft === 0 && !isFinished && !showIntro) {
+    if (!isFreeMode && timeLeft === 0 && phase === 'practicing') {
       if (isPressureMode) {
-        // في وضع الضغط، ننتقل للسؤال التالي تلقائياً
         handleNext();
         toast({ title: "انتهى وقت السؤال! ⏱️", description: "تم الانتقال للسؤال التالي." });
       } else if (isExamNight) {
-        // في وضع ليلة الاختبار، ينتهي الاختبار كاملاً
         finishSession();
         toast({ title: "انتهى وقت الاختبار! 🛑", variant: "destructive" });
       }
     }
-  }, [timeLeft, isPressureMode, isExamNight, isFreeMode, isFinished, showIntro, handleNext, finishSession, toast]);
+  }, [timeLeft, isPressureMode, isExamNight, isFreeMode, phase, handleNext, finishSession, toast]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -173,7 +152,7 @@ export default function PracticeSession({ section, onExit, mode }: PracticeSessi
   };
 
   const handleAnswer = (option: string, questionId: string) => {
-    if (isFinished) return;
+    if (phase !== 'practicing') return;
     setUserAnswers(prev => ({ ...prev, [questionId]: option }));
   };
 
@@ -188,18 +167,93 @@ export default function PracticeSession({ section, onExit, mode }: PracticeSessi
     localStorage.setItem('easy-favorites', JSON.stringify(newFavs));
   };
 
-  const isGroupAnswered = currentGroup.every(q => !!userAnswers[q.id]);
+  if (phase === 'intro') {
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-midnight/95 backdrop-blur-3xl animate-in fade-in duration-1000">
+        <div className="text-center space-y-12 px-6">
+          <div className="relative">
+            <div className="absolute -inset-4 bg-goldenrod/20 blur-2xl rounded-full animate-pulse" />
+            <h2 className="text-6xl md:text-8xl font-headline font-black text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.2)]">
+              أهم شيء الفهم وليس الحفظ 💡
+            </h2>
+          </div>
+          <p className="text-2xl md:text-3xl font-bold text-goldenrod/80 tracking-widest animate-pulse">
+            جاري تهيئة بيئة التدريب...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
-  if (isFinished && startTime) {
+  if (phase === 'mode-selection') {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-midnight animate-in fade-in slide-in-from-bottom-12 duration-700">
+        <div className="max-w-6xl w-full space-y-16">
+          <div className="text-center space-y-4">
+            <h1 className="text-6xl font-black text-white">اختر وضع التحدي 🎮</h1>
+            <p className="text-2xl text-muted-foreground font-bold">حدد الطريقة التي تناسب أسلوبك في المذاكرة</p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            <Card 
+              onClick={() => selectMode('exam-night')}
+              className="p-12 glass border-indigo-500/30 hover:border-indigo-500 hover:scale-105 transition-all cursor-pointer group rounded-[50px] text-center space-y-8"
+            >
+              <div className="w-24 h-24 bg-indigo-500/10 rounded-full flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
+                <Moon className="w-12 h-12 text-indigo-400" />
+              </div>
+              <div className="space-y-4">
+                <h3 className="text-4xl font-black text-white">ليلة الاختبار 🕒</h3>
+                <p className="text-lg text-muted-foreground font-medium">اختبار شامل بمؤقت إجمالي 3 دقائق. يحاكي ضغط الاختبار النهائي.</p>
+              </div>
+            </Card>
+
+            <Card 
+              onClick={() => selectMode('pressure')}
+              className="p-12 glass border-vermillion/30 hover:border-vermillion hover:scale-105 transition-all cursor-pointer group rounded-[50px] text-center space-y-8"
+            >
+              <div className="w-24 h-24 bg-vermillion/10 rounded-full flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
+                <Zap className="w-12 h-12 text-vermillion" />
+              </div>
+              <div className="space-y-4">
+                <h3 className="text-4xl font-black text-white">نظام الضغط ⚡</h3>
+                <p className="text-lg text-muted-foreground font-medium">60 ثانية لكل سؤال. تدرب على سرعة البديهة والتركيز العالي.</p>
+              </div>
+            </Card>
+
+            <Card 
+              onClick={() => selectMode('normal')}
+              className="p-12 glass border-goldenrod/30 hover:border-goldenrod hover:scale-105 transition-all cursor-pointer group rounded-[50px] text-center space-y-8"
+            >
+              <div className="w-24 h-24 bg-goldenrod/10 rounded-full flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
+                <Play className="w-12 h-12 text-goldenrod" />
+              </div>
+              <div className="space-y-4">
+                <h3 className="text-4xl font-black text-white">التمرين الحر 🧘</h3>
+                <p className="text-lg text-muted-foreground font-medium">بدون أي مؤقت. خذ وقتك في الفهم والتحليل بعمق.</p>
+              </div>
+            </Card>
+          </div>
+          
+          <div className="text-center">
+            <Button variant="ghost" onClick={onExit} className="text-xl text-muted-foreground hover:text-white rounded-full px-12 h-16">
+              <ChevronLeft className="ml-2" /> العودة للرئيسية
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (phase === 'finished') {
     let correct = 0;
     section.questions.forEach((q) => {
       if (userAnswers[q.id] === q.correct) correct++;
     });
     const percentage = Math.round((correct / section.questions.length) * 100);
-    const durationSeconds = Math.floor((Date.now() - startTime) / 1000);
 
     return (
-      <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in zoom-in duration-700 pb-20 text-right" dir="rtl">
+      <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in zoom-in duration-700 py-20 px-4 text-right" dir="rtl">
         <div className="text-center space-y-6">
           <div className="inline-block p-6 rounded-full bg-goldenrod/10 border-2 border-goldenrod/30 shadow-[0_0_50px_rgba(230,172,0,0.3)] mb-4">
             {percentage >= 90 ? <PartyPopper className="w-20 h-20 text-goldenrod" /> : <Trophy className="w-20 h-20 text-goldenrod" />}
@@ -209,27 +263,23 @@ export default function PracticeSession({ section, onExit, mode }: PracticeSessi
           </h1>
           <div className="flex flex-wrap justify-center gap-4">
             <Badge className="bg-goldenrod/20 text-goldenrod border-goldenrod/40 text-xl px-8 py-2 rounded-full">
-              الوضع: {isPressureMode ? "ضغط (60ث/س)" : isExamNight ? "ليلة الاختبار (3د)" : "تدريب حر"}
+              الوضع: {isPressureMode ? "ضغط ⚡" : isExamNight ? "ليلة الاختبار 🕒" : "تدريب حر 🧘"}
             </Badge>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
           <Card className="p-10 text-center glass border-goldenrod/30 gold-glow">
             <p className="text-muted-foreground mb-2 font-bold">النسبة</p>
             <p className="text-5xl font-black text-goldenrod">{percentage}%</p>
           </Card>
           <Card className="p-10 text-center glass border-green-500/30">
-            <p className="text-muted-foreground mb-2 font-bold">صح</p>
+            <p className="text-muted-foreground mb-2 font-bold">إجابات صحيحة</p>
             <p className="text-5xl font-black text-green-500">{correct}</p>
           </Card>
           <Card className="p-10 text-center glass border-vermillion/30">
-            <p className="text-muted-foreground mb-2 font-bold">خطأ</p>
+            <p className="text-muted-foreground mb-2 font-bold">إجابات خاطئة</p>
             <p className="text-5xl font-black text-vermillion">{section.questions.length - correct}</p>
-          </Card>
-          <Card className="p-10 text-center glass border-blue-500/30">
-            <p className="text-muted-foreground mb-2 font-bold">الوقت المستغرق</p>
-            <p className="text-4xl font-black text-blue-400">{formatTime(durationSeconds)}</p>
           </Card>
         </div>
 
@@ -249,24 +299,10 @@ export default function PracticeSession({ section, onExit, mode }: PracticeSessi
 
   return (
     <div className={cn(
-      "max-w-5xl mx-auto space-y-8 animate-in slide-in-from-bottom-8 duration-700 pb-20 transition-all text-right relative",
+      "max-w-5xl mx-auto space-y-8 animate-in slide-in-from-bottom-8 duration-700 py-12 pb-20 px-4 transition-all text-right relative",
       isTimeLow && !isFreeMode && "animate-shake",
-      isExamNight && "bg-[radial-gradient(circle_at_50%_0%,rgba(99,102,241,0.08),transparent_50%)]"
     )} dir="rtl">
       
-      {showIntro && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-midnight/90 backdrop-blur-xl animate-in fade-in duration-700">
-          <div className="text-center space-y-6 px-4">
-            <h2 className="text-5xl md:text-7xl font-headline font-black text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.3)]">
-              أهلاً بك في ليلة الاختبار ✨
-            </h2>
-            <p className="text-2xl md:text-4xl font-bold text-indigo-300">
-              3 دقائق لإنهاء كل شيء.. ركز جيداً! 🔥
-            </p>
-          </div>
-        </div>
-      )}
-
       <div className={cn(
         "flex justify-between items-center bg-midnight/70 p-6 rounded-[40px] border-2 border-white/5 backdrop-blur-2xl sticky top-4 z-50 shadow-2xl transition-all",
         !isFreeMode && isTimeLow && "border-vermillion bg-vermillion/20 scale-[1.02]"
