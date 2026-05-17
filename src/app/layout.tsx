@@ -1,6 +1,7 @@
 
 import type {Metadata} from 'next';
 import './globals.css';
+import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
   title: 'EASY Prep Master - منصة التدريب اللفظي',
@@ -21,6 +22,7 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased bg-midnight min-h-screen text-foreground selection:bg-goldenrod selection:text-midnight">
         {children}
+        <Toaster />
       </body>
     </html>
   );

@@ -24,9 +24,9 @@ import {
   LayoutDashboard,
   FileText,
   HelpCircle,
-  PlusCircle,
   Loader2,
-  ChevronRight
+  ChevronRight,
+  Save
 } from 'lucide-react';
 
 export default function AdminPage() {
@@ -109,7 +109,7 @@ export default function AdminPage() {
 
   const addQuestionField = () => {
     const q: Question = {
-      id: `q-${Date.now()}`,
+      id: `q-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       question: '',
       options: ['', '', '', ''],
       correct: '',
@@ -121,6 +121,18 @@ export default function AdminPage() {
   const addPassageField = () => {
     const p: ReadingPassage = { title: '', text: '' };
     setNewSection(prev => ({ ...prev, readingPassages: [...(prev.readingPassages || []), p] }));
+  };
+
+  const removeQuestion = (idx: number) => {
+    const updated = [...(newSection.questions || [])];
+    updated.splice(idx, 1);
+    setNewSection(prev => ({ ...prev, questions: updated }));
+  };
+
+  const removePassage = (idx: number) => {
+    const updated = [...(newSection.readingPassages || [])];
+    updated.splice(idx, 1);
+    setNewSection(prev => ({ ...prev, readingPassages: updated }));
   };
 
   if (loading) return (
@@ -197,7 +209,7 @@ export default function AdminPage() {
                 disabled={isSubmitting}
                 className="h-14 px-10 bg-goldenrod text-midnight font-black rounded-2xl text-xl hover:scale-105 transition-all"
               >
-                {isSubmitting ? <Loader2 className="animate-spin" /> : "نشر النموذج 🚀"}
+                {isSubmitting ? <Loader2 className="animate-spin" /> : <><Save className="ml-2" /> نشر النموذج 🚀</>}
               </Button>
             </div>
 
@@ -242,7 +254,15 @@ export default function AdminPage() {
                 </Button>
               </div>
               {newSection.readingPassages?.map((p, idx) => (
-                <Card key={idx} className="p-6 bg-white/5 border-white/10 rounded-3xl space-y-4">
+                <Card key={idx} className="p-6 bg-white/5 border-white/10 rounded-3xl space-y-4 relative">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="absolute top-2 left-2 text-vermillion"
+                    onClick={() => removePassage(idx)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
                   <Input 
                     placeholder="عنوان القطعة" 
                     value={p.title}
@@ -277,7 +297,15 @@ export default function AdminPage() {
                 </Button>
               </div>
               {newSection.questions?.map((q, idx) => (
-                <Card key={idx} className="p-8 bg-white/5 border-white/10 rounded-[35px] space-y-6">
+                <Card key={idx} className="p-8 bg-white/5 border-white/10 rounded-[35px] space-y-6 relative">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="absolute top-4 left-4 text-vermillion"
+                    onClick={() => removeQuestion(idx)}
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </Button>
                   <div className="grid md:grid-cols-2 gap-4">
                     <Input 
                       placeholder="نص السؤال" 
