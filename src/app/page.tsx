@@ -65,7 +65,6 @@ export default function Home() {
 
   return (
     <main className="min-h-screen overflow-x-hidden relative bg-midnight text-white">
-      {/* Background Glow */}
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(230,172,0,0.15),transparent_60%)] pointer-events-none" />
       
       <div className="relative z-10 container mx-auto px-6 py-16 md:py-28 max-w-7xl">

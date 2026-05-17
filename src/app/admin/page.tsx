@@ -225,7 +225,6 @@ export default function AdminPage() {
               </div>
             </div>
 
-            {/* Reading Passages Section */}
             <div className="space-y-10 pt-10">
               <div className="flex justify-between items-center">
                 <h3 className="text-4xl font-black text-goldenrod flex items-center gap-4">
@@ -261,7 +260,6 @@ export default function AdminPage() {
               ))}
             </div>
 
-            {/* Questions Section */}
             <div className="space-y-10 pt-10">
               <div className="flex justify-between items-center">
                 <h3 className="text-4xl font-black text-vermillion flex items-center gap-4">
@@ -341,7 +339,6 @@ export default function AdminPage() {
             </div>
           </Card>
 
-          {/* Published Sections List */}
           <div className="space-y-10 pt-16">
             <h2 className="text-6xl font-black text-white flex items-center gap-6">
               <LayoutDashboard className="text-goldenrod w-14 h-14" /> النماذج المنشورة
