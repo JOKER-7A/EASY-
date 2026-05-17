@@ -24,8 +24,7 @@ import {
   FileText,
   HelpCircle,
   Loader2,
-  Save,
-  ChevronRight
+  Save
 } from 'lucide-react';
 
 export default function AdminPage() {
@@ -72,7 +71,7 @@ export default function AdminPage() {
     } catch (error: any) {
       toast({ 
         title: "خطأ في تسجيل الدخول", 
-        description: "تأكد من تفعيل Email/Password في Firebase وإضافة حسابك.",
+        description: "يرجى التحقق من بياناتك وتفعيل Auth في Firebase.",
         variant: "destructive" 
       });
     } finally {
@@ -115,7 +114,7 @@ export default function AdminPage() {
 
   const addQuestionField = () => {
     const q: Question = {
-      id: `q-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: `q-${Date.now()}`,
       question: '',
       options: ['', '', '', ''],
       correct: '',
@@ -127,18 +126,6 @@ export default function AdminPage() {
   const addPassageField = () => {
     const p: ReadingPassage = { title: '', text: '' };
     setNewSection(prev => ({ ...prev, readingPassages: [...(prev.readingPassages || []), p] }));
-  };
-
-  const removeQuestion = (idx: number) => {
-    const updated = [...(newSection.questions || [])];
-    updated.splice(idx, 1);
-    setNewSection(prev => ({ ...prev, questions: updated }));
-  };
-
-  const removePassage = (idx: number) => {
-    const updated = [...(newSection.readingPassages || [])];
-    updated.splice(idx, 1);
-    setNewSection(prev => ({ ...prev, readingPassages: updated }));
   };
 
   if (loading) return (
@@ -169,7 +156,7 @@ export default function AdminPage() {
               className="h-16 rounded-3xl bg-white/5 border-white/10 text-white text-xl"
               required
             />
-            <Button disabled={isSubmitting} type="submit" className="w-full h-20 rounded-3xl bg-goldenrod text-midnight font-black text-2xl hover:scale-[1.02] transition-all gold-glow">
+            <Button disabled={isSubmitting} type="submit" className="w-full h-20 rounded-3xl bg-goldenrod text-midnight font-black text-2xl gold-glow hover:scale-[1.02] transition-all">
               {isSubmitting ? <Loader2 className="animate-spin" /> : "دخول 🚀"}
             </Button>
           </form>
@@ -183,7 +170,7 @@ export default function AdminPage() {
       <div className="max-w-7xl mx-auto">
         <header className="flex flex-wrap justify-between items-center gap-8 mb-16">
           <div className="flex items-center gap-6">
-            <div className="bg-goldenrod p-5 rounded-[35px] gold-glow">
+            <div className="bg-goldenrod p-5 rounded-[35px] shadow-xl">
               <Settings className="text-midnight w-12 h-12" />
             </div>
             <div>
@@ -250,14 +237,6 @@ export default function AdminPage() {
               </div>
               {newSection.readingPassages?.map((p, idx) => (
                 <Card key={idx} className="p-10 bg-white/5 border-white/10 rounded-[50px] space-y-6 relative">
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="absolute top-4 left-4 text-vermillion w-12 h-12"
-                    onClick={() => removePassage(idx)}
-                  >
-                    <Trash2 className="w-6 h-6" />
-                  </Button>
                   <Input 
                     placeholder="عنوان القطعة" 
                     value={p.title}
@@ -269,14 +248,14 @@ export default function AdminPage() {
                     className="bg-midnight border-white/10 text-white font-black h-16 rounded-2xl"
                   />
                   <Textarea 
-                    placeholder="نص القطعة الكامل بدون اختصار..." 
+                    placeholder="نص القطعة الكامل..." 
                     value={p.text}
                     onChange={(e) => {
                       const updated = [...(newSection.readingPassages || [])];
                       updated[idx].text = e.target.value;
                       setNewSection(prev => ({ ...prev, readingPassages: updated }));
                     }}
-                    className="bg-midnight border-white/10 text-white h-72 leading-relaxed rounded-2xl p-6 text-xl"
+                    className="bg-midnight border-white/10 text-white h-64 leading-relaxed rounded-2xl p-6 text-xl"
                   />
                 </Card>
               ))}
@@ -294,14 +273,6 @@ export default function AdminPage() {
               </div>
               {newSection.questions?.map((q, idx) => (
                 <Card key={idx} className="p-12 bg-white/5 border-white/10 rounded-[60px] space-y-8 relative">
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="absolute top-6 left-6 text-vermillion w-14 h-14"
-                    onClick={() => removeQuestion(idx)}
-                  >
-                    <Trash2 className="w-8 h-8" />
-                  </Button>
                   <div className="grid md:grid-cols-2 gap-6">
                     <Input 
                       placeholder="نص السؤال" 
@@ -356,14 +327,14 @@ export default function AdminPage() {
                     ))}
                   </div>
                   <Input 
-                    placeholder="الإجابة الصحيحة (يجب أن تطابق أحد الخيارات)" 
+                    placeholder="الإجابة الصحيحة" 
                     value={q.correct}
                     onChange={(e) => {
                       const updated = [...(newSection.questions || [])];
                       updated[idx].correct = e.target.value;
                       setNewSection(prev => ({ ...prev, questions: updated }));
                     }}
-                    className="bg-midnight border-goldenrod/50 text-goldenrod font-black h-16 rounded-2xl text-xl shadow-inner"
+                    className="bg-midnight border-goldenrod/50 text-goldenrod font-black h-16 rounded-2xl text-xl"
                   />
                 </Card>
               ))}
@@ -373,7 +344,7 @@ export default function AdminPage() {
           {/* Published Sections List */}
           <div className="space-y-10 pt-16">
             <h2 className="text-6xl font-black text-white flex items-center gap-6">
-              <LayoutDashboard className="text-goldenrod w-14 h-14" /> النماذج المنشورة حالياً
+              <LayoutDashboard className="text-goldenrod w-14 h-14" /> النماذج المنشورة
             </h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 pb-32">
               {sections.map((section) => (

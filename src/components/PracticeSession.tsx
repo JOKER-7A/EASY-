@@ -18,8 +18,7 @@ import {
   Moon,
   Clock,
   Zap,
-  Play,
-  ArrowRight
+  Play
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -43,7 +42,7 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
   const [favorites, setFavorites] = useState<string[]>([]);
   const { toast } = useToast();
 
-  // 🎯 Phase 1: Intro Logic (2.5 seconds)
+  // 🎯 شاشة البداية (Intro) لمدة 2.5 ثانية
   useEffect(() => {
     if (phase === 'intro') {
       const timer = setTimeout(() => {
@@ -53,11 +52,11 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
     }
   }, [phase]);
 
-  // 🎮 Phase 2: Mode Selection
+  // 🎮 اختيار الوضع
   const selectMode = (selectedMode: PracticeMode) => {
     setMode(selectedMode);
-    if (selectedMode === 'exam-night') setTimeLeft(180); // 3 minutes total
-    else if (selectedMode === 'pressure') setTimeLeft(60); // 60 seconds per question
+    if (selectedMode === 'exam-night') setTimeLeft(180); // 3 دقائق للاختبار كله
+    else if (selectedMode === 'pressure') setTimeLeft(60); // 60 ثانية لكل سؤال
     else setTimeLeft(0);
     
     setStartTime(Date.now());
@@ -69,7 +68,6 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
     if (savedFavs) setFavorites(JSON.parse(savedFavs));
   }, []);
 
-  // 📝 Phase 3: Practice Logic
   const currentGroup = useMemo(() => {
     if (phase !== 'practicing' || !section.questions[currentQuestionIndex]) return [];
     const q = section.questions[currentQuestionIndex];
@@ -119,7 +117,7 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
     }
   }, [section.questions, currentGroup, isPressureMode, finishSession]);
 
-  // Timer Countdown
+  // منطق التايمر
   useEffect(() => {
     if (isFreeMode || phase !== 'practicing') return;
 
@@ -136,7 +134,6 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
     return () => clearInterval(timer);
   }, [isFreeMode, phase]);
 
-  // Time Out Handler
   useEffect(() => {
     if (!isFreeMode && timeLeft === 0 && phase === 'practicing') {
       if (isPressureMode) {
@@ -177,8 +174,8 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
         <div className="text-center space-y-12 px-6">
           <div className="relative">
             <div className="absolute -inset-8 bg-goldenrod/10 blur-[80px] rounded-full animate-pulse" />
-            <h2 className="text-5xl md:text-8xl font-black text-white drop-shadow-[0_0_30px_rgba(230,172,0,0.5)]">
-              أهم شيء الفهم وليس الحفظ 💡
+            <h2 className="text-5xl md:text-8xl font-black text-white drop-shadow-[0_0_30px_rgba(230,172,0,0.5)] leading-tight">
+              أهم شيء الفهم <br/> وليس الحفظ 💡
             </h2>
           </div>
           <p className="text-xl md:text-2xl font-bold text-goldenrod/60 tracking-widest animate-pulse">
