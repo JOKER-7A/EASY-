@@ -13,7 +13,7 @@ const firebaseConfig = {
   appId: "1:698116507939:web:389055c6223cbcd7cfa496"
 };
 
-// تهيئة Firebase مع منع التكرار
+// تهيئة Firebase مع منع التكرار وإصلاح الخطأ السابق
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
 const db = getFirestore(app);

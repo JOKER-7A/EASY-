@@ -296,7 +296,7 @@ export default function AdminPage() {
                     </select>
                     {q.type === 'reading' && (
                       <Input 
-                        placeholder="عنوان القطعة المرتبطة (يجب أن يتطابق مع عنوان القطعة أعلاه)" 
+                        placeholder="عنوان القطعة المرتبطة" 
                         value={q.passageTitle || ''}
                         onChange={(e) => {
                           const updated = [...(newSection.questions || [])];
@@ -323,7 +323,7 @@ export default function AdminPage() {
                     ))}
                   </div>
                   <Input 
-                    placeholder="الإجابة الصحيحة (يجب أن تطابق أحد الخيارات تماماً)" 
+                    placeholder="الإجابة الصحيحة" 
                     value={q.correct}
                     onChange={(e) => {
                       const updated = [...(newSection.questions || [])];
