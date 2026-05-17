@@ -25,7 +25,8 @@ import {
   FileText,
   HelpCircle,
   PlusCircle,
-  Loader2
+  Loader2,
+  ChevronRight
 } from 'lucide-react';
 
 export default function AdminPage() {
@@ -69,7 +70,7 @@ export default function AdminPage() {
     } catch (error: any) {
       toast({ 
         title: "خطأ في تسجيل الدخول", 
-        description: "يرجى التأكد من تفعيل Email/Password في Firebase Console وإضافة حسابك.",
+        description: "تأكد من تفعيل Email/Password في Firebase وإضافة حسابك.",
         variant: "destructive" 
       });
     } finally {
@@ -153,6 +154,9 @@ export default function AdminPage() {
             <Button disabled={isSubmitting} type="submit" className="w-full h-14 rounded-2xl bg-goldenrod text-midnight font-black text-xl hover:scale-[1.02] transition-all">
               {isSubmitting ? <Loader2 className="animate-spin" /> : "دخول 🚀"}
             </Button>
+            <div className="text-center pt-4">
+               <Button variant="link" onClick={() => window.location.href = '/'} className="text-muted-foreground">العودة للرئيسية</Button>
+            </div>
           </form>
         </Card>
       </main>
@@ -169,12 +173,17 @@ export default function AdminPage() {
             </div>
             <div>
               <h1 className="text-4xl font-black text-white">لوحة التحكم</h1>
-              <p className="text-muted-foreground font-bold">إدارة المحتوى الديناميكي للمنصة</p>
+              <p className="text-muted-foreground font-bold">إدارة المحتوى الديناميكي</p>
             </div>
           </div>
-          <Button variant="outline" onClick={handleLogout} className="rounded-2xl font-black border-vermillion/30 text-vermillion hover:bg-vermillion hover:text-white transition-all">
-            <LogOut className="ml-2 w-5 h-5" /> خروج
-          </Button>
+          <div className="flex gap-4">
+            <Button variant="outline" onClick={() => window.location.href = '/'} className="rounded-2xl font-black border-white/10 text-white hover:bg-white/10">
+              عرض الموقع
+            </Button>
+            <Button variant="outline" onClick={handleLogout} className="rounded-2xl font-black border-vermillion/30 text-vermillion hover:bg-vermillion hover:text-white">
+              <LogOut className="ml-2 w-5 h-5" /> خروج
+            </Button>
+          </div>
         </header>
 
         <div className="grid gap-12">
@@ -194,26 +203,26 @@ export default function AdminPage() {
 
             <div className="grid md:grid-cols-4 gap-6">
               <div className="space-y-2">
-                <label className="text-white font-bold mr-2 text-sm">رقم النموذج</label>
+                <label className="text-white font-bold text-sm">رقم النموذج</label>
                 <Input 
                   type="number"
-                  placeholder="220" 
+                  placeholder="مثلاً: 215" 
                   value={newSection.id || ''}
                   onChange={(e) => setNewSection(prev => ({ ...prev, id: parseInt(e.target.value) }))}
                   className="bg-white/5 border-white/10 text-white h-14 rounded-xl font-black"
                 />
               </div>
               <div className="space-y-2 md:col-span-2">
-                <label className="text-white font-bold mr-2 text-sm">عنوان النموذج</label>
+                <label className="text-white font-bold text-sm">عنوان النموذج</label>
                 <Input 
-                  placeholder="مثلاً: الإمام مالك والملح الصخري" 
+                  placeholder="اسم النموذج" 
                   value={newSection.title || ''}
                   onChange={(e) => setNewSection(prev => ({ ...prev, title: e.target.value }))}
                   className="bg-white/5 border-white/10 text-white h-14 rounded-xl font-black"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-white font-bold mr-2 text-sm">رابط PDF (اختياري)</label>
+                <label className="text-white font-bold text-sm">رابط PDF</label>
                 <Input 
                   placeholder="https://..." 
                   value={newSection.pdfUrl || ''}
@@ -229,7 +238,7 @@ export default function AdminPage() {
                   <FileText className="w-6 h-6" /> قطع القراءة
                 </h3>
                 <Button onClick={addPassageField} variant="secondary" className="rounded-xl font-bold">
-                  <PlusCircle className="ml-2 w-4 h-4" /> إضافة قطعة
+                  إضافة قطعة
                 </Button>
               </div>
               {newSection.readingPassages?.map((p, idx) => (
@@ -245,7 +254,7 @@ export default function AdminPage() {
                     className="bg-midnight border-white/10 text-white font-bold"
                   />
                   <Textarea 
-                    placeholder="نص القطعة الكامل بدون اختصار" 
+                    placeholder="نص القطعة الكامل" 
                     value={p.text}
                     onChange={(e) => {
                       const updated = [...(newSection.readingPassages || [])];
@@ -264,7 +273,7 @@ export default function AdminPage() {
                   <HelpCircle className="w-6 h-6" /> الأسئلة
                 </h3>
                 <Button onClick={addQuestionField} variant="secondary" className="rounded-xl font-bold">
-                  <PlusCircle className="ml-2 w-4 h-4" /> إضافة سؤال
+                  إضافة سؤال
                 </Button>
               </div>
               {newSection.questions?.map((q, idx) => (
@@ -287,7 +296,7 @@ export default function AdminPage() {
                         updated[idx].type = e.target.value as any;
                         setNewSection(prev => ({ ...prev, questions: updated }));
                       }}
-                      className="bg-midnight border-white/10 text-white rounded-xl h-12 px-3 outline-none"
+                      className="bg-midnight border-white/10 text-white rounded-xl h-12 px-3"
                     >
                       <option value="analogy">تناظر لفظي</option>
                       <option value="error">خطأ سياقي</option>
@@ -341,11 +350,11 @@ export default function AdminPage() {
             <h2 className="text-4xl font-black text-white flex items-center gap-4">
               <LayoutDashboard className="text-goldenrod w-10 h-10" /> النماذج المنشورة
             </h2>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 pb-20">
               {sections.map((section) => (
                 <Card key={section.firebaseId} className="p-8 glass border-white/5 rounded-[40px] flex justify-between items-center group hover:border-goldenrod/20 transition-all">
                   <div className="flex items-center gap-6">
-                    <div className="w-16 h-16 bg-white/5 rounded-3xl flex items-center justify-center font-black text-3xl text-goldenrod border border-white/10 group-hover:bg-goldenrod group-hover:text-midnight transition-all">
+                    <div className="w-16 h-16 bg-white/5 rounded-3xl flex items-center justify-center font-black text-3xl text-goldenrod border border-white/10 group-hover:bg-goldenrod group-hover:text-midnight">
                       {section.id}
                     </div>
                     <div>

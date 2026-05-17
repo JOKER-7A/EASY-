@@ -13,16 +13,11 @@ import {
   Flame, 
   History, 
   Star, 
-  Zap, 
-  Target, 
-  Award,
   ChevronRight,
   Trash2,
   XCircle,
   CheckCircle2,
-  Moon,
-  Clock,
-  Timer as TimerIcon
+  LayoutDashboard
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -42,23 +37,19 @@ export default function Home() {
   useEffect(() => {
     setMounted(true);
     
-    // Load local storage data
     const savedMistakes = JSON.parse(localStorage.getItem('easy-mistakes') || '[]');
     const savedFavIds = JSON.parse(localStorage.getItem('easy-favorites') || '[]');
     setMistakes(savedMistakes);
 
-    // Initial load of sections
     const fetchAllData = async () => {
       try {
         const dbSections = await getSectionsFromDb();
-        // Combine static (hardcoded) and dynamic (firebase)
         const combined = [...dbSections];
         staticSections.forEach(s => {
           if (!combined.find(c => c.id === s.id)) {
             combined.push(s);
           }
         });
-        // Sort by ID descending
         combined.sort((a, b) => b.id - a.id);
         setAllSections(combined);
 
@@ -66,7 +57,7 @@ export default function Home() {
         const savedFavs = allQuestions.filter(q => savedFavIds.includes(q.id));
         setFavorites(savedFavs);
       } catch (e) {
-        console.error("Firebase fetch failed, using static only", e);
+        console.error("Fetch failed", e);
         setAllSections(staticSections);
       }
     };
@@ -182,7 +173,6 @@ export default function Home() {
     );
   }
 
-  // Check if Section 215 is already loaded from DB or Static
   const section215Exists = allSections.some(s => s.id === 215);
 
   return (
@@ -209,7 +199,6 @@ export default function Home() {
         <div className="max-w-2xl mx-auto mb-20 p-8 glass rounded-[40px] border-white/10 space-y-8">
           <div className="text-center">
             <h3 className="text-3xl font-black text-white mb-2">اختر نمط التدريب 🚀</h3>
-            <p className="text-muted-foreground font-bold text-lg">حدد التحدي الذي يناسبك اليوم</p>
           </div>
           
           <Tabs value={currentMode} onValueChange={(v) => setCurrentMode(v as PracticeMode)} className="w-full">
@@ -221,26 +210,18 @@ export default function Home() {
           </Tabs>
 
           <div className="p-6 rounded-3xl bg-white/5 border border-white/5 text-center animate-in fade-in slide-in-from-top-2">
-            {currentMode === 'normal' && (
-              <p className="text-xl font-bold text-muted-foreground">🧘‍♂️ وقت مفتوح للتدريب والتعلم بتركيز عالٍ</p>
-            )}
-            {currentMode === 'pressure' && (
-              <p className="text-xl font-bold text-vermillion">🔥 مؤقت 13 دقيقة لكامل النموذج - تحدي حقيقي!</p>
-            )}
-            {currentMode === 'exam-night' && (
-              <p className="text-xl font-bold text-indigo-400">🌙 3 دقائق لكل سؤال - مراجعة سريعة وحاسمة!</p>
-            )}
+            {currentMode === 'normal' && <p className="text-xl font-bold text-muted-foreground">🧘‍♂️ وقت مفتوح للتدريب</p>}
+            {currentMode === 'pressure' && <p className="text-xl font-bold text-vermillion">🔥 مؤقت 13 دقيقة لكامل النموذج</p>}
+            {currentMode === 'exam-night' && <p className="text-xl font-bold text-indigo-400">🌙 3 دقائق لكل سؤال</p>}
           </div>
         </div>
 
-        {/* Dynamic Sections Section */}
         <section className="space-y-12 mb-24">
           <div className="flex items-center justify-between">
             <h2 className="text-5xl font-headline font-black text-goldenrod underline decoration-vermillion/50 decoration-8 underline-offset-8">الأقسام التدريبية</h2>
-            <Badge className="bg-goldenrod/10 text-goldenrod text-lg px-6 py-2 border border-goldenrod/20 rounded-full">{allSections.length} نماذج حقيقية</Badge>
+            <Badge className="bg-goldenrod/10 text-goldenrod text-lg px-6 py-2 border border-goldenrod/20 rounded-full">{allSections.length} نموذج</Badge>
           </div>
           <div className="grid lg:grid-cols-2 gap-10">
-            {/* Show "Coming Soon" card for 215 ONLY if it doesn't exist in data */}
             {!section215Exists && (
               <Card className="group relative bg-white/5 border-2 border-white/5 backdrop-blur-2xl rounded-[50px] p-10 shadow-2xl overflow-hidden opacity-50 cursor-not-allowed">
                  <div className="absolute inset-0 flex items-center justify-center bg-midnight/40 z-20">
@@ -249,7 +230,6 @@ export default function Home() {
                  <div className="flex justify-between items-start mb-10">
                     <div className="space-y-2">
                       <h2 className="text-5xl font-black text-white/30">🔥 نموذج 215</h2>
-                      <p className="text-xl text-white/20 font-bold">جاري العمل عليه...</p>
                     </div>
                   </div>
               </Card>
@@ -257,10 +237,7 @@ export default function Home() {
 
             {allSections.map((section) => (
               <Card key={section.firebaseId || section.id} className={cn(
-                "group relative bg-gradient-to-br from-white/10 to-transparent border-2 border-white/5 backdrop-blur-2xl rounded-[50px] p-10 shadow-2xl overflow-hidden transition-all",
-                currentMode === 'pressure' && "hover:border-vermillion/40",
-                currentMode === 'exam-night' && "hover:border-indigo-400/40",
-                currentMode === 'normal' && "hover:border-goldenrod/40"
+                "group relative bg-gradient-to-br from-white/10 to-transparent border-2 border-white/5 backdrop-blur-2xl rounded-[50px] p-10 shadow-2xl overflow-hidden transition-all hover:border-goldenrod/40"
               )}>
                 <div className={cn(
                   "absolute top-0 left-0 w-full h-2 bg-gradient-to-r",
@@ -270,37 +247,17 @@ export default function Home() {
                 )} />
                 <div className="flex justify-between items-start mb-10">
                   <div className="space-y-2">
-                    <Badge variant="outline" className={cn(
-                      "px-4 py-1 text-sm font-black rounded-full",
-                      currentMode === 'pressure' ? "border-vermillion text-vermillion" : 
-                      currentMode === 'exam-night' ? "border-indigo-400 text-indigo-400" :
-                      "border-goldenrod text-goldenrod"
-                    )}>بالتوفيق 🔥</Badge>
-                    <h2 className={cn(
-                      "text-5xl font-black text-white transition-colors",
-                      currentMode === 'pressure' ? "group-hover:text-vermillion" : 
-                      currentMode === 'exam-night' ? "group-hover:text-indigo-400" :
-                      "group-hover:text-goldenrod"
-                    )}>🔥 نموذج {section.id}</h2>
+                    <Badge variant="outline" className="px-4 py-1 text-sm font-black rounded-full border-goldenrod text-goldenrod">بالتوفيق 🔥</Badge>
+                    <h2 className="text-5xl font-black text-white group-hover:text-goldenrod">🔥 نموذج {section.id}</h2>
                     <p className="text-xl text-muted-foreground font-bold">{section.title}</p>
-                  </div>
-                  <div className={cn(
-                    "border text-white px-6 py-3 rounded-2xl font-black text-xl backdrop-blur-md",
-                    currentMode === 'pressure' ? "bg-vermillion/20 border-vermillion/40" : 
-                    currentMode === 'exam-night' ? "bg-indigo-600/20 border-indigo-400/40" :
-                    "bg-white/5 border-white/10"
-                  )}>
-                    {currentMode === 'pressure' ? "🔥 13:00" : 
-                     currentMode === 'exam-night' ? "🌙 3د / س" :
-                     "🧘‍♂️ تدريب حر"}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-6 mb-10">
-                  <div className="bg-white/5 p-6 rounded-3xl border border-white/5 group-hover:bg-white/10 transition">
+                  <div className="bg-white/5 p-6 rounded-3xl border border-white/5">
                     <p className="text-muted-foreground text-sm font-bold mb-1">الأسئلة</p>
                     <p className="text-3xl font-black text-white">{section.questions.length}</p>
                   </div>
-                  <div className="bg-white/5 p-6 rounded-3xl border border-white/5 group-hover:bg-white/10 transition">
+                  <div className="bg-white/5 p-6 rounded-3xl border border-white/5">
                     <p className="text-muted-foreground text-sm font-bold mb-1">النمط</p>
                     <p className="text-3xl font-black text-goldenrod">لفظي</p>
                   </div>
@@ -309,14 +266,12 @@ export default function Home() {
                   onClick={() => startPractice(section, currentMode)} 
                   className={cn(
                     "w-full h-20 rounded-[30px] text-3xl font-black shadow-2xl hover:scale-[1.02] transition-all",
-                    currentMode === 'pressure' ? "bg-vermillion text-white shadow-vermillion/20 hover:bg-vermillion/90" : 
-                    currentMode === 'exam-night' ? "bg-indigo-600 text-white shadow-indigo-600/20 hover:bg-indigo-700" :
+                    currentMode === 'pressure' ? "bg-vermillion text-white shadow-vermillion/20" : 
+                    currentMode === 'exam-night' ? "bg-indigo-600 text-white shadow-indigo-600/20" :
                     "bg-goldenrod text-midnight shadow-goldenrod/20"
                   )}
                 >
-                  {currentMode === 'pressure' ? "دخول التحدي 🔥" : 
-                   currentMode === 'exam-night' ? "بدء ليلة الاختبار 🌙" :
-                   "ابدأ التدريب 🚀"}
+                  بدء التدريب 🚀
                 </Button>
               </Card>
             ))}
@@ -324,10 +279,11 @@ export default function Home() {
         </section>
 
         <footer className="text-center py-20">
-          <div className="inline-block bg-gradient-to-r from-goldenrod via-vermillion to-pink-600 p-[3px] rounded-[50px] animate-pulse">
-            <div className="bg-midnight px-12 py-10 rounded-[47px]">
-              <h2 className="text-5xl md:text-7xl font-headline font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-goldenrod">يا رب كلنا نجيب 100% 🔥</h2>
-            </div>
+          <Button variant="ghost" onClick={() => window.location.href = '/admin'} className="mb-12 text-muted-foreground/30 hover:text-white">
+            <LayoutDashboard className="ml-2 w-4 h-4" /> لوحة التحكم
+          </Button>
+          <div className="bg-midnight px-12 py-10 rounded-[47px]">
+             <h2 className="text-5xl md:text-7xl font-headline font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-goldenrod">يا رب كلنا نجيب 100% 🔥</h2>
           </div>
           <p className="mt-12 text-muted-foreground font-bold">كل الحقوق محفوظة © EASY Prep Master 2024</p>
         </footer>

@@ -3,7 +3,6 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 
-// إعدادات Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyA03wd1TNE1_h1ubA48fBIswPUV1KxH0Cc",
   authDomain: "easy-8e5ee.firebaseapp.com",
@@ -13,9 +12,7 @@ const firebaseConfig = {
   appId: "1:698116507939:web:389055c6223cbcd7cfa496"
 };
 
-// تهيئة Firebase مع منع التكرار وإصلاح الخطأ السابق
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-
 const db = getFirestore(app);
 const auth = getAuth(app);
 
