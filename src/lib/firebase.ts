@@ -12,7 +12,7 @@ const firebaseConfig = {
   appId: "1:698116507939:web:389055c6223cbcd7cfa496"
 };
 
-// التأكد من تهيئة التطبيق مرة واحدة فقط لتجنب أخطاء تكرار التعريف
+// تهيئة التطبيق بشكل صحيح وتجنب التكرار
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);

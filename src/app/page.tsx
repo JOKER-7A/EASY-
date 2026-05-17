@@ -46,11 +46,11 @@ export default function Home() {
         const dbSections = await getSectionsFromDb();
         const combined = [...dbSections];
         staticSections.forEach(s => {
-          if (!combined.find(c => c.id === s.id)) {
+          if (!combined.find(c => Number(c.id) === Number(s.id))) {
             combined.push(s);
           }
         });
-        combined.sort((a, b) => b.id - a.id);
+        combined.sort((a, b) => Number(b.id) - Number(a.id));
         setAllSections(combined);
 
         const allQuestions: Question[] = combined.flatMap(s => s.questions);
@@ -173,7 +173,7 @@ export default function Home() {
     );
   }
 
-  const section215Exists = allSections.some(s => s.id === 215);
+  const section215Exists = allSections.some(s => Number(s.id) === 215);
 
   return (
     <main className="min-h-screen overflow-x-hidden relative">

@@ -57,8 +57,12 @@ export default function AdminPage() {
   }, []);
 
   const fetchSections = async () => {
-    const data = await getSectionsFromDb();
-    setSections(data);
+    try {
+      const data = await getSectionsFromDb();
+      setSections(data);
+    } catch (error) {
+      console.error("Failed to fetch sections", error);
+    }
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -101,9 +105,13 @@ export default function AdminPage() {
   const handleDelete = async (firebaseId: string | undefined) => {
     if (!firebaseId) return;
     if (confirm('هل أنت متأكد من حذف هذا النموذج نهائياً؟')) {
-      await deleteSectionFromDb(firebaseId);
-      await fetchSections();
-      toast({ title: "تم الحذف بنجاح" });
+      try {
+        await deleteSectionFromDb(firebaseId);
+        await fetchSections();
+        toast({ title: "تم الحذف بنجاح" });
+      } catch (error) {
+        toast({ title: "فشل الحذف", variant: "destructive" });
+      }
     }
   };
 
