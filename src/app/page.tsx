@@ -182,6 +182,9 @@ export default function Home() {
     );
   }
 
+  // Check if Section 215 is already loaded from DB or Static
+  const section215Exists = allSections.some(s => s.id === 215);
+
   return (
     <main className="min-h-screen overflow-x-hidden relative">
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(230,172,0,0.1),transparent_50%)]" />
@@ -237,18 +240,20 @@ export default function Home() {
             <Badge className="bg-goldenrod/10 text-goldenrod text-lg px-6 py-2 border border-goldenrod/20 rounded-full">{allSections.length} نماذج حقيقية</Badge>
           </div>
           <div className="grid lg:grid-cols-2 gap-10">
-            {/* القسم 215 قريبا */}
-            <Card className="group relative bg-white/5 border-2 border-white/5 backdrop-blur-2xl rounded-[50px] p-10 shadow-2xl overflow-hidden opacity-50 cursor-not-allowed">
-               <div className="absolute inset-0 flex items-center justify-center bg-midnight/40 z-20">
-                  <span className="text-6xl font-black text-white drop-shadow-2xl">قريباً ✨</span>
-               </div>
-               <div className="flex justify-between items-start mb-10">
-                  <div className="space-y-2">
-                    <h2 className="text-5xl font-black text-white/30">🔥 نموذج 215</h2>
-                    <p className="text-xl text-white/20 font-bold">جاري العمل عليه...</p>
+            {/* Show "Coming Soon" card for 215 ONLY if it doesn't exist in data */}
+            {!section215Exists && (
+              <Card className="group relative bg-white/5 border-2 border-white/5 backdrop-blur-2xl rounded-[50px] p-10 shadow-2xl overflow-hidden opacity-50 cursor-not-allowed">
+                 <div className="absolute inset-0 flex items-center justify-center bg-midnight/40 z-20">
+                    <span className="text-6xl font-black text-white drop-shadow-2xl">قريباً ✨</span>
+                 </div>
+                 <div className="flex justify-between items-start mb-10">
+                    <div className="space-y-2">
+                      <h2 className="text-5xl font-black text-white/30">🔥 نموذج 215</h2>
+                      <p className="text-xl text-white/20 font-bold">جاري العمل عليه...</p>
+                    </div>
                   </div>
-                </div>
-            </Card>
+              </Card>
+            )}
 
             {allSections.map((section) => (
               <Card key={section.firebaseId || section.id} className={cn(

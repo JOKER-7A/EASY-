@@ -19,12 +19,15 @@ const SECTIONS_COLLECTION = "sections";
  */
 export const getSectionsFromDb = async (): Promise<Section[]> => {
   try {
-    const q = query(collection(db, SECTIONS_COLLECTION), orderBy("id", "desc"));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({
+    // جلب البيانات بدون ترتيب معقد لتجنب أخطاء الفهرسة (Index errors) في البداية
+    const querySnapshot = await getDocs(collection(db, SECTIONS_COLLECTION));
+    const sections = querySnapshot.docs.map(doc => ({
       firebaseId: doc.id,
       ...doc.data()
     } as unknown as Section));
+    
+    // الترتيب برمجياً لضمان العمل دائماً
+    return sections.sort((a, b) => b.id - a.id);
   } catch (error) {
     console.error("Error fetching sections:", error);
     return [];
@@ -40,9 +43,14 @@ export const addSectionToDb = async (section: any) => {
   const cleanData = {
     ...data,
     id: Number(data.id),
-    questions: data.questions.map((q: any) => ({
+    questions: (data.questions || []).map((q: any) => ({
       ...q,
-      options: q.options.filter((o: string) => o.trim() !== '')
+      options: (q.options || []).filter((o: string) => o && o.trim() !== '')
+    })),
+    readingPassages: (data.readingPassages || []).map((p: any) => ({
+      ...p,
+      title: p.title || '',
+      text: p.text || ''
     }))
   };
   return await addDoc(collection(db, SECTIONS_COLLECTION), cleanData);
