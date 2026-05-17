@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { sections as staticSections, Section, Question } from '@/lib/practice-data';
+import { sections as staticSections, Section } from '@/lib/practice-data';
 import { getSectionsFromDb } from '@/lib/db-service';
 import PracticeSession from '@/components/PracticeSession';
 import { Button } from '@/components/ui/button';
@@ -9,9 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { 
   Flame, 
-  LayoutDashboard
+  LayoutDashboard,
+  Loader2
 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
 
 export type PracticeMode = 'normal' | 'pressure' | 'exam-night';
 
@@ -21,7 +21,7 @@ export default function Home() {
   const [allSections, setAllSections] = useState<Section[]>([]);
   const [selectedSection, setSelectedSection] = useState<Section | null>(null);
   const [currentMode, setCurrentMode] = useState<PracticeMode>('normal');
-  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setMounted(true);
@@ -43,6 +43,8 @@ export default function Home() {
       } catch (e) {
         console.error("Fetch failed", e);
         setAllSections(staticSections);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -84,28 +86,37 @@ export default function Home() {
         <section className="space-y-12 mb-24">
           <div className="flex items-center justify-between">
             <h2 className="text-5xl font-headline font-black text-goldenrod underline decoration-vermillion/50 decoration-8 underline-offset-8">الأقسام التدريبية</h2>
-            <Badge className="bg-goldenrod/10 text-goldenrod text-lg px-6 py-2 border border-goldenrod/20 rounded-full">{allSections.length} نموذج</Badge>
+            <Badge className="bg-goldenrod/10 text-goldenrod text-lg px-6 py-2 border border-goldenrod/20 rounded-full">
+              {loading ? <Loader2 className="animate-spin" /> : `${allSections.length} نموذج`}
+            </Badge>
           </div>
-          <div className="grid lg:grid-cols-2 gap-10">
-            {allSections.map((section) => (
-              <Card key={section.firebaseId || section.id} className="group relative bg-white/5 border-2 border-white/5 backdrop-blur-2xl rounded-[50px] p-10 shadow-2xl overflow-hidden transition-all hover:border-goldenrod/40">
-                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-goldenrod via-vermillion to-pink-500" />
-                <div className="flex justify-between items-start mb-10">
-                  <div className="space-y-2">
-                    <Badge variant="outline" className="px-4 py-1 text-sm font-black rounded-full border-goldenrod text-goldenrod">بالتوفيق 🔥</Badge>
-                    <h2 className="text-5xl font-black text-white group-hover:text-goldenrod">🔥 نموذج {section.id}</h2>
-                    <p className="text-xl text-muted-foreground font-bold">{section.title}</p>
+
+          {loading ? (
+            <div className="flex justify-center py-20">
+              <Loader2 className="w-12 h-12 text-goldenrod animate-spin" />
+            </div>
+          ) : (
+            <div className="grid lg:grid-cols-2 gap-10">
+              {allSections.map((section) => (
+                <Card key={section.firebaseId || section.id} className="group relative bg-white/5 border-2 border-white/5 backdrop-blur-2xl rounded-[50px] p-10 shadow-2xl overflow-hidden transition-all hover:border-goldenrod/40">
+                  <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-goldenrod via-vermillion to-pink-500" />
+                  <div className="flex justify-between items-start mb-10">
+                    <div className="space-y-2">
+                      <Badge variant="outline" className="px-4 py-1 text-sm font-black rounded-full border-goldenrod text-goldenrod">بالتوفيق 🔥</Badge>
+                      <h2 className="text-5xl font-black text-white group-hover:text-goldenrod">🔥 نموذج {section.id}</h2>
+                      <p className="text-xl text-muted-foreground font-bold">{section.title}</p>
+                    </div>
                   </div>
-                </div>
-                <Button 
-                  onClick={() => startPractice(section, 'normal')} 
-                  className="w-full h-20 rounded-[30px] text-3xl font-black bg-goldenrod text-midnight shadow-goldenrod/20 hover:scale-[1.02] transition-all"
-                >
-                  بدء التدريب 🚀
-                </Button>
-              </Card>
-            ))}
-          </div>
+                  <Button 
+                    onClick={() => startPractice(section, 'normal')} 
+                    className="w-full h-20 rounded-[30px] text-3xl font-black bg-goldenrod text-midnight shadow-goldenrod/20 hover:scale-[1.02] transition-all"
+                  >
+                    بدء التدريب 🚀
+                  </Button>
+                </Card>
+              ))}
+            </div>
+          )}
         </section>
 
         <footer className="text-center py-20">
