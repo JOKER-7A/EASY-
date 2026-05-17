@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -8,43 +7,29 @@ import PracticeSession from '@/components/PracticeSession';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Flame, 
-  History, 
-  Star, 
-  ChevronRight,
-  Trash2,
-  XCircle,
-  CheckCircle2,
   LayoutDashboard
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
 
 export type PracticeMode = 'normal' | 'pressure' | 'exam-night';
 
 export default function Home() {
   const [mounted, setMounted] = useState(false);
-  const [activeView, setActiveView] = useState<'landing' | 'practice' | 'mistakes' | 'favorites'>('landing');
+  const [activeView, setActiveView] = useState<'landing' | 'practice'>('landing');
   const [allSections, setAllSections] = useState<Section[]>([]);
   const [selectedSection, setSelectedSection] = useState<Section | null>(null);
   const [currentMode, setCurrentMode] = useState<PracticeMode>('normal');
-  const [mistakes, setMistakes] = useState<Question[]>([]);
-  const [favorites, setFavorites] = useState<Question[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
     setMounted(true);
     
-    const savedMistakes = JSON.parse(localStorage.getItem('easy-mistakes') || '[]');
-    const savedFavIds = JSON.parse(localStorage.getItem('easy-favorites') || '[]');
-    setMistakes(savedMistakes);
-
     const fetchAllData = async () => {
       try {
         const dbSections = await getSectionsFromDb();
-        // دمج البيانات الثابتة مع بيانات Firestore
+        // دمج البيانات الثابتة مع بيانات Firestore مع تفضيل Firestore للنماذج المتشابهة
         const combined = [...dbSections];
         staticSections.forEach(s => {
           if (!combined.find(c => Number(c.id) === Number(s.id))) {
@@ -52,14 +37,9 @@ export default function Home() {
           }
         });
         
-        // ترتيب النماذج تنازلياً حسب المعرف
+        // ترتيب النماذج تنازلياً حسب المعرف (الأحدث أولاً)
         combined.sort((a, b) => Number(b.id) - Number(a.id));
         setAllSections(combined);
-
-        // جلب المفضلة
-        const allQuestions: Question[] = combined.flatMap(s => s.questions);
-        const savedFavs = allQuestions.filter(q => savedFavIds.includes(q.id));
-        setFavorites(savedFavs);
       } catch (e) {
         console.error("Fetch failed", e);
         setAllSections(staticSections);
@@ -90,7 +70,7 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen overflow-x-hidden relative">
+    <main className="min-h-screen overflow-x-hidden relative bg-midnight text-white">
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(230,172,0,0.1),transparent_50%)]" />
       <div className="relative z-10 container mx-auto px-4 py-12 md:py-20 max-w-7xl">
         <header className="text-center mb-24 space-y-6">
@@ -108,7 +88,7 @@ export default function Home() {
           </div>
           <div className="grid lg:grid-cols-2 gap-10">
             {allSections.map((section) => (
-              <Card key={section.firebaseId || section.id} className="group relative bg-gradient-to-br from-white/10 to-transparent border-2 border-white/5 backdrop-blur-2xl rounded-[50px] p-10 shadow-2xl overflow-hidden transition-all hover:border-goldenrod/40">
+              <Card key={section.firebaseId || section.id} className="group relative bg-white/5 border-2 border-white/5 backdrop-blur-2xl rounded-[50px] p-10 shadow-2xl overflow-hidden transition-all hover:border-goldenrod/40">
                 <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-goldenrod via-vermillion to-pink-500" />
                 <div className="flex justify-between items-start mb-10">
                   <div className="space-y-2">
@@ -118,7 +98,7 @@ export default function Home() {
                   </div>
                 </div>
                 <Button 
-                  onClick={() => startPractice(section, currentMode)} 
+                  onClick={() => startPractice(section, 'normal')} 
                   className="w-full h-20 rounded-[30px] text-3xl font-black bg-goldenrod text-midnight shadow-goldenrod/20 hover:scale-[1.02] transition-all"
                 >
                   بدء التدريب 🚀
@@ -132,7 +112,7 @@ export default function Home() {
           <Button variant="ghost" onClick={() => window.location.href = '/admin'} className="mb-12 text-muted-foreground/30 hover:text-white">
             <LayoutDashboard className="ml-2 w-4 h-4" /> لوحة التحكم
           </Button>
-          <div className="bg-midnight px-12 py-10 rounded-[47px]">
+          <div className="bg-midnight px-12 py-10 rounded-[47px] border border-white/5">
              <h2 className="text-5xl md:text-7xl font-headline font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-goldenrod">يا رب كلنا نجيب 100% 🔥</h2>
           </div>
         </footer>
