@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -25,8 +24,8 @@ import {
   FileText,
   HelpCircle,
   Loader2,
-  ChevronRight,
-  Save
+  Save,
+  ChevronRight
 } from 'lucide-react';
 
 export default function AdminPage() {
@@ -144,22 +143,22 @@ export default function AdminPage() {
 
   if (loading) return (
     <div className="min-h-screen bg-midnight flex items-center justify-center">
-      <Loader2 className="w-12 h-12 text-goldenrod animate-spin" />
+      <Loader2 className="w-20 h-20 text-goldenrod animate-spin" />
     </div>
   );
 
   if (!user) {
     return (
-      <main className="min-h-screen bg-midnight flex items-center justify-center p-4">
-        <Card className="w-full max-w-md p-8 glass border-goldenrod/20 rounded-[40px]">
-          <h1 className="text-4xl font-black text-white text-center mb-8">دخول المشرف 🔐</h1>
-          <form onSubmit={handleLogin} className="space-y-6">
+      <main className="min-h-screen bg-midnight flex items-center justify-center p-6">
+        <Card className="w-full max-w-xl p-12 glass border-goldenrod/30 rounded-[60px] shadow-2xl">
+          <h1 className="text-6xl font-black text-white text-center mb-12">دخول المشرف 🔐</h1>
+          <form onSubmit={handleLogin} className="space-y-8">
             <Input 
               type="email" 
               placeholder="البريد الإلكتروني" 
               value={email} 
               onChange={(e) => setEmail(e.target.value)}
-              className="h-14 rounded-2xl bg-white/5 border-white/10 text-white"
+              className="h-16 rounded-3xl bg-white/5 border-white/10 text-white text-xl"
               required
             />
             <Input 
@@ -167,10 +166,10 @@ export default function AdminPage() {
               placeholder="كلمة المرور" 
               value={password} 
               onChange={(e) => setPassword(e.target.value)}
-              className="h-14 rounded-2xl bg-white/5 border-white/10 text-white"
+              className="h-16 rounded-3xl bg-white/5 border-white/10 text-white text-xl"
               required
             />
-            <Button disabled={isSubmitting} type="submit" className="w-full h-14 rounded-2xl bg-goldenrod text-midnight font-black text-xl hover:scale-[1.02] transition-all">
+            <Button disabled={isSubmitting} type="submit" className="w-full h-20 rounded-3xl bg-goldenrod text-midnight font-black text-2xl hover:scale-[1.02] transition-all gold-glow">
               {isSubmitting ? <Loader2 className="animate-spin" /> : "دخول 🚀"}
             </Button>
           </form>
@@ -180,83 +179,84 @@ export default function AdminPage() {
   }
 
   return (
-    <main className="min-h-screen bg-midnight p-4 md:p-8">
-      <div className="max-w-6xl mx-auto">
-        <header className="flex flex-wrap justify-between items-center gap-4 mb-12">
-          <div className="flex items-center gap-4">
-            <div className="bg-goldenrod p-3 rounded-2xl gold-glow">
-              <Settings className="text-midnight w-8 h-8" />
+    <main className="min-h-screen bg-midnight p-8 md:p-16">
+      <div className="max-w-7xl mx-auto">
+        <header className="flex flex-wrap justify-between items-center gap-8 mb-16">
+          <div className="flex items-center gap-6">
+            <div className="bg-goldenrod p-5 rounded-[35px] gold-glow">
+              <Settings className="text-midnight w-12 h-12" />
             </div>
             <div>
-              <h1 className="text-4xl font-black text-white">لوحة التحكم</h1>
-              <p className="text-muted-foreground font-bold">إدارة المحتوى الديناميكي</p>
+              <h1 className="text-6xl font-black text-white">لوحة التحكم</h1>
+              <p className="text-2xl text-muted-foreground font-bold">إدارة المحتوى الديناميكي</p>
             </div>
           </div>
-          <div className="flex gap-4">
-            <Button variant="outline" onClick={() => window.location.href = '/'} className="rounded-2xl font-black border-white/10 text-white hover:bg-white/10">
+          <div className="flex gap-6">
+            <Button variant="outline" onClick={() => window.location.href = '/'} className="h-16 px-10 rounded-3xl font-black border-white/10 text-white hover:bg-white/10 text-xl">
               عرض الموقع
             </Button>
-            <Button variant="outline" onClick={handleLogout} className="rounded-2xl font-black border-vermillion/30 text-vermillion hover:bg-vermillion hover:text-white">
-              <LogOut className="ml-2 w-5 h-5" /> خروج
+            <Button variant="outline" onClick={handleLogout} className="h-16 px-10 rounded-3xl font-black border-vermillion/30 text-vermillion hover:bg-vermillion hover:text-white text-xl">
+              <LogOut className="ml-2 w-6 h-6" /> خروج
             </Button>
           </div>
         </header>
 
-        <div className="grid gap-12">
-          <Card className="p-10 glass border-white/10 rounded-[50px] space-y-8">
-            <div className="flex justify-between items-center border-b border-white/10 pb-6">
-              <h2 className="text-3xl font-black text-white flex items-center gap-2">
-                <Plus className="text-goldenrod w-8 h-8" /> إضافة نموذج جديد
+        <div className="grid gap-16">
+          <Card className="p-16 glass border-white/10 rounded-[80px] space-y-12">
+            <div className="flex justify-between items-center border-b border-white/10 pb-10">
+              <h2 className="text-5xl font-black text-white flex items-center gap-4">
+                <Plus className="text-goldenrod w-12 h-12" /> إضافة نموذج جديد
               </h2>
               <Button 
                 onClick={handleSaveSection} 
                 disabled={isSubmitting}
-                className="h-14 px-10 bg-goldenrod text-midnight font-black rounded-2xl text-xl"
+                className="h-20 px-16 bg-goldenrod text-midnight font-black rounded-3xl text-2xl gold-glow"
               >
-                {isSubmitting ? <Loader2 className="animate-spin" /> : <><Save className="ml-2" /> نشر النموذج 🚀</>}
+                {isSubmitting ? <Loader2 className="animate-spin" /> : <><Save className="ml-3" /> نشر الآن 🚀</>}
               </Button>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-6">
-              <div className="space-y-2">
-                <label className="text-white font-bold text-sm">رقم النموذج</label>
+            <div className="grid md:grid-cols-3 gap-10">
+              <div className="space-y-4">
+                <label className="text-white font-black text-xl">رقم النموذج</label>
                 <Input 
                   type="number"
                   placeholder="مثلاً: 215" 
                   value={newSection.id || ''}
                   onChange={(e) => setNewSection(prev => ({ ...prev, id: parseInt(e.target.value) }))}
-                  className="bg-white/5 border-white/10 text-white h-14 rounded-xl"
+                  className="bg-white/5 border-white/10 text-white h-16 rounded-3xl text-xl"
                 />
               </div>
-              <div className="space-y-2 md:col-span-2">
-                <label className="text-white font-bold text-sm">عنوان النموذج</label>
+              <div className="space-y-4 md:col-span-2">
+                <label className="text-white font-black text-xl">عنوان النموذج</label>
                 <Input 
                   placeholder="اسم النموذج" 
                   value={newSection.title || ''}
                   onChange={(e) => setNewSection(prev => ({ ...prev, title: e.target.value }))}
-                  className="bg-white/5 border-white/10 text-white h-14 rounded-xl"
+                  className="bg-white/5 border-white/10 text-white h-16 rounded-3xl text-xl"
                 />
               </div>
             </div>
 
-            <div className="space-y-6 pt-6">
+            {/* Reading Passages Section */}
+            <div className="space-y-10 pt-10">
               <div className="flex justify-between items-center">
-                <h3 className="text-2xl font-black text-goldenrod flex items-center gap-2">
-                  <FileText className="w-6 h-6" /> قطع القراءة
+                <h3 className="text-4xl font-black text-goldenrod flex items-center gap-4">
+                  <FileText className="w-10 h-10" /> قطع القراءة (نصوص كاملة)
                 </h3>
-                <Button onClick={addPassageField} variant="secondary" className="rounded-xl font-bold">
-                  إضافة قطعة
+                <Button onClick={addPassageField} variant="secondary" className="h-14 px-8 rounded-2xl font-black text-lg">
+                  إضافة قطعة نصية
                 </Button>
               </div>
               {newSection.readingPassages?.map((p, idx) => (
-                <Card key={idx} className="p-6 bg-white/5 border-white/10 rounded-3xl space-y-4 relative">
+                <Card key={idx} className="p-10 bg-white/5 border-white/10 rounded-[50px] space-y-6 relative">
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="absolute top-2 left-2 text-vermillion"
+                    className="absolute top-4 left-4 text-vermillion w-12 h-12"
                     onClick={() => removePassage(idx)}
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-6 h-6" />
                   </Button>
                   <Input 
                     placeholder="عنوان القطعة" 
@@ -266,42 +266,43 @@ export default function AdminPage() {
                       updated[idx].title = e.target.value;
                       setNewSection(prev => ({ ...prev, readingPassages: updated }));
                     }}
-                    className="bg-midnight border-white/10 text-white font-bold"
+                    className="bg-midnight border-white/10 text-white font-black h-16 rounded-2xl"
                   />
                   <Textarea 
-                    placeholder="نص القطعة الكامل" 
+                    placeholder="نص القطعة الكامل بدون اختصار..." 
                     value={p.text}
                     onChange={(e) => {
                       const updated = [...(newSection.readingPassages || [])];
                       updated[idx].text = e.target.value;
                       setNewSection(prev => ({ ...prev, readingPassages: updated }));
                     }}
-                    className="bg-midnight border-white/10 text-white h-48 leading-relaxed"
+                    className="bg-midnight border-white/10 text-white h-72 leading-relaxed rounded-2xl p-6 text-xl"
                   />
                 </Card>
               ))}
             </div>
 
-            <div className="space-y-6 pt-6">
+            {/* Questions Section */}
+            <div className="space-y-10 pt-10">
               <div className="flex justify-between items-center">
-                <h3 className="text-2xl font-black text-vermillion flex items-center gap-2">
-                  <HelpCircle className="w-6 h-6" /> الأسئلة
+                <h3 className="text-4xl font-black text-vermillion flex items-center gap-4">
+                  <HelpCircle className="w-10 h-10" /> بنك الأسئلة
                 </h3>
-                <Button onClick={addQuestionField} variant="secondary" className="rounded-xl font-bold">
-                  إضافة سؤال
+                <Button onClick={addQuestionField} variant="secondary" className="h-14 px-8 rounded-2xl font-black text-lg">
+                  إضافة سؤال جديد
                 </Button>
               </div>
               {newSection.questions?.map((q, idx) => (
-                <Card key={idx} className="p-8 bg-white/5 border-white/10 rounded-[35px] space-y-6 relative">
+                <Card key={idx} className="p-12 bg-white/5 border-white/10 rounded-[60px] space-y-8 relative">
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="absolute top-4 left-4 text-vermillion"
+                    className="absolute top-6 left-6 text-vermillion w-14 h-14"
                     onClick={() => removeQuestion(idx)}
                   >
-                    <Trash2 className="w-5 h-5" />
+                    <Trash2 className="w-8 h-8" />
                   </Button>
-                  <div className="grid md:grid-cols-2 gap-4">
+                  <div className="grid md:grid-cols-2 gap-6">
                     <Input 
                       placeholder="نص السؤال" 
                       value={q.question}
@@ -310,7 +311,7 @@ export default function AdminPage() {
                         updated[idx].question = e.target.value;
                         setNewSection(prev => ({ ...prev, questions: updated }));
                       }}
-                      className="bg-midnight border-white/10 text-white font-bold md:col-span-2 h-14"
+                      className="bg-midnight border-white/10 text-white font-black md:col-span-2 h-16 rounded-2xl text-xl"
                     />
                     <select 
                       value={q.type}
@@ -319,7 +320,7 @@ export default function AdminPage() {
                         updated[idx].type = e.target.value as any;
                         setNewSection(prev => ({ ...prev, questions: updated }));
                       }}
-                      className="bg-midnight border-white/10 text-white rounded-xl h-12 px-3"
+                      className="bg-midnight border-white/10 text-white rounded-2xl h-16 px-6 text-xl font-bold"
                     >
                       <option value="analogy">تناظر لفظي</option>
                       <option value="error">خطأ سياقي</option>
@@ -328,18 +329,18 @@ export default function AdminPage() {
                     </select>
                     {q.type === 'reading' && (
                       <Input 
-                        placeholder="عنوان القطعة المرتبطة" 
+                        placeholder="عنوان القطعة المرتبطة بهذا السؤال" 
                         value={q.passageTitle || ''}
                         onChange={(e) => {
                           const updated = [...(newSection.questions || [])];
                           updated[idx].passageTitle = e.target.value;
                           setNewSection(prev => ({ ...prev, questions: updated }));
                         }}
-                        className="bg-midnight border-white/10 text-white"
+                        className="bg-midnight border-white/10 text-white rounded-2xl h-16 text-xl"
                       />
                     )}
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {q.options.map((opt, oIdx) => (
                       <Input 
                         key={oIdx}
@@ -350,47 +351,48 @@ export default function AdminPage() {
                           updated[idx].options[oIdx] = e.target.value;
                           setNewSection(prev => ({ ...prev, questions: updated }));
                         }}
-                        className="bg-midnight border-white/10 text-white"
+                        className="bg-midnight border-white/10 text-white rounded-2xl h-14 text-lg"
                       />
                     ))}
                   </div>
                   <Input 
-                    placeholder="الإجابة الصحيحة" 
+                    placeholder="الإجابة الصحيحة (يجب أن تطابق أحد الخيارات)" 
                     value={q.correct}
                     onChange={(e) => {
                       const updated = [...(newSection.questions || [])];
                       updated[idx].correct = e.target.value;
                       setNewSection(prev => ({ ...prev, questions: updated }));
                     }}
-                    className="bg-midnight border-goldenrod/30 text-goldenrod font-black"
+                    className="bg-midnight border-goldenrod/50 text-goldenrod font-black h-16 rounded-2xl text-xl shadow-inner"
                   />
                 </Card>
               ))}
             </div>
           </Card>
 
-          <div className="space-y-6 pt-12">
-            <h2 className="text-4xl font-black text-white flex items-center gap-4">
-              <LayoutDashboard className="text-goldenrod w-10 h-10" /> النماذج المنشورة
+          {/* Published Sections List */}
+          <div className="space-y-10 pt-16">
+            <h2 className="text-6xl font-black text-white flex items-center gap-6">
+              <LayoutDashboard className="text-goldenrod w-14 h-14" /> النماذج المنشورة حالياً
             </h2>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 pb-20">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 pb-32">
               {sections.map((section) => (
-                <Card key={section.firebaseId} className="p-8 glass border-white/5 rounded-[40px] flex justify-between items-center group hover:border-goldenrod/20 transition-all">
-                  <div className="flex items-center gap-6">
-                    <div className="w-16 h-16 bg-white/5 rounded-3xl flex items-center justify-center font-black text-3xl text-goldenrod border border-white/10 group-hover:bg-goldenrod group-hover:text-midnight">
+                <Card key={section.firebaseId} className="p-10 glass border-white/5 rounded-[60px] flex justify-between items-center group hover:border-goldenrod/30 transition-all">
+                  <div className="flex items-center gap-8">
+                    <div className="w-20 h-20 bg-white/5 rounded-[30px] flex items-center justify-center font-black text-4xl text-goldenrod border border-white/10 group-hover:bg-goldenrod group-hover:text-midnight transition-colors">
                       {section.id}
                     </div>
                     <div>
-                      <h3 className="text-xl font-black text-white line-clamp-1">{section.title}</h3>
-                      <p className="text-sm text-muted-foreground mt-1">{section.questions.length} سؤال</p>
+                      <h3 className="text-2xl font-black text-white line-clamp-1">{section.title}</h3>
+                      <p className="text-lg text-muted-foreground mt-1 font-bold">{section.questions.length} سؤال مفعّل</p>
                     </div>
                   </div>
                   <Button 
                     variant="ghost" 
                     onClick={() => handleDelete(section.firebaseId)}
-                    className="text-vermillion hover:bg-vermillion/10 rounded-2xl w-12 h-12"
+                    className="text-vermillion hover:bg-vermillion/10 rounded-full w-14 h-14"
                   >
-                    <Trash2 className="w-6 h-6" />
+                    <Trash2 className="w-8 h-8" />
                   </Button>
                 </Card>
               ))}

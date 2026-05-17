@@ -17,7 +17,7 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
     const querySnapshot = await getDocs(collection(db, SECTIONS_COLLECTION));
     const sections = querySnapshot.docs.map(doc => ({
       firebaseId: doc.id,
-      ...doc.data()
+      ...(doc.data() as any)
     } as unknown as Section));
     return sections.sort((a, b) => Number(b.id) - Number(a.id));
   } catch (error) {
@@ -49,9 +49,6 @@ export const deleteSectionFromDb = async (firebaseId: string) => {
   return await deleteDoc(sectionRef);
 };
 
-/**
- * حفظ محاولة اختبار جديدة في Firestore
- */
 export const saveAttemptToDb = async (attempt: {
   sectionId: number | string;
   mode: string;
@@ -64,7 +61,6 @@ export const saveAttemptToDb = async (attempt: {
   try {
     return await addDoc(collection(db, ATTEMPTS_COLLECTION), {
       ...attempt,
-      startedAt: serverTimestamp(),
       createdAt: serverTimestamp(),
     });
   } catch (error) {
