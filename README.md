@@ -1,5 +1,9 @@
-# Firebase Studio
+# EASY Prep Master - منصة التدريب اللفظي
 
-This is a NextJS starter in Firebase Studio.
+منصة تدريب لفظي احترافية بتصحيح ذكي وتايمر ومراجعة أخطاء.
 
-To get started, take a look at src/app/page.tsx.
+- **Admin Page**: Accessible at `/admin`
+- **Firestore Integration**: Real-time updates for practice sections.
+- **Authentication**: Secure admin login.
+
+*Synchronized to trigger GitHub push and Vercel deployment.*

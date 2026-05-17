@@ -44,7 +44,6 @@ export default function AdminPage() {
     questions: [],
     readingPassages: [],
     duration: 13,
-    pdfUrl: ''
   });
 
   useEffect(() => {
@@ -92,7 +91,7 @@ export default function AdminPage() {
     setIsSubmitting(true);
     try {
       await addSectionToDb(newSection);
-      setNewSection({ id: 0, title: '', questions: [], readingPassages: [], duration: 13, pdfUrl: '' });
+      setNewSection({ id: 0, title: '', questions: [], readingPassages: [], duration: 13 });
       await fetchSections();
       toast({ title: "تم نشر النموذج بنجاح! 🚀" });
     } catch (error) {
@@ -152,7 +151,7 @@ export default function AdminPage() {
   if (!user) {
     return (
       <main className="min-h-screen bg-midnight flex items-center justify-center p-4">
-        <Card className="w-full max-w-md p-8 glass border-goldenrod/20 rounded-[40px] animate-in fade-in zoom-in">
+        <Card className="w-full max-w-md p-8 glass border-goldenrod/20 rounded-[40px]">
           <h1 className="text-4xl font-black text-white text-center mb-8">دخول المشرف 🔐</h1>
           <form onSubmit={handleLogin} className="space-y-6">
             <Input 
@@ -174,9 +173,6 @@ export default function AdminPage() {
             <Button disabled={isSubmitting} type="submit" className="w-full h-14 rounded-2xl bg-goldenrod text-midnight font-black text-xl hover:scale-[1.02] transition-all">
               {isSubmitting ? <Loader2 className="animate-spin" /> : "دخول 🚀"}
             </Button>
-            <div className="text-center pt-4">
-               <Button variant="link" onClick={() => window.location.href = '/'} className="text-muted-foreground">العودة للرئيسية</Button>
-            </div>
           </form>
         </Card>
       </main>
@@ -215,13 +211,13 @@ export default function AdminPage() {
               <Button 
                 onClick={handleSaveSection} 
                 disabled={isSubmitting}
-                className="h-14 px-10 bg-goldenrod text-midnight font-black rounded-2xl text-xl hover:scale-105 transition-all"
+                className="h-14 px-10 bg-goldenrod text-midnight font-black rounded-2xl text-xl"
               >
                 {isSubmitting ? <Loader2 className="animate-spin" /> : <><Save className="ml-2" /> نشر النموذج 🚀</>}
               </Button>
             </div>
 
-            <div className="grid md:grid-cols-4 gap-6">
+            <div className="grid md:grid-cols-3 gap-6">
               <div className="space-y-2">
                 <label className="text-white font-bold text-sm">رقم النموذج</label>
                 <Input 
@@ -229,7 +225,7 @@ export default function AdminPage() {
                   placeholder="مثلاً: 215" 
                   value={newSection.id || ''}
                   onChange={(e) => setNewSection(prev => ({ ...prev, id: parseInt(e.target.value) }))}
-                  className="bg-white/5 border-white/10 text-white h-14 rounded-xl font-black"
+                  className="bg-white/5 border-white/10 text-white h-14 rounded-xl"
                 />
               </div>
               <div className="space-y-2 md:col-span-2">
@@ -238,15 +234,6 @@ export default function AdminPage() {
                   placeholder="اسم النموذج" 
                   value={newSection.title || ''}
                   onChange={(e) => setNewSection(prev => ({ ...prev, title: e.target.value }))}
-                  className="bg-white/5 border-white/10 text-white h-14 rounded-xl font-black"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-white font-bold text-sm">رابط PDF</label>
-                <Input 
-                  placeholder="https://..." 
-                  value={newSection.pdfUrl || ''}
-                  onChange={(e) => setNewSection(prev => ({ ...prev, pdfUrl: e.target.value }))}
                   className="bg-white/5 border-white/10 text-white h-14 rounded-xl"
                 />
               </div>

@@ -77,20 +77,6 @@ export default function Home() {
     setActiveView('practice');
   };
 
-  const clearMistakes = () => {
-    localStorage.removeItem('easy-mistakes');
-    setMistakes([]);
-    toast({ title: "تم مسح سجل الأخطاء" });
-  };
-
-  const removeFavorite = (id: string) => {
-    const fIds = JSON.parse(localStorage.getItem('easy-favorites') || '[]');
-    const newFIds = fIds.filter((fid: string) => fid !== id);
-    localStorage.setItem('easy-favorites', JSON.stringify(newFIds));
-    setFavorites(favorites.filter(q => q.id !== id));
-    toast({ title: "تمت الإزالة من المفضلة" });
-  };
-
   if (activeView === 'practice' && selectedSection) {
     return (
       <main className="min-h-screen p-4 md:p-8 bg-midnight">
@@ -99,80 +85,6 @@ export default function Home() {
           mode={currentMode}
           onExit={() => setActiveView('landing')} 
         />
-      </main>
-    );
-  }
-
-  if (activeView === 'mistakes') {
-    return (
-      <main className="min-h-screen p-4 md:p-8 bg-midnight">
-        <div className="max-w-4xl mx-auto mb-10 flex justify-between items-center">
-          <Button variant="ghost" onClick={() => setActiveView('landing')} className="text-muted-foreground hover:text-white rounded-full font-bold">
-            <ChevronRight className="ml-2" /> العودة للرئيسية
-          </Button>
-          <Button variant="destructive" onClick={clearMistakes} className="rounded-2xl font-black">
-            <Trash2 className="ml-2" /> مسح السجل
-          </Button>
-        </div>
-        <div className="max-w-4xl mx-auto space-y-8 pb-20">
-          <h2 className="text-6xl font-headline font-black text-goldenrod text-center mb-12">📚 سجل الأخطاء</h2>
-          {mistakes.length === 0 ? (
-            <Card className="p-20 text-center glass border-white/5">
-              <CheckCircle2 className="w-20 h-20 text-green-500 mx-auto mb-6" />
-              <p className="text-3xl font-black opacity-60">لا يوجد أخطاء مسجلة، استمر يا بطل!</p>
-            </Card>
-          ) : (
-            mistakes.map((q, i) => (
-              <Card key={i} className="p-10 glass border-vermillion/20 rounded-[40px] animate-in slide-in-from-bottom-4">
-                <div className="flex justify-between items-start gap-4 mb-6">
-                  <h3 className="text-4xl font-black text-white">{q.question}</h3>
-                  <XCircle className="text-vermillion w-10 h-10 shrink-0" />
-                </div>
-                <div className="p-6 bg-green-500/10 border border-green-500/30 rounded-3xl">
-                  <p className="text-sm text-muted-foreground font-bold mb-1">الإجابة الصحيحة</p>
-                  <p className="text-3xl font-black text-green-500">{q.correct}</p>
-                </div>
-              </Card>
-            ))
-          )}
-        </div>
-      </main>
-    );
-  }
-
-  if (activeView === 'favorites') {
-    return (
-      <main className="min-h-screen p-4 md:p-8 bg-midnight">
-        <div className="max-w-4xl mx-auto mb-10">
-          <Button variant="ghost" onClick={() => setActiveView('landing')} className="text-muted-foreground hover:text-white rounded-full font-bold">
-            <ChevronRight className="ml-2" /> العودة للرئيسية
-          </Button>
-        </div>
-        <div className="max-w-4xl mx-auto space-y-8 pb-20">
-          <h2 className="text-6xl font-headline font-black text-goldenrod text-center mb-12">⭐ المفضلة</h2>
-          {favorites.length === 0 ? (
-            <Card className="p-20 text-center glass border-white/5">
-              <Star className="w-20 h-20 text-goldenrod mx-auto mb-6 opacity-30" />
-              <p className="text-3xl font-black opacity-60">لا يوجد أسئلة في المفضلة بعد</p>
-            </Card>
-          ) : (
-            favorites.map((q, i) => (
-              <Card key={i} className="p-10 glass border-goldenrod/20 rounded-[40px] relative group animate-in slide-in-from-bottom-4">
-                <Button variant="ghost" onClick={() => removeFavorite(q.id)} className="absolute top-6 left-6 text-vermillion hover:bg-vermillion/10 rounded-full">
-                  <Trash2 className="w-6 h-6" />
-                </Button>
-                <h3 className="text-4xl font-black text-white mb-8 pl-10">{q.question}</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  {q.options.map((opt, idx) => (
-                    <div key={idx} className={`p-4 rounded-2xl border ${opt === q.correct ? 'bg-green-500/20 border-green-500 text-green-500' : 'bg-white/5 border-white/5'}`}>
-                      <p className="font-bold text-xl">{opt}</p>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            ))
-          )}
-        </div>
       </main>
     );
   }
@@ -187,36 +99,7 @@ export default function Home() {
           </div>
           <h1 className="text-8xl md:text-9xl font-headline font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-goldenrod to-vermillion drop-shadow-[0_0_30px_rgba(230,172,0,0.4)]">EASY</h1>
           <p className="text-2xl md:text-3xl font-bold opacity-80 leading-relaxed max-w-4xl mx-auto">منصة تدريب لفظي احترافية بتصحيح فوري، نظام تحديات، وسجل أخطاء ذكي</p>
-          
-          <div className="flex flex-wrap justify-center gap-6 pt-8">
-            <Button size="lg" onClick={() => setActiveView('mistakes')} className="h-20 px-10 text-2xl font-black bg-white/5 border-2 border-vermillion/30 text-vermillion hover:bg-vermillion hover:text-white transition-all rounded-3xl">
-              <History className="ml-3" /> سجل الأخطاء
-            </Button>
-            <Button size="lg" onClick={() => setActiveView('favorites')} className="h-20 px-10 text-2xl font-black bg-white/5 border-2 border-goldenrod/30 text-goldenrod hover:bg-goldenrod hover:text-midnight transition-all rounded-3xl">
-              <Star className="ml-3" /> المفضلة
-            </Button>
-          </div>
         </header>
-
-        <div className="max-w-2xl mx-auto mb-20 p-8 glass rounded-[40px] border-white/10 space-y-8">
-          <div className="text-center">
-            <h3 className="text-3xl font-black text-white mb-2">اختر نمط التدريب 🚀</h3>
-          </div>
-          
-          <Tabs value={currentMode} onValueChange={(v) => setCurrentMode(v as PracticeMode)} className="w-full">
-            <TabsList className="grid w-full grid-cols-3 h-20 bg-midnight/50 p-2 rounded-3xl border border-white/10">
-              <TabsTrigger value="normal" className="rounded-2xl font-black text-xl data-[state=active]:bg-goldenrod data-[state=active]:text-midnight">تدريب حر</TabsTrigger>
-              <TabsTrigger value="pressure" className="rounded-2xl font-black text-xl data-[state=active]:bg-vermillion data-[state=active]:text-white">نظام الضغط 🔥</TabsTrigger>
-              <TabsTrigger value="exam-night" className="rounded-2xl font-black text-xl data-[state=active]:bg-indigo-600 data-[state=active]:text-white">ليلة الاختبار 🌙</TabsTrigger>
-            </TabsList>
-          </Tabs>
-
-          <div className="p-6 rounded-3xl bg-white/5 border border-white/5 text-center animate-in fade-in slide-in-from-top-2">
-            {currentMode === 'normal' && <p className="text-xl font-bold text-muted-foreground">🧘‍♂️ وقت مفتوح للتدريب</p>}
-            {currentMode === 'pressure' && <p className="text-xl font-bold text-vermillion">🔥 مؤقت 13 دقيقة لكامل النموذج</p>}
-            {currentMode === 'exam-night' && <p className="text-xl font-bold text-indigo-400">🌙 3 دقائق لكل سؤال</p>}
-          </div>
-        </div>
 
         <section className="space-y-12 mb-24">
           <div className="flex items-center justify-between">
@@ -225,15 +108,8 @@ export default function Home() {
           </div>
           <div className="grid lg:grid-cols-2 gap-10">
             {allSections.map((section) => (
-              <Card key={section.firebaseId || section.id} className={cn(
-                "group relative bg-gradient-to-br from-white/10 to-transparent border-2 border-white/5 backdrop-blur-2xl rounded-[50px] p-10 shadow-2xl overflow-hidden transition-all hover:border-goldenrod/40"
-              )}>
-                <div className={cn(
-                  "absolute top-0 left-0 w-full h-2 bg-gradient-to-r",
-                  currentMode === 'pressure' ? "from-vermillion via-orange-500 to-red-600" : 
-                  currentMode === 'exam-night' ? "from-indigo-600 via-purple-500 to-indigo-800" :
-                  "from-goldenrod via-vermillion to-pink-500"
-                )} />
+              <Card key={section.firebaseId || section.id} className="group relative bg-gradient-to-br from-white/10 to-transparent border-2 border-white/5 backdrop-blur-2xl rounded-[50px] p-10 shadow-2xl overflow-hidden transition-all hover:border-goldenrod/40">
+                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-goldenrod via-vermillion to-pink-500" />
                 <div className="flex justify-between items-start mb-10">
                   <div className="space-y-2">
                     <Badge variant="outline" className="px-4 py-1 text-sm font-black rounded-full border-goldenrod text-goldenrod">بالتوفيق 🔥</Badge>
@@ -241,24 +117,9 @@ export default function Home() {
                     <p className="text-xl text-muted-foreground font-bold">{section.title}</p>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-6 mb-10">
-                  <div className="bg-white/5 p-6 rounded-3xl border border-white/5">
-                    <p className="text-muted-foreground text-sm font-bold mb-1">الأسئلة</p>
-                    <p className="text-3xl font-black text-white">{section.questions.length}</p>
-                  </div>
-                  <div className="bg-white/5 p-6 rounded-3xl border border-white/5">
-                    <p className="text-muted-foreground text-sm font-bold mb-1">النمط</p>
-                    <p className="text-3xl font-black text-goldenrod">لفظي</p>
-                  </div>
-                </div>
                 <Button 
                   onClick={() => startPractice(section, currentMode)} 
-                  className={cn(
-                    "w-full h-20 rounded-[30px] text-3xl font-black shadow-2xl hover:scale-[1.02] transition-all",
-                    currentMode === 'pressure' ? "bg-vermillion text-white shadow-vermillion/20" : 
-                    currentMode === 'exam-night' ? "bg-indigo-600 text-white shadow-indigo-600/20" :
-                    "bg-goldenrod text-midnight shadow-goldenrod/20"
-                  )}
+                  className="w-full h-20 rounded-[30px] text-3xl font-black bg-goldenrod text-midnight shadow-goldenrod/20 hover:scale-[1.02] transition-all"
                 >
                   بدء التدريب 🚀
                 </Button>
@@ -274,7 +135,6 @@ export default function Home() {
           <div className="bg-midnight px-12 py-10 rounded-[47px]">
              <h2 className="text-5xl md:text-7xl font-headline font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-goldenrod">يا رب كلنا نجيب 100% 🔥</h2>
           </div>
-          <p className="mt-12 text-muted-foreground font-bold">كل الحقوق محفوظة © EASY Prep Master 2024</p>
         </footer>
       </div>
     </main>
