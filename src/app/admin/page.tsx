@@ -71,7 +71,6 @@ export default function AdminPage() {
     } catch (error: any) {
       toast({ 
         title: "خطأ في تسجيل الدخول", 
-        description: "يرجى التحقق من بياناتك وتفعيل Auth في Firebase.",
         variant: "destructive" 
       });
     } finally {
@@ -83,7 +82,7 @@ export default function AdminPage() {
 
   const handleSaveSection = async () => {
     if (!newSection.title || !newSection.id) {
-      toast({ title: "يرجى إدخال عنوان ورقم النموذج", variant: "destructive" });
+      toast({ title: "يرجى إكمال البيانات الأساسية", variant: "destructive" });
       return;
     }
     setIsSubmitting(true);
@@ -101,7 +100,7 @@ export default function AdminPage() {
 
   const handleDelete = async (firebaseId: string | undefined) => {
     if (!firebaseId) return;
-    if (confirm('هل أنت متأكد من حذف هذا النموذج نهائياً؟')) {
+    if (confirm('هل أنت متأكد من الحذف؟')) {
       try {
         await deleteSectionFromDb(firebaseId);
         await fetchSections();
@@ -130,22 +129,22 @@ export default function AdminPage() {
 
   if (loading) return (
     <div className="min-h-screen bg-midnight flex items-center justify-center">
-      <Loader2 className="w-20 h-20 text-goldenrod animate-spin" />
+      <Loader2 className="w-12 h-12 text-goldenrod animate-spin" />
     </div>
   );
 
   if (!user) {
     return (
-      <main className="min-h-screen bg-midnight flex items-center justify-center p-6">
-        <Card className="w-full max-w-xl p-12 glass border-goldenrod/30 rounded-[60px] shadow-2xl">
-          <h1 className="text-6xl font-black text-white text-center mb-12">دخول المشرف 🔐</h1>
-          <form onSubmit={handleLogin} className="space-y-8">
+      <main className="min-h-screen bg-midnight flex items-center justify-center p-4">
+        <Card className="w-full max-w-xl p-8 md:p-12 glass border-goldenrod/30 rounded-3xl md:rounded-[60px] shadow-2xl">
+          <h1 className="text-4xl md:text-6xl font-black text-white text-center mb-10">دخول المشرف 🔐</h1>
+          <form onSubmit={handleLogin} className="space-y-6">
             <Input 
               type="email" 
               placeholder="البريد الإلكتروني" 
               value={email} 
               onChange={(e) => setEmail(e.target.value)}
-              className="h-16 rounded-3xl bg-white/5 border-white/10 text-white text-xl"
+              className="h-12 md:h-16 rounded-2xl md:rounded-3xl bg-white/5 border-white/10 text-white"
               required
             />
             <Input 
@@ -153,10 +152,10 @@ export default function AdminPage() {
               placeholder="كلمة المرور" 
               value={password} 
               onChange={(e) => setPassword(e.target.value)}
-              className="h-16 rounded-3xl bg-white/5 border-white/10 text-white text-xl"
+              className="h-12 md:h-16 rounded-2xl md:rounded-3xl bg-white/5 border-white/10 text-white"
               required
             />
-            <Button disabled={isSubmitting} type="submit" className="w-full h-20 rounded-3xl bg-goldenrod text-midnight font-black text-2xl gold-glow hover:scale-[1.02] transition-all">
+            <Button disabled={isSubmitting} type="submit" className="w-full h-14 md:h-20 rounded-2xl md:rounded-3xl bg-goldenrod text-midnight font-black text-xl md:text-2xl gold-glow transition-all">
               {isSubmitting ? <Loader2 className="animate-spin" /> : "دخول 🚀"}
             </Button>
           </form>
@@ -166,76 +165,76 @@ export default function AdminPage() {
   }
 
   return (
-    <main className="min-h-screen bg-midnight p-8 md:p-16">
+    <main className="min-h-screen bg-midnight p-4 md:p-16">
       <div className="max-w-7xl mx-auto">
-        <header className="flex flex-wrap justify-between items-center gap-8 mb-16">
-          <div className="flex items-center gap-6">
-            <div className="bg-goldenrod p-5 rounded-[35px] shadow-xl">
-              <Settings className="text-midnight w-12 h-12" />
+        <header className="flex flex-col md:flex-row justify-between items-center gap-6 md:gap-8 mb-12 md:mb-16">
+          <div className="flex items-center gap-4 md:gap-6">
+            <div className="bg-goldenrod p-3 md:p-5 rounded-2xl md:rounded-[35px] shadow-xl">
+              <Settings className="text-midnight w-8 h-8 md:w-12 md:h-12" />
             </div>
             <div>
-              <h1 className="text-6xl font-black text-white">لوحة التحكم</h1>
-              <p className="text-2xl text-muted-foreground font-bold">إدارة المحتوى الديناميكي</p>
+              <h1 className="text-4xl md:text-6xl font-black text-white">لوحة التحكم</h1>
+              <p className="text-lg md:text-2xl text-muted-foreground font-bold">إدارة المحتوى</p>
             </div>
           </div>
-          <div className="flex gap-6">
-            <Button variant="outline" onClick={() => window.location.href = '/'} className="h-16 px-10 rounded-3xl font-black border-white/10 text-white hover:bg-white/10 text-xl">
+          <div className="flex gap-4 w-full md:w-auto">
+            <Button variant="outline" onClick={() => window.location.href = '/'} className="flex-1 md:flex-none h-12 md:h-16 px-6 md:px-10 rounded-xl md:rounded-3xl font-black border-white/10 text-white text-base md:text-xl">
               عرض الموقع
             </Button>
-            <Button variant="outline" onClick={handleLogout} className="h-16 px-10 rounded-3xl font-black border-vermillion/30 text-vermillion hover:bg-vermillion hover:text-white text-xl">
-              <LogOut className="ml-2 w-6 h-6" /> خروج
+            <Button variant="outline" onClick={handleLogout} className="flex-1 md:flex-none h-12 md:h-16 px-6 md:px-10 rounded-xl md:rounded-3xl font-black border-vermillion/30 text-vermillion text-base md:text-xl">
+              خروج
             </Button>
           </div>
         </header>
 
-        <div className="grid gap-16">
-          <Card className="p-16 glass border-white/10 rounded-[80px] space-y-12">
-            <div className="flex justify-between items-center border-b border-white/10 pb-10">
-              <h2 className="text-5xl font-black text-white flex items-center gap-4">
-                <Plus className="text-goldenrod w-12 h-12" /> إضافة نموذج جديد
+        <div className="grid gap-10 md:gap-16">
+          <Card className="p-6 md:p-16 glass border-white/10 rounded-3xl md:rounded-[80px] space-y-10 md:space-y-12">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-white/10 pb-6 md:pb-10 gap-6">
+              <h2 className="text-3xl md:text-5xl font-black text-white flex items-center gap-3 md:gap-4">
+                <Plus className="text-goldenrod w-8 h-8 md:w-12 md:h-12" /> إضافة نموذج
               </h2>
               <Button 
                 onClick={handleSaveSection} 
                 disabled={isSubmitting}
-                className="h-20 px-16 bg-goldenrod text-midnight font-black rounded-3xl text-2xl gold-glow"
+                className="w-full md:w-auto h-16 md:h-20 px-10 md:px-16 bg-goldenrod text-midnight font-black rounded-2xl md:rounded-3xl text-xl md:text-2xl gold-glow"
               >
-                {isSubmitting ? <Loader2 className="animate-spin" /> : <><Save className="ml-3" /> نشر الآن 🚀</>}
+                {isSubmitting ? <Loader2 className="animate-spin" /> : <><Save className="ml-2" /> نشر الآن 🚀</>}
               </Button>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-10">
-              <div className="space-y-4">
-                <label className="text-white font-black text-xl">رقم النموذج</label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-10">
+              <div className="space-y-3">
+                <label className="text-white font-black text-lg md:text-xl">رقم النموذج</label>
                 <Input 
                   type="number"
                   placeholder="مثلاً: 215" 
                   value={newSection.id || ''}
                   onChange={(e) => setNewSection(prev => ({ ...prev, id: parseInt(e.target.value) }))}
-                  className="bg-white/5 border-white/10 text-white h-16 rounded-3xl text-xl"
+                  className="bg-white/5 border-white/10 text-white h-12 md:h-16 rounded-xl md:rounded-3xl text-lg md:text-xl"
                 />
               </div>
-              <div className="space-y-4 md:col-span-2">
-                <label className="text-white font-black text-xl">عنوان النموذج</label>
+              <div className="space-y-3 md:col-span-2">
+                <label className="text-white font-black text-lg md:text-xl">عنوان النموذج</label>
                 <Input 
                   placeholder="اسم النموذج" 
                   value={newSection.title || ''}
                   onChange={(e) => setNewSection(prev => ({ ...prev, title: e.target.value }))}
-                  className="bg-white/5 border-white/10 text-white h-16 rounded-3xl text-xl"
+                  className="bg-white/5 border-white/10 text-white h-12 md:h-16 rounded-xl md:rounded-3xl text-lg md:text-xl"
                 />
               </div>
             </div>
 
-            <div className="space-y-10 pt-10">
+            <div className="space-y-8 md:space-y-10 pt-6 md:pt-10">
               <div className="flex justify-between items-center">
-                <h3 className="text-4xl font-black text-goldenrod flex items-center gap-4">
-                  <FileText className="w-10 h-10" /> قطع القراءة (نصوص كاملة)
+                <h3 className="text-2xl md:text-4xl font-black text-goldenrod flex items-center gap-3 md:gap-4">
+                  <FileText className="w-8 h-8 md:w-10 md:h-10" /> قطع القراءة
                 </h3>
-                <Button onClick={addPassageField} variant="secondary" className="h-14 px-8 rounded-2xl font-black text-lg">
-                  إضافة قطعة نصية
+                <Button onClick={addPassageField} variant="secondary" className="h-10 md:h-14 px-4 md:px-8 rounded-lg md:rounded-2xl font-black text-sm md:text-lg">
+                  إضافة قطعة
                 </Button>
               </div>
               {newSection.readingPassages?.map((p, idx) => (
-                <Card key={idx} className="p-10 bg-white/5 border-white/10 rounded-[50px] space-y-6 relative">
+                <Card key={idx} className="p-6 md:p-10 bg-white/5 border-white/10 rounded-2xl md:rounded-[50px] space-y-4 md:space-y-6">
                   <Input 
                     placeholder="عنوان القطعة" 
                     value={p.title}
@@ -244,34 +243,34 @@ export default function AdminPage() {
                       updated[idx].title = e.target.value;
                       setNewSection(prev => ({ ...prev, readingPassages: updated }));
                     }}
-                    className="bg-midnight border-white/10 text-white font-black h-16 rounded-2xl"
+                    className="bg-midnight border-white/10 text-white font-black h-12 md:h-16 rounded-xl md:rounded-2xl"
                   />
                   <Textarea 
-                    placeholder="نص القطعة الكامل..." 
+                    placeholder="نص القطعة..." 
                     value={p.text}
                     onChange={(e) => {
                       const updated = [...(newSection.readingPassages || [])];
                       updated[idx].text = e.target.value;
                       setNewSection(prev => ({ ...prev, readingPassages: updated }));
                     }}
-                    className="bg-midnight border-white/10 text-white h-64 leading-relaxed rounded-2xl p-6 text-xl"
+                    className="bg-midnight border-white/10 text-white h-48 md:h-64 rounded-xl md:rounded-2xl p-4 md:p-6 text-lg md:text-xl"
                   />
                 </Card>
               ))}
             </div>
 
-            <div className="space-y-10 pt-10">
+            <div className="space-y-8 md:space-y-10 pt-6 md:pt-10">
               <div className="flex justify-between items-center">
-                <h3 className="text-4xl font-black text-vermillion flex items-center gap-4">
-                  <HelpCircle className="w-10 h-10" /> بنك الأسئلة
+                <h3 className="text-2xl md:text-4xl font-black text-vermillion flex items-center gap-3 md:gap-4">
+                  <HelpCircle className="w-8 h-8 md:w-10 md:h-10" /> بنك الأسئلة
                 </h3>
-                <Button onClick={addQuestionField} variant="secondary" className="h-14 px-8 rounded-2xl font-black text-lg">
-                  إضافة سؤال جديد
+                <Button onClick={addQuestionField} variant="secondary" className="h-10 md:h-14 px-4 md:px-8 rounded-lg md:rounded-2xl font-black text-sm md:text-lg">
+                  إضافة سؤال
                 </Button>
               </div>
               {newSection.questions?.map((q, idx) => (
-                <Card key={idx} className="p-12 bg-white/5 border-white/10 rounded-[60px] space-y-8 relative">
-                  <div className="grid md:grid-cols-2 gap-6">
+                <Card key={idx} className="p-6 md:p-12 bg-white/5 border-white/10 rounded-2xl md:rounded-[60px] space-y-6 md:space-y-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                     <Input 
                       placeholder="نص السؤال" 
                       value={q.question}
@@ -280,7 +279,7 @@ export default function AdminPage() {
                         updated[idx].question = e.target.value;
                         setNewSection(prev => ({ ...prev, questions: updated }));
                       }}
-                      className="bg-midnight border-white/10 text-white font-black md:col-span-2 h-16 rounded-2xl text-xl"
+                      className="bg-midnight border-white/10 text-white font-black md:col-span-2 h-12 md:h-16 rounded-xl md:rounded-2xl text-lg md:text-xl"
                     />
                     <select 
                       value={q.type}
@@ -289,27 +288,15 @@ export default function AdminPage() {
                         updated[idx].type = e.target.value as any;
                         setNewSection(prev => ({ ...prev, questions: updated }));
                       }}
-                      className="bg-midnight border-white/10 text-white rounded-2xl h-16 px-6 text-xl font-bold"
+                      className="bg-midnight border-white/10 text-white rounded-xl md:rounded-2xl h-12 md:h-16 px-4 md:px-6 text-lg md:text-xl font-bold"
                     >
                       <option value="analogy">تناظر لفظي</option>
                       <option value="error">خطأ سياقي</option>
                       <option value="context">إكمال جمل</option>
                       <option value="reading">استيعاب مقروء</option>
                     </select>
-                    {q.type === 'reading' && (
-                      <Input 
-                        placeholder="عنوان القطعة المرتبطة بهذا السؤال" 
-                        value={q.passageTitle || ''}
-                        onChange={(e) => {
-                          const updated = [...(newSection.questions || [])];
-                          updated[idx].passageTitle = e.target.value;
-                          setNewSection(prev => ({ ...prev, questions: updated }));
-                        }}
-                        className="bg-midnight border-white/10 text-white rounded-2xl h-16 text-xl"
-                      />
-                    )}
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                     {q.options.map((opt, oIdx) => (
                       <Input 
                         key={oIdx}
@@ -320,7 +307,7 @@ export default function AdminPage() {
                           updated[idx].options[oIdx] = e.target.value;
                           setNewSection(prev => ({ ...prev, questions: updated }));
                         }}
-                        className="bg-midnight border-white/10 text-white rounded-2xl h-14 text-lg"
+                        className="bg-midnight border-white/10 text-white rounded-xl md:rounded-2xl h-12 md:h-14 text-base md:text-lg"
                       />
                     ))}
                   </div>
@@ -332,35 +319,35 @@ export default function AdminPage() {
                       updated[idx].correct = e.target.value;
                       setNewSection(prev => ({ ...prev, questions: updated }));
                     }}
-                    className="bg-midnight border-goldenrod/50 text-goldenrod font-black h-16 rounded-2xl text-xl"
+                    className="bg-midnight border-goldenrod/50 text-goldenrod font-black h-12 md:h-16 rounded-xl md:rounded-2xl text-lg md:text-xl"
                   />
                 </Card>
               ))}
             </div>
           </Card>
 
-          <div className="space-y-10 pt-16">
-            <h2 className="text-6xl font-black text-white flex items-center gap-6">
-              <LayoutDashboard className="text-goldenrod w-14 h-14" /> النماذج المنشورة
+          <div className="space-y-8 md:space-y-10 pt-10 md:pt-16">
+            <h2 className="text-4xl md:text-6xl font-black text-white flex items-center gap-4 md:gap-6">
+              <LayoutDashboard className="text-goldenrod w-10 h-10 md:w-14 md:h-14" /> النماذج المنشورة
             </h2>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 pb-32">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 pb-20 md:pb-32">
               {sections.map((section) => (
-                <Card key={section.firebaseId} className="p-10 glass border-white/5 rounded-[60px] flex justify-between items-center group hover:border-goldenrod/30 transition-all">
-                  <div className="flex items-center gap-8">
-                    <div className="w-20 h-20 bg-white/5 rounded-[30px] flex items-center justify-center font-black text-4xl text-goldenrod border border-white/10 group-hover:bg-goldenrod group-hover:text-midnight transition-colors">
+                <Card key={section.firebaseId} className="p-6 md:p-10 glass border-white/5 rounded-2xl md:rounded-[60px] flex justify-between items-center group">
+                  <div className="flex items-center gap-4 md:gap-8">
+                    <div className="w-16 h-16 md:w-20 md:h-20 bg-white/5 rounded-2xl md:rounded-[30px] flex items-center justify-center font-black text-2xl md:text-4xl text-goldenrod border border-white/10 group-hover:bg-goldenrod group-hover:text-midnight transition-colors">
                       {section.id}
                     </div>
                     <div>
-                      <h3 className="text-2xl font-black text-white line-clamp-1">{section.title}</h3>
-                      <p className="text-lg text-muted-foreground mt-1 font-bold">{section.questions.length} سؤال مفعّل</p>
+                      <h3 className="text-xl md:text-2xl font-black text-white line-clamp-1">{section.title}</h3>
+                      <p className="text-sm md:text-lg text-muted-foreground mt-1 font-bold">{section.questions.length} سؤال</p>
                     </div>
                   </div>
                   <Button 
                     variant="ghost" 
                     onClick={() => handleDelete(section.firebaseId)}
-                    className="text-vermillion hover:bg-vermillion/10 rounded-full w-14 h-14"
+                    className="text-vermillion hover:bg-vermillion/10 rounded-full w-12 h-12 md:w-14 md:h-14"
                   >
-                    <Trash2 className="w-8 h-8" />
+                    <Trash2 className="w-6 h-6 md:w-8 md:h-8" />
                   </Button>
                 </Card>
               ))}

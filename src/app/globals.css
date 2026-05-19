@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -35,6 +34,9 @@
   body {
     @apply bg-background text-foreground font-body;
     direction: rtl;
+    overflow-x: hidden;
+    width: 100%;
+    position: relative;
   }
 }
 
@@ -43,52 +45,56 @@
 }
 
 .gold-glow {
-  box-shadow: 0 0 30px rgba(230, 172, 0, 0.3);
+  box-shadow: 0 0 30px rgba(230, 172, 0, 0.2);
 }
 
 .vermillion-glow {
-  box-shadow: 0 0 30px rgba(255, 77, 51, 0.3);
+  box-shadow: 0 0 30px rgba(255, 77, 51, 0.2);
 }
 
 .text-glow {
-  text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
 }
 
 .pressure-glow {
-  box-shadow: inset 0 0 100px rgba(255, 77, 51, 0.15);
+  box-shadow: inset 0 0 100px rgba(255, 77, 51, 0.1);
   animation: pulse-red 2s infinite;
 }
 
 @keyframes pulse-red {
-  0%, 100% { border-color: rgba(255, 77, 51, 0.3); }
-  50% { border-color: rgba(255, 77, 51, 0.6); }
+  0%, 100% { border-color: rgba(255, 77, 51, 0.2); }
+  50% { border-color: rgba(255, 77, 51, 0.4); }
 }
 
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-5px); }
-  75% { transform: translateX(5px); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
 }
 
 .animate-shake {
-  animation: shake 0.15s ease-in-out infinite;
+  animation: shake 0.2s ease-in-out infinite;
 }
 
 .custom-scrollbar::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
   @apply bg-midnight;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  @apply bg-goldenrod/20 rounded-full hover:bg-goldenrod/40 transition-colors;
+  @apply bg-goldenrod/20 rounded-full;
 }
 
-/* Animations */
 .hover-lift {
-  @apply transition-transform duration-300 hover:-translate-y-2;
+  @apply transition-transform duration-300 hover:-translate-y-1;
 }
 
 .active-press {
   @apply active:scale-95 transition-transform;
+}
+
+@media (max-width: 768px) {
+  h1 { @apply tracking-tight; }
+  .glass { @apply backdrop-blur-lg; }
 }
