@@ -37,7 +37,8 @@ import {
   Search,
   Edit2,
   BookOpen,
-  CheckCircle2
+  CheckCircle2,
+  Link
 } from 'lucide-react';
 
 export default function AdminPage() {
@@ -57,6 +58,7 @@ export default function AdminPage() {
     questions: [],
     readingPassages: [],
     duration: 13,
+    pdfLink: ''
   });
 
   useEffect(() => {
@@ -109,13 +111,20 @@ export default function AdminPage() {
 
   const handleSaveSection = async () => {
     if (!newSection.title || !newSection.id) {
-      toast({ title: "يرجى إكمال البيانات الأساسية", variant: "destructive" });
+      toast({ title: "يرجى إكمال البيانات الأساسية (الرقم والعنوان)", variant: "destructive" });
       return;
     }
     setIsSubmitting(true);
     try {
       await addSectionToDb(newSection);
-      setNewSection({ id: 0, title: '', questions: [], readingPassages: [], duration: 13 });
+      setNewSection({ 
+        id: 0, 
+        title: '', 
+        questions: [], 
+        readingPassages: [], 
+        duration: 13,
+        pdfLink: ''
+      });
       await fetchSections();
       toast({ title: "تم نشر النموذج بنجاح! 🚀" });
     } catch (error) {
@@ -127,7 +136,7 @@ export default function AdminPage() {
 
   const handleDelete = async (firebaseId: string | undefined) => {
     if (!firebaseId) return;
-    if (confirm('هل أنت متأكد من الحذف؟')) {
+    if (confirm('هل أنت متأكد من حذف هذا النموذج نهائياً؟')) {
       try {
         await deleteSectionFromDb(firebaseId);
         await fetchSections();
@@ -206,26 +215,32 @@ export default function AdminPage() {
   if (!user) {
     return (
       <main className="min-h-screen bg-midnight flex items-center justify-center p-4">
-        <Card className="w-full max-w-xl p-8 md:p-12 glass border-goldenrod/30 rounded-3xl md:rounded-[60px] shadow-2xl">
-          <h1 className="text-4xl md:text-6xl font-black text-white text-center mb-10">دخول المشرف 🔐</h1>
+        <Card className="w-full max-w-md p-8 glass border-goldenrod/30 rounded-3xl shadow-2xl">
+          <h1 className="text-3xl font-black text-white text-center mb-8">دخول المشرف 🔐</h1>
           <form onSubmit={handleLogin} className="space-y-6">
-            <Input 
-              type="email" 
-              placeholder="البريد الإلكتروني" 
-              value={email} 
-              onChange={(e) => setEmail(e.target.value)}
-              className="h-12 md:h-16 rounded-2xl md:rounded-3xl bg-white/5 border-white/10 text-white"
-              required
-            />
-            <Input 
-              type="password" 
-              placeholder="كلمة المرور" 
-              value={password} 
-              onChange={(e) => setPassword(e.target.value)}
-              className="h-12 md:h-16 rounded-2xl md:rounded-3xl bg-white/5 border-white/10 text-white"
-              required
-            />
-            <Button disabled={isSubmitting} type="submit" className="w-full h-14 md:h-20 rounded-2xl md:rounded-3xl bg-goldenrod text-midnight font-black text-xl md:text-2xl gold-glow transition-all">
+            <div className="space-y-2">
+              <label className="text-white/60 text-sm font-bold pr-2">البريد الإلكتروني</label>
+              <Input 
+                type="email" 
+                placeholder="admin@easy.com" 
+                value={email} 
+                onChange={(e) => setEmail(e.target.value)}
+                className="h-12 bg-white/5 border-white/10 text-white placeholder:text-white/20"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-white/60 text-sm font-bold pr-2">كلمة المرور</label>
+              <Input 
+                type="password" 
+                placeholder="••••••••" 
+                value={password} 
+                onChange={(e) => setPassword(e.target.value)}
+                className="h-12 bg-white/5 border-white/10 text-white placeholder:text-white/20"
+                required
+              />
+            </div>
+            <Button disabled={isSubmitting} type="submit" className="w-full h-14 bg-goldenrod text-midnight font-black text-xl rounded-2xl gold-glow hover:scale-[1.02] transition-all">
               {isSubmitting ? <Loader2 className="animate-spin" /> : "دخول 🚀"}
             </Button>
           </form>
@@ -240,224 +255,241 @@ export default function AdminPage() {
   );
 
   return (
-    <main className="min-h-screen bg-midnight p-4 md:p-10">
+    <main className="min-h-screen bg-midnight p-4 md:p-10 text-white">
       <div className="max-w-7xl mx-auto">
         <header className="flex flex-col md:flex-row justify-between items-center gap-6 mb-12">
           <div className="flex items-center gap-6">
-            <div className="bg-goldenrod p-4 rounded-[30px] shadow-xl">
-              <Settings className="text-midnight w-10 h-10" />
+            <div className="bg-goldenrod p-4 rounded-[20px] shadow-xl">
+              <Settings className="text-midnight w-8 h-8" />
             </div>
             <div>
-              <h1 className="text-4xl md:text-5xl font-black text-white">لوحة التحكم</h1>
-              <p className="text-xl text-muted-foreground font-bold">إدارة المنصة والمستخدمين</p>
+              <h1 className="text-3xl md:text-4xl font-black">لوحة التحكم</h1>
+              <p className="text-goldenrod font-bold">إدارة محتوى ومستخدمي EASY</p>
             </div>
           </div>
           <div className="flex gap-4">
-            <Button variant="outline" onClick={() => window.location.href = '/'} className="h-14 px-8 rounded-2xl font-black border-white/10 text-white">
+            <Button variant="outline" onClick={() => window.location.href = '/'} className="h-12 border-white/10 hover:bg-white/5">
               عرض الموقع
             </Button>
-            <Button variant="outline" onClick={handleLogout} className="h-14 px-8 rounded-2xl font-black border-vermillion/30 text-vermillion">
-              خروج
+            <Button variant="outline" onClick={handleLogout} className="h-12 border-vermillion/30 text-vermillion hover:bg-vermillion/10">
+              تسجيل خروج
             </Button>
           </div>
         </header>
 
-        <Tabs defaultValue="content" className="space-y-10">
-          <TabsList className="bg-white/5 border border-white/10 p-1 h-16 rounded-2xl md:rounded-3xl flex w-fit">
-            <TabsTrigger value="content" className="rounded-xl md:rounded-2xl px-8 font-black text-lg data-[state=active]:bg-goldenrod data-[state=active]:text-midnight transition-all">
-              <LayoutDashboard className="ml-2 w-5 h-5" /> إدارة المحتوى
+        <Tabs defaultValue="content" className="space-y-8">
+          <TabsList className="bg-white/5 border border-white/10 p-1 h-14 rounded-2xl">
+            <TabsTrigger value="content" className="px-6 font-black data-[state=active]:bg-goldenrod data-[state=active]:text-midnight">
+              <LayoutDashboard className="ml-2 w-4 h-4" /> المحتوى
             </TabsTrigger>
-            <TabsTrigger value="users" className="rounded-xl md:rounded-2xl px-8 font-black text-lg data-[state=active]:bg-goldenrod data-[state=active]:text-midnight transition-all">
-              <Users className="ml-2 w-5 h-5" /> إدارة المستخدمين
+            <TabsTrigger value="users" className="px-6 font-black data-[state=active]:bg-goldenrod data-[state=active]:text-midnight">
+              <Users className="ml-2 w-4 h-4" /> المستخدمين
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="content" className="space-y-10">
-            <Card className="p-6 md:p-12 glass border-white/10 rounded-[40px] md:rounded-[60px] space-y-10">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-white/10 pb-10">
-                <h2 className="text-3xl md:text-4xl font-black text-white flex items-center gap-4">
-                  <Plus className="text-goldenrod w-10 h-10" /> إضافة نموذج جديد
+            <Card className="p-6 md:p-10 glass border-white/10 rounded-[40px] space-y-8">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-white/10 pb-6">
+                <h2 className="text-2xl md:text-3xl font-black flex items-center gap-3">
+                  <Plus className="text-goldenrod" /> إضافة نموذج جديد
                 </h2>
                 <Button 
                   onClick={handleSaveSection} 
                   disabled={isSubmitting}
-                  className="h-16 px-12 bg-goldenrod text-midnight font-black rounded-2xl text-xl gold-glow w-full md:w-auto"
+                  className="h-14 px-10 bg-goldenrod text-midnight font-black rounded-xl text-lg gold-glow"
                 >
-                  {isSubmitting ? <Loader2 className="animate-spin" /> : <><Save className="ml-2" /> نشر النموذج 🚀</>}
+                  {isSubmitting ? <Loader2 className="animate-spin" /> : <><Save className="ml-2 w-5 h-5" /> نشر النموذج 🚀</>}
                 </Button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="space-y-3">
-                  <label className="text-white font-black text-xl">رقم النموذج</label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <label className="text-white/60 font-bold pr-1">رقم النموذج</label>
                   <Input 
                     type="number"
-                    placeholder="مثلاً: 215" 
+                    placeholder="مثلاً: 101" 
                     value={newSection.id || ''}
                     onChange={(e) => setNewSection(prev => ({ ...prev, id: parseInt(e.target.value) }))}
-                    className="bg-white/5 border-white/10 text-white h-16 rounded-2xl text-xl"
+                    className="bg-midnight border-white/10 h-14 text-lg"
                   />
                 </div>
-                <div className="space-y-3 md:col-span-2">
-                  <label className="text-white font-black text-xl">عنوان النموذج</label>
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-white/60 font-bold pr-1">عنوان النموذج</label>
                   <Input 
-                    placeholder="اسم النموذج" 
+                    placeholder="اسم النموذج التدريبي" 
                     value={newSection.title || ''}
                     onChange={(e) => setNewSection(prev => ({ ...prev, title: e.target.value }))}
-                    className="bg-white/5 border-white/10 text-white h-16 rounded-2xl text-xl"
+                    className="bg-midnight border-white/10 h-14 text-lg"
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-3">
+                  <label className="text-white/60 font-bold pr-1">رابط ملف PDF (اختياري)</label>
+                  <Input 
+                    placeholder="https://example.com/file.pdf" 
+                    value={newSection.pdfLink || ''}
+                    onChange={(e) => setNewSection(prev => ({ ...prev, pdfLink: e.target.value }))}
+                    className="bg-midnight border-white/10 h-14"
                   />
                 </div>
               </div>
 
-              <div className="space-y-10">
-                {/* Reading Passages Section */}
-                <div className="space-y-6">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-2xl font-black text-goldenrod flex items-center gap-2">
-                      <BookOpen className="w-6 h-6" /> قطع القراءة
-                    </h3>
-                    <Button onClick={addPassageField} variant="secondary" className="font-black rounded-xl">
-                      <Plus className="ml-1 w-4 h-4" /> إضافة قطعة
-                    </Button>
-                  </div>
-                  <div className="grid gap-6">
-                    {newSection.readingPassages?.map((passage, pIndex) => (
-                      <Card key={pIndex} className="p-6 bg-white/5 border-white/10 rounded-3xl space-y-4">
-                        <div className="flex justify-between items-center">
-                          <span className="text-white/40 font-black">قطعة {pIndex + 1}</span>
-                          <Button variant="ghost" size="icon" onClick={() => removePassage(pIndex)} className="text-vermillion hover:bg-vermillion/10 rounded-full">
-                            <Trash2 className="w-5 h-5" />
-                          </Button>
-                        </div>
+              {/* Reading Passages Section */}
+              <div className="space-y-6">
+                <div className="flex justify-between items-center bg-white/5 p-4 rounded-xl">
+                  <h3 className="text-xl font-black text-goldenrod flex items-center gap-2">
+                    <BookOpen className="w-5 h-5" /> قطع استيعاب المقروء
+                  </h3>
+                  <Button onClick={addPassageField} variant="secondary" size="sm" className="font-black bg-goldenrod/20 text-goldenrod hover:bg-goldenrod/30">
+                    <Plus className="ml-1 w-4 h-4" /> إضافة قطعة
+                  </Button>
+                </div>
+                <div className="space-y-4">
+                  {newSection.readingPassages?.map((passage, pIndex) => (
+                    <Card key={pIndex} className="p-6 bg-white/5 border-white/10 rounded-2xl relative">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => removePassage(pIndex)} 
+                        className="absolute left-4 top-4 text-vermillion hover:bg-vermillion/10"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </Button>
+                      <div className="grid gap-4 mt-4">
                         <Input 
                           placeholder="عنوان القطعة" 
                           value={passage.title}
                           onChange={(e) => updatePassage(pIndex, 'title', e.target.value)}
-                          className="bg-midnight/50 border-white/10 text-white h-12"
+                          className="bg-midnight border-white/10 h-12 font-bold"
                         />
                         <Textarea 
-                          placeholder="نص القطعة..." 
+                          placeholder="نص القطعة بالكامل..." 
                           value={passage.text}
                           onChange={(e) => updatePassage(pIndex, 'text', e.target.value)}
-                          className="bg-midnight/50 border-white/10 text-white min-h-[150px]"
+                          className="bg-midnight border-white/10 min-h-[150px] leading-relaxed"
                         />
-                      </Card>
-                    ))}
-                  </div>
+                      </div>
+                    </Card>
+                  ))}
                 </div>
+              </div>
 
-                {/* Questions Section */}
+              {/* Questions Section */}
+              <div className="space-y-6">
+                <div className="flex justify-between items-center bg-white/5 p-4 rounded-xl">
+                  <h3 className="text-xl font-black text-goldenrod flex items-center gap-2">
+                    <HelpCircle className="w-5 h-5" /> أسئلة النموذج
+                  </h3>
+                  <Button onClick={addQuestionField} variant="secondary" size="sm" className="font-black bg-goldenrod/20 text-goldenrod hover:bg-goldenrod/30">
+                    <Plus className="ml-1 w-4 h-4" /> إضافة سؤال
+                  </Button>
+                </div>
                 <div className="space-y-6">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-2xl font-black text-goldenrod flex items-center gap-2">
-                      <HelpCircle className="w-6 h-6" /> الأسئلة
-                    </h3>
-                    <Button onClick={addQuestionField} variant="secondary" className="font-black rounded-xl">
-                      <Plus className="ml-1 w-4 h-4" /> إضافة سؤال
-                    </Button>
-                  </div>
-                  <div className="grid gap-6">
-                    {newSection.questions?.map((q, qIndex) => (
-                      <Card key={qIndex} className="p-6 bg-white/5 border-white/10 rounded-3xl space-y-6">
-                        <div className="flex justify-between items-center border-b border-white/5 pb-4">
-                          <div className="flex items-center gap-4">
-                            <span className="text-white font-black text-lg">سؤال {qIndex + 1}</span>
+                  {newSection.questions?.map((q, qIndex) => (
+                    <Card key={qIndex} className="p-6 bg-white/5 border-white/20 rounded-2xl space-y-4">
+                      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/5 pb-4">
+                        <div className="flex items-center gap-4">
+                          <span className="bg-goldenrod text-midnight px-3 py-1 rounded-lg font-black">سؤال {qIndex + 1}</span>
+                          <Select 
+                            value={q.type} 
+                            onValueChange={(val) => updateQuestion(qIndex, 'type', val)}
+                          >
+                            <SelectTrigger className="w-40 bg-midnight border-white/10">
+                              <SelectValue placeholder="النمط" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-midnight border-white/10">
+                              <SelectItem value="analogy">تناظر لفظي</SelectItem>
+                              <SelectItem value="error">خطأ سياقي</SelectItem>
+                              <SelectItem value="context">إكمال جمل</SelectItem>
+                              <SelectItem value="reading">استيعاب مقروء</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          
+                          {q.type === 'reading' && (
                             <Select 
-                              value={q.type} 
-                              onValueChange={(val) => updateQuestion(qIndex, 'type', val)}
+                              value={q.passageTitle} 
+                              onValueChange={(val) => updateQuestion(qIndex, 'passageTitle', val)}
                             >
-                              <SelectTrigger className="w-40 bg-midnight/50 border-white/10 text-white">
-                                <SelectValue placeholder="نوع السؤال" />
+                              <SelectTrigger className="w-48 bg-midnight border-white/10">
+                                <SelectValue placeholder="اربط بقطعة" />
                               </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="analogy">تناظر لفظي</SelectItem>
-                                <SelectItem value="error">خطأ سياقي</SelectItem>
-                                <SelectItem value="context">إكمال جمل</SelectItem>
-                                <SelectItem value="reading">استيعاب مقروء</SelectItem>
+                              <SelectContent className="bg-midnight border-white/10">
+                                {newSection.readingPassages?.map((p, i) => (
+                                  <SelectItem key={i} value={p.title}>{p.title}</SelectItem>
+                                ))}
+                                {(!newSection.readingPassages || newSection.readingPassages.length === 0) && (
+                                  <div className="p-2 text-xs text-white/40">لا توجد قطع مضافة</div>
+                                )}
                               </SelectContent>
                             </Select>
-                            {q.type === 'reading' && (
-                              <Select 
-                                value={q.passageTitle} 
-                                onValueChange={(val) => updateQuestion(qIndex, 'passageTitle', val)}
-                              >
-                                <SelectTrigger className="w-48 bg-midnight/50 border-white/10 text-white">
-                                  <SelectValue placeholder="اختر القطعة" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {newSection.readingPassages?.map((p, i) => (
-                                    <SelectItem key={i} value={p.title}>{p.title}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            )}
+                          )}
+                        </div>
+                        <Button variant="ghost" size="icon" onClick={() => removeQuestion(qIndex)} className="text-vermillion hover:bg-vermillion/10">
+                          <Trash2 className="w-5 h-5" />
+                        </Button>
+                      </div>
+
+                      <Input 
+                        placeholder="نص السؤال (مثلاً: سيف : قاطع)" 
+                        value={q.question}
+                        onChange={(e) => updateQuestion(qIndex, 'question', e.target.value)}
+                        className="bg-midnight border-white/10 h-14 text-lg font-black"
+                      />
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {q.options.map((opt, oIndex) => (
+                          <div key={oIndex} className="flex gap-2 items-center">
+                            <span className="text-goldenrod font-black w-6">{['أ', 'ب', 'ج', 'د'][oIndex]}</span>
+                            <Input 
+                              placeholder={`الخيار ${['أ', 'ب', 'ج', 'د'][oIndex]}`} 
+                              value={opt}
+                              onChange={(e) => {
+                                const opts = [...q.options];
+                                opts[oIndex] = e.target.value;
+                                updateQuestion(qIndex, 'options', opts);
+                              }}
+                              className="bg-midnight border-white/10 h-12"
+                            />
                           </div>
-                          <Button variant="ghost" size="icon" onClick={() => removeQuestion(qIndex)} className="text-vermillion hover:bg-vermillion/10 rounded-full">
-                            <Trash2 className="w-5 h-5" />
-                          </Button>
-                        </div>
+                        ))}
+                      </div>
 
+                      <div className="bg-green-500/5 p-4 rounded-xl border border-green-500/20">
+                        <label className="text-green-500 text-xs font-black block mb-2 uppercase">الإجابة الصحيحة (يجب أن تطابق أحد الخيارات أعلاه بدقة)</label>
                         <Input 
-                          placeholder="نص السؤال (مثلاً: عصبة : ناس)" 
-                          value={q.question}
-                          onChange={(e) => updateQuestion(qIndex, 'question', e.target.value)}
-                          className="bg-midnight/50 border-white/10 text-white h-14 text-lg font-bold"
+                          placeholder="انسخ النص الصحيح هنا" 
+                          value={q.correct}
+                          onChange={(e) => updateQuestion(qIndex, 'correct', e.target.value)}
+                          className="bg-midnight border-green-500/20 text-green-500 font-black h-12"
                         />
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {q.options.map((opt, oIndex) => (
-                            <div key={oIndex} className="flex gap-2 items-center">
-                              <span className="text-white/40 font-black">{['أ', 'ب', 'ج', 'د'][oIndex]}</span>
-                              <Input 
-                                placeholder={`خيار ${oIndex + 1}`} 
-                                value={opt}
-                                onChange={(e) => {
-                                  const opts = [...q.options];
-                                  opts[oIndex] = e.target.value;
-                                  updateQuestion(qIndex, 'options', opts);
-                                }}
-                                className="bg-midnight/50 border-white/10 text-white h-12"
-                              />
-                            </div>
-                          ))}
-                        </div>
-
-                        <div className="pt-2">
-                          <label className="text-green-500 font-black mb-2 block">الإجابة الصحيحة (يجب أن تطابق أحد الخيارات تماماً)</label>
-                          <Input 
-                            placeholder="انسخ الخيار الصحيح هنا" 
-                            value={q.correct}
-                            onChange={(e) => updateQuestion(qIndex, 'correct', e.target.value)}
-                            className="bg-green-500/5 border-green-500/20 text-green-500 h-12 font-black"
-                          />
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
+                      </div>
+                    </Card>
+                  ))}
                 </div>
               </div>
             </Card>
 
-            <div className="space-y-8">
-              <h2 className="text-3xl font-black text-white">النماذج المنشورة حالياً</h2>
+            <div className="space-y-6">
+              <h2 className="text-2xl font-black flex items-center gap-2">
+                <FileText className="text-goldenrod" /> النماذج الحالية ({sections.length})
+              </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {sections.map((section) => (
-                  <Card key={section.firebaseId} className="p-6 glass border-white/5 rounded-[40px] flex justify-between items-center group">
-                    <div className="flex items-center gap-6">
-                      <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center font-black text-2xl text-goldenrod border border-white/10 group-hover:bg-goldenrod group-hover:text-midnight transition-colors">
+                  <Card key={section.firebaseId} className="p-6 glass border-white/5 rounded-3xl flex justify-between items-center group hover:border-goldenrod/30 transition-all">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-goldenrod text-midnight rounded-xl flex items-center justify-center font-black text-xl">
                         {section.id}
                       </div>
                       <div>
-                        <h3 className="text-xl font-black text-white line-clamp-1">{section.title}</h3>
-                        <p className="text-sm text-muted-foreground font-bold">{section.questions.length} سؤال</p>
+                        <h3 className="font-black line-clamp-1">{section.title}</h3>
+                        <p className="text-xs text-white/40">{section.questions.length} سؤال</p>
                       </div>
                     </div>
                     <Button 
                       variant="ghost" 
                       onClick={() => handleDelete(section.firebaseId)}
-                      className="text-vermillion hover:bg-vermillion/10 rounded-full w-12 h-12"
+                      className="text-vermillion hover:bg-vermillion/10 rounded-full"
                     >
-                      <Trash2 className="w-6 h-6" />
+                      <Trash2 className="w-5 h-5" />
                     </Button>
                   </Card>
                 ))}
@@ -466,52 +498,48 @@ export default function AdminPage() {
           </TabsContent>
 
           <TabsContent value="users" className="space-y-8">
-            <Card className="p-8 md:p-12 glass border-white/10 rounded-[40px] md:rounded-[60px] space-y-10">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-white/10 pb-10">
-                <h2 className="text-3xl md:text-4xl font-black text-white flex items-center gap-4">
-                  <Users className="text-goldenrod w-10 h-10" /> إدارة حسابات المستخدمين
-                </h2>
-                <div className="relative w-full md:w-96">
-                  <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-goldenrod/50 w-5 h-5" />
+            <Card className="p-8 glass border-white/10 rounded-[40px] space-y-8">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-white/10 pb-6">
+                <h2 className="text-2xl md:text-3xl font-black">إدارة المستخدمين</h2>
+                <div className="relative w-full md:w-80">
+                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20 w-4 h-4" />
                   <Input 
                     placeholder="ابحث بالاسم أو الإيميل..." 
                     value={userSearch}
                     onChange={(e) => setUserSearch(e.target.value)}
-                    className="bg-white/5 border-white/10 text-white h-14 rounded-2xl pr-12 text-lg"
+                    className="bg-white/5 border-white/10 h-12 pr-10"
                   />
                 </div>
               </div>
 
-              <div className="overflow-x-auto custom-scrollbar pb-4">
-                <table className="w-full text-right">
+              <div className="overflow-x-auto">
+                <table className="w-full text-right border-collapse">
                   <thead>
-                    <tr className="text-goldenrod border-b border-white/5">
-                      <th className="py-6 px-4 font-black text-xl">المستخدم</th>
-                      <th className="py-6 px-4 font-black text-xl">الإيميل</th>
-                      <th className="py-6 px-4 font-black text-xl text-center">المستوى</th>
-                      <th className="py-6 px-4 font-black text-xl text-center">XP</th>
-                      <th className="py-6 px-4 font-black text-xl text-center">إدارة</th>
+                    <tr className="text-goldenrod border-b border-white/10">
+                      <th className="py-4 px-2 font-black">الاسم المستعار</th>
+                      <th className="py-4 px-2 font-black">البريد الإلكتروني</th>
+                      <th className="py-4 px-2 font-black text-center">المستوى</th>
+                      <th className="py-4 px-2 font-black text-center">XP</th>
+                      <th className="py-4 px-2 font-black text-center">إجراء</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/5">
+                  <tbody>
                     {filteredUsers.map((u) => (
-                      <tr key={u.id} className="text-white hover:bg-white/5 transition-colors group">
-                        <td className="py-6 px-4">
-                          <div className="font-black text-lg md:text-xl">{u.displayName}</div>
+                      <tr key={u.id} className="border-b border-white/5 hover:bg-white/5 transition-colors group">
+                        <td className="py-4 px-2 font-black">{u.displayName || 'بدون اسم'}</td>
+                        <td className="py-4 px-2 text-white/40 text-sm">{u.email}</td>
+                        <td className="py-4 px-2 text-center">
+                          <span className="bg-goldenrod/10 text-goldenrod px-2 py-0.5 rounded text-sm font-black">{u.level}</span>
                         </td>
-                        <td className="py-6 px-4 text-white/50 font-bold">{u.email}</td>
-                        <td className="py-6 px-4 text-center">
-                          <span className="bg-goldenrod/10 text-goldenrod px-3 py-1 rounded-lg font-black">{u.level}</span>
-                        </td>
-                        <td className="py-6 px-4 text-center font-mono font-bold">{Math.round(u.xp)}</td>
-                        <td className="py-6 px-4 text-center">
+                        <td className="py-4 px-2 text-center font-mono">{Math.round(u.xp)}</td>
+                        <td className="py-4 px-2 text-center">
                           <Button 
                             variant="ghost" 
                             size="icon"
                             onClick={() => handleUpdateUserName(u.id, u.displayName)}
-                            className="text-goldenrod hover:bg-goldenrod/20 rounded-xl"
+                            className="text-goldenrod hover:bg-goldenrod/20"
                           >
-                            <Edit2 className="w-5 h-5" />
+                            <Edit2 className="w-4 h-4" />
                           </Button>
                         </td>
                       </tr>
