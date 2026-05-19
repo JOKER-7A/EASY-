@@ -89,12 +89,16 @@ export const saveAttemptToDb = async (userId: string | undefined, attempt: {
 };
 
 // --- Level System (LV) ---
-export const getUserProfile = async (userId: string) => {
+export const getUserProfile = async (userId: string, email?: string, displayName?: string) => {
   const userRef = doc(db, USER_PROFILES, userId);
   const userSnap = await getDoc(userRef);
   
   if (userSnap.exists()) {
-    return userSnap.data();
+    const data = userSnap.data();
+    // Update email or display name if missing but provided
+    if (email && !data.email) await updateDoc(userRef, { email });
+    if (displayName && !data.displayName) await updateDoc(userRef, { displayName });
+    return data;
   } else {
     const initialProfile = {
       level: 1,
@@ -102,7 +106,8 @@ export const getUserProfile = async (userId: string) => {
       totalSolved: 0,
       totalCorrect: 0,
       favorites: [],
-      displayName: 'مستكشف جديد',
+      displayName: displayName || 'مستكشف جديد',
+      email: email || '',
       lastActive: serverTimestamp()
     };
     await setDoc(userRef, initialProfile);
@@ -121,7 +126,6 @@ export const updateUserXP = async (userId: string, correct: number, total: numbe
   let newXp = (data.xp || 0) + xpEarned;
   let newLevel = data.level || 1;
   
-  // خوارزمية المستويات: كل مستوى يحتاج 500 * رقم المستوى
   let xpRequired = newLevel * 500;
   while (newXp >= xpRequired) {
     newXp -= xpRequired;
@@ -138,6 +142,24 @@ export const updateUserXP = async (userId: string, correct: number, total: numbe
   });
 };
 
+export const getAllUserProfiles = async () => {
+  try {
+    const querySnapshot = await getDocs(collection(db, USER_PROFILES));
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+  } catch (error) {
+    console.error("Error fetching all profiles:", error);
+    return [];
+  }
+};
+
+export const updateUserProfileName = async (userId: string, newName: string) => {
+  const userRef = doc(db, USER_PROFILES, userId);
+  return await updateDoc(userRef, { displayName: newName });
+};
+
 // --- Favorites ---
 export const toggleFavoriteInDb = async (userId: string, question: any) => {
   const userRef = doc(db, USER_PROFILES, userId);
@@ -151,12 +173,12 @@ export const toggleFavoriteInDb = async (userId: string, question: any) => {
     await updateDoc(userRef, {
       favorites: arrayRemove(exists)
     });
-    return false; // تمت الإزالة
+    return false;
   } else {
     await updateDoc(userRef, {
       favorites: arrayUnion(question)
     });
-    return true; // تمت الإضافة
+    return true;
   }
 };
 
@@ -187,7 +209,6 @@ export const getErrorLogs = async (userId: string) => {
     const q = query(
       collection(db, ERROR_LOGS), 
       where("userId", "==", userId)
-      // تم حذف orderBy مؤقتاً لتجنب خطأ الفهارس (Indexes) في البداية
     );
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => doc.data()).sort((a, b) => (b.count || 0) - (a.count || 0));
@@ -211,7 +232,6 @@ export const getLeaderboard = async () => {
       ...doc.data()
     }));
   } catch (error) {
-    // في حالة عدم وجود فهارس، نقوم بالفرز يدوياً
     const snapshot = await getDocs(collection(db, USER_PROFILES));
     return snapshot.docs.map(doc => ({
       id: doc.id,

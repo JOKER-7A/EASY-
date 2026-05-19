@@ -19,6 +19,7 @@ import {
   History,
   LogOut,
   X,
+  User as UserIcon,
 } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { 
@@ -59,7 +60,7 @@ export default function Home() {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
-        const p = await getUserProfile(u.uid);
+        const p = await getUserProfile(u.uid, u.email || '', u.displayName || '');
         setProfile(p);
       } else {
         setProfile(null);
@@ -114,9 +115,13 @@ export default function Home() {
         await signInWithEmailAndPassword(auth, email, password);
         toast({ title: "مرحباً بعودتك! 🚀" });
       } else {
+        if (displayName.length < 3) {
+          toast({ title: "الاسم قصير جداً", variant: "destructive" });
+          return;
+        }
         const cred = await createUserWithEmailAndPassword(auth, email, password);
         await updateProfile(cred.user, { displayName });
-        await getUserProfile(cred.user.uid);
+        await getUserProfile(cred.user.uid, email, displayName);
         toast({ title: "تم إنشاء حسابك بنجاح ✅" });
       }
     } catch (error: any) {
@@ -164,7 +169,7 @@ export default function Home() {
           <form onSubmit={handleAuth} className="space-y-4 md:space-y-6">
             {authMode === 'register' && (
               <Input 
-                placeholder="الاسم الكامل" 
+                placeholder="الاسم الكامل المستعار" 
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 className="h-12 md:h-16 rounded-2xl md:rounded-3xl bg-white/5 border-white/10 text-white text-lg md:text-xl pr-6"
@@ -226,7 +231,7 @@ export default function Home() {
             <div className="flex justify-center py-10"><Loader2 className="w-10 h-10 animate-spin text-goldenrod" /></div>
           ) : (
             leaderboardData.map((p, idx) => (
-              <div key={p.id} className="flex items-center justify-between p-4 md:p-6 bg-white/5 rounded-2xl md:rounded-3xl border border-white/10 hover:border-goldenrod/30 transition-all">
+              <div key={p.id} className="flex items-center justify-between p-4 md:p-6 bg-white/5 rounded-2xl md:rounded-3xl border border-white/10 hover:border-goldenrod/30 transition-all group">
                 <div className="flex items-center gap-3 md:gap-6">
                   <div className={cn(
                     "w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center font-black text-lg md:text-xl",
@@ -236,9 +241,14 @@ export default function Home() {
                   )}>
                     {idx + 1}
                   </div>
-                  <div>
-                    <h4 className="text-lg md:text-xl font-black text-white line-clamp-1">{p.displayName || 'مستكشف'}</h4>
-                    <p className="text-xs md:text-sm text-goldenrod font-bold">المستوى {p.level}</p>
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-white/5 flex items-center justify-center border border-white/10">
+                      <UserIcon className="w-6 h-6 text-white/40" />
+                    </div>
+                    <div>
+                      <h4 className="text-lg md:text-xl font-black text-white line-clamp-1 group-hover:text-goldenrod transition-colors">{p.displayName || 'مستكشف'}</h4>
+                      <p className="text-xs md:text-sm text-goldenrod font-bold uppercase tracking-tighter">LEVEL {p.level}</p>
+                    </div>
                   </div>
                 </div>
                 <div className="text-left">
@@ -336,7 +346,6 @@ export default function Home() {
       {renderOverlay()}
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(230,172,0,0.15),transparent_60%)] pointer-events-none" />
       
-      {/* XP & Level Bar - Responsive placement */}
       <div className="fixed top-4 left-4 md:top-8 md:left-8 z-[100] animate-in slide-in-from-left-10 duration-700">
         <div className="glass p-2 pr-4 md:p-4 md:pr-12 rounded-full border-goldenrod/30 flex items-center gap-3 md:gap-6 gold-glow relative overflow-hidden group">
           <div className="absolute inset-0 bg-gradient-to-r from-goldenrod/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -344,7 +353,10 @@ export default function Home() {
             {profile?.level || 1}
           </div>
           <div className="space-y-1 md:space-y-2 z-10 hidden sm:block">
-            <p className="text-[10px] md:text-xs font-black text-goldenrod/80 uppercase tracking-widest">LVL</p>
+            <div className="flex justify-between items-end">
+              <p className="text-[10px] md:text-xs font-black text-goldenrod/80 uppercase tracking-widest">LVL</p>
+              <p className="text-[10px] font-bold text-white/50">{profile?.displayName}</p>
+            </div>
             <div className="w-24 md:w-48 h-1.5 md:h-2.5 bg-white/5 rounded-full border border-white/10 overflow-hidden">
               <div 
                 className="h-full bg-gradient-to-r from-goldenrod via-vermillion to-goldenrod transition-all duration-1000 shadow-[0_0_15px_rgba(230,172,0,0.5)]"
