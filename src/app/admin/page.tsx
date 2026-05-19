@@ -23,6 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { 
   Plus, 
   Trash2, 
@@ -40,7 +41,8 @@ import {
   CheckCircle2,
   Link,
   ShieldCheck,
-  Mail
+  Mail,
+  User as UserIcon
 } from 'lucide-react';
 
 export default function AdminPage() {
@@ -408,22 +410,6 @@ export default function AdminPage() {
                               <SelectItem value="reading">استيعاب مقروء</SelectItem>
                             </SelectContent>
                           </Select>
-                          
-                          {q.type === 'reading' && (
-                            <Select 
-                              value={q.passageTitle} 
-                              onValueChange={(val) => updateQuestion(qIndex, 'passageTitle', val)}
-                            >
-                              <SelectTrigger className="w-56 bg-black border-white/10 h-12 rounded-xl">
-                                <SelectValue placeholder="اربط بقطعة" />
-                              </SelectTrigger>
-                              <SelectContent className="bg-black border-white/10">
-                                {newSection.readingPassages?.map((p, i) => (
-                                  <SelectItem key={i} value={p.title}>{p.title}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          )}
                         </div>
                         <Button variant="ghost" size="icon" onClick={() => removeQuestion(qIndex)} className="text-destructive hover:bg-destructive/10 rounded-full">
                           <Trash2 className="w-6 h-6" />
@@ -431,7 +417,7 @@ export default function AdminPage() {
                       </div>
 
                       <Input 
-                        placeholder="نص السؤال (مثلاً: سيف : قاطع)" 
+                        placeholder="نص السؤال" 
                         value={q.question}
                         onChange={(e) => updateQuestion(qIndex, 'question', e.target.value)}
                         className="bg-black border-white/10 h-16 text-2xl font-black rounded-2xl"
@@ -456,9 +442,9 @@ export default function AdminPage() {
                       </div>
 
                       <div className="bg-green-500/5 p-6 rounded-2xl border border-green-500/20">
-                        <label className="text-green-500 text-xs font-black block mb-3 uppercase tracking-widest">الإجابة الصحيحة (يجب مطابقة الخيار تماماً)</label>
+                        <label className="text-green-500 text-xs font-black block mb-3 uppercase tracking-widest">الإجابة الصحيحة</label>
                         <Input 
-                          placeholder="انسخ النص الصحيح هنا" 
+                          placeholder="النص الصحيح" 
                           value={q.correct}
                           onChange={(e) => updateQuestion(qIndex, 'correct', e.target.value)}
                           className="bg-black border-green-500/20 text-green-500 font-black h-14 rounded-xl text-lg"

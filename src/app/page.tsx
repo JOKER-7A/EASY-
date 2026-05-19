@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { sections as staticSections, Section, Question } from '@/lib/practice-data';
-import { getSectionsFromDb, getUserProfile, getLeaderboard, getErrorLogs, updateUserProfileName, isDisplayNameTaken } from '@/lib/db-service';
+import { getSectionsFromDb, getUserProfile, getLeaderboard, getErrorLogs, updateUserProfileName, isDisplayNameTaken, updateUserTheme } from '@/lib/db-service';
 import PracticeSession from '@/components/PracticeSession';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -24,7 +24,9 @@ import {
   Save,
   CheckCircle2,
   Sparkles,
-  ChevronRight
+  ChevronRight,
+  Palette,
+  Settings as SettingsIcon
 } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { 
@@ -38,7 +40,15 @@ import {
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
-type OverlayType = 'favorites' | 'errors' | 'leaderboard' | 'edit-name' | 'welcome-name' | null;
+type OverlayType = 'favorites' | 'errors' | 'leaderboard' | 'edit-name' | 'welcome-name' | 'themes' | null;
+
+const THEMES = [
+  { id: 'default', name: 'Original Purple', color: 'bg-[#9333ea]' },
+  { id: 'blue', name: 'Neon Blue', color: 'bg-[#00d2ff]' },
+  { id: 'red', name: 'Gaming Red', color: 'bg-[#ff0000]' },
+  { id: 'purple', name: 'Vibrant OLED', color: 'bg-[#d946ef]' },
+  { id: 'gold', name: 'Dark Premium', color: 'bg-[#E6AC00]' },
+];
 
 export default function Home() {
   const [mounted, setMounted] = useState(false);
@@ -66,15 +76,18 @@ export default function Home() {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
-        // Pass email to ensure it's saved in Firestore for Admin use
         const p = await getUserProfile(u.uid, u.email || '', u.displayName || '');
         setProfile(p);
         setNewDisplayName(p.displayName || '');
+        if (p.theme) {
+          document.body.setAttribute('data-theme', p.theme);
+        }
         if (!p.displayName) {
           setActiveOverlay('welcome-name');
         }
       } else {
         setProfile(null);
+        document.body.removeAttribute('data-theme');
       }
       setIsAuthLoading(false);
     });
@@ -130,7 +143,6 @@ export default function Home() {
         toast({ title: "مرحباً بعودتك! 🚀" });
       } else {
         const cred = await createUserWithEmailAndPassword(auth, email, password);
-        // Initialize profile with email immediately
         await getUserProfile(cred.user.uid, email, '');
         toast({ title: "تم إنشاء حسابك بنجاح ✅" });
       }
@@ -166,6 +178,14 @@ export default function Home() {
     }
   };
 
+  const handleThemeChange = async (themeId: string) => {
+    if (!user) return;
+    document.body.setAttribute('data-theme', themeId);
+    await updateUserTheme(user.uid, themeId);
+    setProfile(prev => ({ ...prev, theme: themeId }));
+    toast({ title: "تم تحديث الثيم بنجاح ✨" });
+  };
+
   const openLeaderboard = async () => {
     setLeaderboardData([]);
     setActiveOverlay('leaderboard');
@@ -199,7 +219,7 @@ export default function Home() {
         <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(168,85,247,0.15),transparent_70%)]" />
         <Card className="w-full max-w-xl p-8 md:p-14 glass border-white/5 rounded-[40px] md:rounded-[60px] shadow-2xl relative z-10 animate-in fade-in zoom-in duration-700">
           <div className="text-center mb-10 md:mb-14 group">
-            <h1 data-text="EASY" className="text-8xl md:text-[10rem] text-easy-premium text-shine mb-4 transition-transform group-hover:scale-105 duration-700">
+            <h1 className="text-8xl md:text-[10rem] text-easy-premium text-shine mb-4 transition-transform group-hover:scale-105 duration-700">
               EASY
             </h1>
             <p className="text-lg md:text-xl text-primary font-bold tracking-[0.3em] opacity-80 uppercase">The Elite Training Portal</p>
@@ -274,9 +294,7 @@ export default function Home() {
                     </div>
                     <div>
                       <h4 className="text-xl md:text-2xl font-black text-white group-hover:text-primary transition-colors">{p.displayName || 'مستكشف'}</h4>
-                      <div className="flex items-center gap-2">
-                         <span className="text-[10px] text-primary font-black tracking-tighter uppercase">Level {p.level}</span>
-                      </div>
+                      <span className="text-[10px] text-primary font-black tracking-tighter uppercase">Level {p.level}</span>
                     </div>
                   </div>
                 </div>
@@ -290,7 +308,7 @@ export default function Home() {
       );
     } else if (activeOverlay === 'errors') {
       title = "مختبر الأخطاء";
-      icon = <History className="w-8 h-8 md:w-12 md:h-12 text-destructive neon-text-blue" />;
+      icon = <History className="w-8 h-8 md:w-12 md:h-12 text-destructive" />;
       content = (
         <div className="space-y-6 md:space-y-10">
           {errorLogsData.length === 0 ? (
@@ -319,27 +337,27 @@ export default function Home() {
           )}
         </div>
       );
-    } else if (activeOverlay === 'favorites') {
-      title = "المفضلة النخبوية";
-      icon = <Star className="w-8 h-8 md:w-12 md:h-12 text-accent neon-text-blue fill-accent" />;
+    } else if (activeOverlay === 'themes') {
+      title = "تغيير مظهر المنصة";
+      icon = <Palette className="w-8 h-8 md:w-12 md:h-12 text-primary" />;
       content = (
-        <div className="space-y-6 md:space-y-10">
-          {(!profile?.favorites || profile.favorites.length === 0) ? (
-            <div className="text-center py-32 space-y-4">
-              <Star className="w-20 h-20 text-white/5 mx-auto" />
-              <p className="text-white/20 text-2xl font-black">لم تضف أي كنوز بعد ⭐</p>
-            </div>
-          ) : (
-            profile.favorites.map((q: any, idx: number) => (
-              <Card key={idx} className="p-8 md:p-12 glass border-accent/20 rounded-[40px] space-y-6 hover:border-accent/40 transition-all">
-                <h4 className="text-xl md:text-3xl font-black leading-tight text-white/90">{q.question}</h4>
-                <div className="p-5 bg-accent/10 rounded-3xl border border-accent/20">
-                  <p className="text-xs text-accent font-bold mb-2 uppercase tracking-widest">الإجابة المحفوظة</p>
-                  <p className="text-xl md:text-2xl font-black text-white">{q.correct}</p>
-                </div>
-              </Card>
-            ))
-          )}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 py-6">
+          {THEMES.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => handleThemeChange(t.id)}
+              className={cn(
+                "p-8 rounded-[30px] border-2 transition-all active-press flex items-center justify-between group",
+                profile?.theme === t.id ? 'border-primary bg-primary/20' : 'border-white/5 bg-white/[0.02] hover:border-primary/40'
+              )}
+            >
+              <div className="flex items-center gap-4">
+                <div className={cn("w-10 h-10 rounded-full shadow-lg", t.color)} />
+                <span className="text-xl font-black">{t.name}</span>
+              </div>
+              {profile?.theme === t.id && <CheckCircle2 className="w-6 h-6 text-primary" />}
+            </button>
+          ))}
         </div>
       );
     } else if (activeOverlay === 'edit-name' || activeOverlay === 'welcome-name') {
@@ -394,7 +412,7 @@ export default function Home() {
 
   if (activeView === 'practice' && selectedSection) {
     return (
-      <main className="min-h-screen p-0 bg-black">
+      <main className="min-h-screen p-0 bg-black theme-transition">
         <PracticeSession 
           section={selectedSection} 
           onExit={() => {
@@ -409,23 +427,20 @@ export default function Home() {
   const xpProgress = (profile?.xp || 0) % 100;
 
   return (
-    <main className="min-h-screen overflow-x-hidden relative bg-black text-white flex flex-col">
+    <main className="min-h-screen overflow-x-hidden relative bg-black text-white flex flex-col theme-transition">
       {renderOverlay()}
       
-      {/* Dynamic Background Elements */}
-      <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(168,85,247,0.1),transparent_70%)] pointer-events-none" />
-      <div className="fixed bottom-0 left-0 w-full h-1/2 bg-[radial-gradient(circle_at_20%_100%,rgba(6,182,212,0.05),transparent_50%)] pointer-events-none" />
+      <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_0%,hsla(var(--primary),0.1),transparent_70%)] pointer-events-none" />
 
       {/* Premium Level HUD */}
       <div className="fixed top-6 left-6 md:top-12 md:left-12 z-[100] animate-in slide-in-from-left-10 duration-1000">
         <div className="glass p-3 pr-6 md:p-5 md:pr-14 rounded-[30px] border-primary/20 flex items-center gap-4 md:gap-7 shadow-[0_0_40px_rgba(0,0,0,0.5)] relative overflow-hidden group">
-          <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-          <div className="w-12 h-12 md:w-20 md:h-20 rounded-2xl bg-primary text-white flex items-center justify-center font-black text-xl md:text-3xl shadow-[0_0_20px_rgba(168,85,247,0.5)] z-10 shrink-0">
+          <div className="w-12 h-12 md:w-20 md:h-20 rounded-2xl bg-primary text-white flex items-center justify-center font-black text-xl md:text-3xl shadow-lg z-10 shrink-0">
             {profile?.level || 1}
           </div>
           <div className="space-y-1.5 md:space-y-2.5 z-10 flex flex-col min-w-0">
             <div className="flex justify-between items-end gap-3">
-              <p className="text-[10px] md:text-xs font-black text-primary uppercase tracking-[0.2em] shrink-0">Progress</p>
+              <p className="text-[10px] md:text-xs font-black text-primary uppercase tracking-[0.2em] shrink-0">LV PROGRESS</p>
               <div className="flex items-center gap-3 overflow-hidden">
                 <p className="text-xs md:text-sm font-bold text-white truncate">{profile?.displayName || 'مستكشف'}</p>
                 <button onClick={() => setActiveOverlay('edit-name')} className="text-white/20 hover:text-primary transition-colors shrink-0 active-press">
@@ -435,33 +450,39 @@ export default function Home() {
             </div>
             <div className="w-28 md:w-56 h-2 md:h-3 bg-white/5 rounded-full border border-white/5 overflow-hidden">
               <div 
-                className="h-full bg-gradient-to-r from-primary via-accent to-primary transition-all duration-1000 shadow-[0_0_15px_rgba(168,85,247,0.5)]"
+                className="h-full bg-gradient-to-r from-primary to-accent transition-all duration-1000 gold-glow"
                 style={{ width: `${xpProgress}%` }}
               />
             </div>
             <p className="text-[9px] md:text-[11px] text-white/30 font-black text-right tracking-widest">{xpProgress} / 100 XP</p>
           </div>
+          <button 
+            onClick={() => setActiveOverlay('themes')}
+            className="absolute right-2 top-2 text-white/10 hover:text-primary transition-all active-press"
+          >
+            <Palette className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
       <div className="relative z-10 container mx-auto px-4 md:px-8 py-10 max-w-7xl flex-1">
         <header className="text-center mb-20 md:mb-32 space-y-10 pt-24 md:pt-40">
-          <div className="inline-flex items-center gap-3 px-6 py-2 md:px-12 md:py-4 rounded-full glass border-primary/20 text-primary font-black text-xs md:text-lg mb-6 shadow-[0_0_40px_rgba(168,85,247,0.1)] animate-float">
-            <Zap className="w-4 h-4 md:w-6 md:h-6 fill-primary neon-text-purple" /> EASY VERBAL PREP 2.0
+          <div className="inline-flex items-center gap-3 px-6 py-2 md:px-12 md:py-4 rounded-full glass border-primary/20 text-primary font-black text-xs md:text-lg mb-6 animate-float">
+            <Zap className="w-4 h-4 md:w-6 md:h-6 fill-primary" /> EASY PREP 3.0 OLED
           </div>
-          <div className="relative group inline-block">
-            <h1 data-text="EASY" className="text-8xl md:text-[15rem] text-easy-premium text-shine leading-none mb-6 transition-transform group-hover:scale-105 duration-1000">
-              EASY
-            </h1>
-          </div>
-          <p className="text-xl md:text-4xl font-black text-white/60 leading-tight max-w-4xl mx-auto px-4 tracking-tight">
-            التحدي الحقيقي هو أن تتفوق على <span className="text-white neon-text-purple">نفسك</span> كل يوم 💎
+          
+          <h1 className="text-8xl md:text-[15rem] text-easy-premium text-shine leading-none mb-6">
+            EASY
+          </h1>
+          
+          <p className="text-xl md:text-4xl font-black text-white/60 leading-tight max-w-4xl mx-auto px-4">
+            التحدي الحقيقي هو أن تتفوق على <span className="text-white">نفسك</span> كل يوم 💎
           </p>
 
           <div className="max-w-3xl mx-auto pt-14 md:pt-20 px-4 relative group">
             <Search className="absolute right-8 top-1/2 -translate-y-1/2 w-6 h-6 md:w-10 md:h-10 text-white/20 group-focus-within:text-primary transition-colors z-10" />
             <Input 
-              placeholder="ابحث عن نموذج أو سؤال..."
+              placeholder="ابحث عن رقم القسم، عنوان، أو سؤال..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="h-16 md:h-24 w-full rounded-3xl md:rounded-[45px] bg-white/5 border-2 border-white/5 pr-16 md:pr-24 text-lg md:text-3xl font-bold focus:border-primary/40 focus:bg-white/[0.08] transition-all shadow-2xl"
@@ -469,14 +490,14 @@ export default function Home() {
           </div>
 
           <div className="flex flex-wrap justify-center gap-4 md:gap-8 pt-10">
-            <Button onClick={openFavorites} className="h-14 md:h-20 px-8 md:px-14 rounded-2xl md:rounded-[40px] glass border-accent/30 text-accent font-black text-sm md:text-2xl shadow-[0_0_30px_rgba(6,182,212,0.1)] hover:scale-105 active-press transition-all">
-              <Star className="ml-3 w-5 h-5 md:w-8 md:h-8 fill-accent neon-text-blue" /> المفضلة
+            <Button onClick={openFavorites} className="h-14 md:h-20 px-8 md:px-14 rounded-2xl md:rounded-[40px] glass border-accent/30 text-accent font-black text-sm md:text-2xl hover:scale-105 active-press transition-all">
+              <Star className="ml-3 w-5 h-5 md:w-8 md:h-8 fill-accent" /> المفضلة
             </Button>
-            <Button onClick={openErrorLogs} className="h-14 md:h-20 px-8 md:px-14 rounded-2xl md:rounded-[40px] glass border-destructive/30 text-destructive font-black text-sm md:text-2xl shadow-[0_0_30_rgba(239,68,68,0.1)] hover:scale-105 active-press transition-all">
+            <Button onClick={openErrorLogs} className="h-14 md:h-20 px-8 md:px-14 rounded-2xl md:rounded-[40px] glass border-destructive/30 text-destructive font-black text-sm md:text-2xl hover:scale-105 active-press transition-all">
               <History className="ml-3 w-5 h-5 md:w-8 md:h-8" /> الأخطاء
             </Button>
             <Button onClick={openLeaderboard} className="h-14 md:h-20 px-8 md:px-14 rounded-2xl md:rounded-[40px] glass border-white/10 text-white font-black text-sm md:text-2xl hover:scale-105 active-press transition-all">
-              <Trophy className="ml-3 w-5 h-5 md:w-8 md:h-8 neon-text-purple" /> المتصدرين
+              <Trophy className="ml-3 w-5 h-5 md:w-8 md:h-8" /> المتصدرين
             </Button>
           </div>
         </header>
@@ -504,13 +525,14 @@ export default function Home() {
                   key={section.firebaseId || section.id} 
                   className="group relative bg-white/[0.02] border border-white/5 rounded-[40px] md:rounded-[70px] p-8 md:p-14 shadow-2xl overflow-hidden transition-all hover:border-primary/50 hover:bg-white/[0.04] duration-700 active-press"
                 >
-                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-accent to-primary opacity-0 group-hover:opacity-100 transition-opacity" />
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-8">
                     <div className="space-y-3">
                       <div className="flex items-center gap-4">
-                        <span className="bg-primary/20 text-primary px-4 py-1 rounded-xl font-black text-xs md:text-sm uppercase tracking-widest">Model {section.id}</span>
+                        <span className="bg-primary/20 text-primary px-5 py-2 rounded-xl font-black text-lg md:text-2xl tracking-widest uppercase">
+                          🔥 القسم {section.id} 🔥
+                        </span>
                       </div>
-                      <h2 className="text-4xl md:text-6xl font-black text-white group-hover:text-primary transition-colors leading-tight">
+                      <h2 className="text-3xl md:text-5xl font-black text-white group-hover:text-primary transition-colors leading-tight line-clamp-2">
                         {section.title}
                       </h2>
                       <div className="flex items-center gap-4 text-white/30 font-bold">
@@ -523,7 +545,7 @@ export default function Home() {
                         setSelectedSection(section);
                         setActiveView('practice');
                       }} 
-                      className="w-full sm:w-auto h-20 md:h-32 px-10 md:px-16 rounded-[30px] md:rounded-[50px] text-2xl md:text-4xl font-black bg-primary text-white shadow-[0_0_40px_rgba(168,85,247,0.3)] group-hover:scale-110 active-press transition-all"
+                      className="w-full sm:w-auto h-20 md:h-32 px-10 md:px-16 rounded-[30px] md:rounded-[50px] text-2xl md:text-4xl font-black bg-primary text-white shadow-lg group-hover:scale-110 active-press transition-all"
                     >
                       ابدأ <ChevronRight className="mr-2 w-8 h-8 md:w-12 md:h-12" />
                     </Button>
@@ -539,14 +561,14 @@ export default function Home() {
             <Button 
               variant="ghost" 
               onClick={() => window.location.href = '/admin'} 
-              className="text-white/20 hover:text-white transition-colors font-black text-lg md:text-2xl tracking-tighter"
+              className="text-white/20 hover:text-white transition-colors font-black text-lg md:text-2xl"
             >
               <LayoutDashboard className="ml-3 w-6 h-6 md:w-8 md:h-8" /> المشرف
             </Button>
             <Button 
               variant="ghost" 
               onClick={() => signOut(auth)}
-              className="text-destructive/30 hover:text-destructive transition-colors font-black text-lg md:text-2xl tracking-tighter"
+              className="text-destructive/30 hover:text-destructive transition-colors font-black text-lg md:text-2xl"
             >
               <LogOut className="ml-3 w-6 h-6 md:w-8 md:h-8" /> خروج
             </Button>

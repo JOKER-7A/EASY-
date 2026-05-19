@@ -92,7 +92,6 @@ export const getUserProfile = async (userId: string, email?: string, displayName
   
   if (userSnap.exists()) {
     const data = userSnap.data();
-    // Ensure email is always up to date for Admin visibility
     if (email && data.email !== email) {
       await updateDoc(userRef, { email });
     }
@@ -104,7 +103,8 @@ export const getUserProfile = async (userId: string, email?: string, displayName
       totalCorrect: 0,
       favorites: [],
       displayName: displayName || '',
-      email: email || '', // Store email for Admin
+      email: email || '',
+      theme: 'default',
       createdAt: serverTimestamp(),
       lastActive: serverTimestamp()
     };
@@ -152,6 +152,11 @@ export const getAllUserProfiles = async () => {
 export const updateUserProfileName = async (userId: string, newName: string) => {
   const userRef = doc(db, USER_PROFILES, userId);
   return await updateDoc(userRef, { displayName: newName });
+};
+
+export const updateUserTheme = async (userId: string, theme: string) => {
+  const userRef = doc(db, USER_PROFILES, userId);
+  return await updateDoc(userRef, { theme });
 };
 
 export const toggleFavoriteInDb = async (userId: string, question: any) => {

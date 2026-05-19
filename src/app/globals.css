@@ -10,36 +10,63 @@
     --card-foreground: 210 40% 98%;
     --popover: 240 10% 4%;
     --popover-foreground: 210 40% 98%;
-    --primary: 260 80% 60%; /* Neon Purple */
+    --primary: 260 80% 60%; /* Default Purple */
     --primary-foreground: 210 40% 98%;
     --secondary: 240 10% 10%;
     --secondary-foreground: 210 40% 98%;
     --muted: 240 10% 10%;
     --muted-foreground: 240 5% 65%;
-    --accent: 190 90% 50%; /* Neon Cyan */
+    --accent: 190 90% 50%;
     --accent-foreground: 240 10% 4%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
     --border: 240 10% 12%;
     --input: 240 10% 12%;
     --ring: 260 80% 60%;
-    --radius: 1.25rem;
+    --radius: 1.5rem;
+  }
+
+  /* Theme: Neon Blue */
+  [data-theme='blue'] {
+    --primary: 200 100% 50%;
+    --accent: 180 100% 50%;
+    --ring: 200 100% 50%;
+  }
+
+  /* Theme: Red Gaming */
+  [data-theme='red'] {
+    --primary: 0 100% 50%;
+    --accent: 20 100% 50%;
+    --ring: 0 100% 50%;
+  }
+
+  /* Theme: Purple OLED (Deals with higher contrast) */
+  [data-theme='purple'] {
+    --primary: 280 100% 60%;
+    --accent: 300 100% 50%;
+    --ring: 280 100% 60%;
+  }
+
+  /* Theme: Dark Premium (Gold/Sand) */
+  [data-theme='gold'] {
+    --primary: 45 100% 50%;
+    --accent: 45 100% 30%;
+    --ring: 45 100% 50%;
   }
 }
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-border outline-none;
   }
   body {
-    @apply bg-background text-foreground font-body;
+    @apply bg-background text-foreground font-body transition-colors duration-500;
     direction: rtl;
     overflow-x: hidden;
     width: 100%;
-    position: relative;
     background-image: 
-      radial-gradient(circle at 50% -20%, rgba(120, 50, 255, 0.15), transparent 50%),
-      radial-gradient(circle at 0% 100%, rgba(0, 255, 255, 0.05), transparent 40%);
+      radial-gradient(circle at 50% -20%, hsla(var(--primary), 0.15), transparent 50%),
+      radial-gradient(circle at 0% 100%, hsla(var(--accent), 0.05), transparent 40%);
     background-attachment: fixed;
   }
 }
@@ -49,45 +76,19 @@
 }
 
 .neon-border {
-  @apply border border-primary/30 relative overflow-hidden;
-  box-shadow: 0 0 15px rgba(120, 50, 255, 0.1);
+  @apply border relative overflow-hidden;
+  border-color: hsla(var(--primary), 0.3);
+  box-shadow: 0 0 15px hsla(var(--primary), 0.1);
 }
 
-.neon-border::after {
-  content: '';
-  @apply absolute inset-0 opacity-20 pointer-events-none;
-  background: linear-gradient(45deg, transparent, var(--primary), transparent);
-}
-
-.neon-text-blue {
-  text-shadow: 0 0 10px rgba(0, 255, 255, 0.5), 0 0 20px rgba(0, 255, 255, 0.2);
-}
-
-.neon-text-purple {
-  text-shadow: 0 0 10px rgba(120, 50, 255, 0.5), 0 0 20px rgba(120, 50, 255, 0.2);
-}
-
-/* Luxury EASY Brand Header */
 .text-easy-premium {
-  @apply font-black tracking-tighter;
-  background: linear-gradient(180deg, #fff 0%, #a855f7 100%);
+  @apply font-black tracking-tighter text-center block w-full;
+  background: linear-gradient(180deg, #fff 0%, hsla(var(--primary), 1) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 20px rgba(168, 85, 247, 0.4));
+  filter: drop-shadow(0 0 30px hsla(var(--primary), 0.5));
   position: relative;
-}
-
-.text-easy-premium::before {
-  content: attr(data-text);
-  position: absolute;
-  left: 0;
-  top: 0;
-  z-index: -1;
-  filter: blur(15px);
-  background: linear-gradient(180deg, #a855f7, #06b6d4);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  opacity: 0.5;
+  transition: all 0.5s ease;
 }
 
 .text-shine {
@@ -105,37 +106,25 @@
   background: linear-gradient(
     to right,
     transparent,
-    rgba(255, 255, 255, 0.2),
+    rgba(255, 255, 255, 0.3),
     transparent
   );
   transform: skewX(-25deg);
-  animation: shine 4s infinite;
+  animation: shine 5s infinite;
 }
 
 @keyframes shine {
   0% { left: -150%; }
-  30% { left: 150%; }
+  20% { left: 150%; }
   100% { left: 150%; }
 }
 
-.signature-text {
-  @apply transition-all duration-500 cursor-default font-black tracking-[0.2em] opacity-40;
-  background: linear-gradient(90deg, #a855f7, #06b6d4);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.signature-text:hover {
-  @apply opacity-100;
-  filter: drop-shadow(0 0 10px rgba(168, 85, 247, 0.8));
-}
-
 .active-press {
-  @apply active:scale-95 transition-transform duration-100;
+  @apply active:scale-95 transition-transform duration-150;
 }
 
 .custom-scrollbar::-webkit-scrollbar {
-  width: 5px;
+  width: 6px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
   @apply bg-black;
@@ -146,9 +135,17 @@
 
 @keyframes float {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+  50% { transform: translateY(-15px); }
 }
 
 .animate-float {
-  animation: float 4s ease-in-out infinite;
+  animation: float 5s ease-in-out infinite;
+}
+
+.gold-glow {
+  box-shadow: 0 0 20px hsla(var(--primary), 0.2);
+}
+
+.theme-transition {
+  transition: background-color 0.5s ease, border-color 0.5s ease, color 0.5s ease, box-shadow 0.5s ease;
 }
