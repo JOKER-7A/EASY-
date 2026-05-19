@@ -22,6 +22,7 @@ import {
   User as UserIcon,
   Edit2,
   Save,
+  CheckCircle2
 } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { 
@@ -42,7 +43,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-type OverlayType = 'favorites' | 'errors' | 'leaderboard' | 'edit-name' | null;
+type OverlayType = 'favorites' | 'errors' | 'leaderboard' | 'edit-name' | 'welcome-name' | null;
 
 export default function Home() {
   const [mounted, setMounted] = useState(false);
@@ -74,6 +75,10 @@ export default function Home() {
         const p = await getUserProfile(u.uid, u.email || '', u.displayName || '');
         setProfile(p);
         setNewDisplayName(p.displayName || '');
+        // Force user to pick a name if it's their first time
+        if (!p.displayName) {
+          setActiveOverlay('welcome-name');
+        }
       } else {
         setProfile(null);
       }
@@ -108,7 +113,10 @@ export default function Home() {
     const filtered = allSections.filter(s => 
       s.id.toString().includes(q) || 
       s.title.toLowerCase().includes(q) ||
-      s.questions.some(question => question.question.toLowerCase().includes(q))
+      s.questions.some(question => 
+        question.question.toLowerCase().includes(q) || 
+        question.correct.toLowerCase().includes(q)
+      )
     );
     setFilteredSections(filtered);
   }, [searchQuery, allSections]);
@@ -127,19 +135,9 @@ export default function Home() {
         await signInWithEmailAndPassword(auth, email, password);
         toast({ title: "مرحباً بعودتك! 🚀" });
       } else {
-        if (displayName.length < 3) {
-          toast({ title: "الاسم قصير جداً", variant: "destructive" });
-          return;
-        }
-        // Check if name is taken
-        const taken = await isDisplayNameTaken(displayName, "new");
-        if (taken) {
-          toast({ title: "هذا الاسم مستخدم بالفعل، اختر اسماً آخر", variant: "destructive" });
-          return;
-        }
         const cred = await createUserWithEmailAndPassword(auth, email, password);
-        await updateProfile(cred.user, { displayName });
-        await getUserProfile(cred.user.uid, email, displayName);
+        // We will prompt for name in the welcome overlay
+        await getUserProfile(cred.user.uid, email, '');
         toast({ title: "تم إنشاء حسابك بنجاح ✅" });
       }
     } catch (error: any) {
@@ -147,14 +145,10 @@ export default function Home() {
     }
   };
 
-  const handleUpdateName = async () => {
+  const handleUpdateName = async (isFirstTime = false) => {
     if (!user || !newDisplayName.trim()) return;
     if (newDisplayName.length < 3) {
-      toast({ title: "الاسم قصير جداً", variant: "destructive" });
-      return;
-    }
-    if (newDisplayName === profile.displayName) {
-      setActiveOverlay(null);
+      toast({ title: "الاسم قصير جداً (3 أحرف على الأقل)", variant: "destructive" });
       return;
     }
 
@@ -162,7 +156,7 @@ export default function Home() {
     try {
       const taken = await isDisplayNameTaken(newDisplayName, user.uid);
       if (taken) {
-        toast({ title: "هذا الاسم مستخدم بالفعل", variant: "destructive" });
+        toast({ title: "هذا الاسم مستخدم بالفعل، اختر اسماً آخر", variant: "destructive" });
         setIsUpdatingName(false);
         return;
       }
@@ -170,7 +164,7 @@ export default function Home() {
       await updateProfile(user, { displayName: newDisplayName });
       await refreshProfile();
       setActiveOverlay(null);
-      toast({ title: "تم تحديث الاسم بنجاح ✅" });
+      toast({ title: "تم الحفظ بنجاح ✅" });
     } catch (error: any) {
       toast({ title: "فشل تحديث الاسم", variant: "destructive" });
     } finally {
@@ -216,15 +210,6 @@ export default function Home() {
           </div>
           
           <form onSubmit={handleAuth} className="space-y-4 md:space-y-6">
-            {authMode === 'register' && (
-              <Input 
-                placeholder="الاسم الكامل المستعار" 
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                className="h-12 md:h-16 rounded-2xl md:rounded-3xl bg-white/5 border-white/10 text-white text-lg md:text-xl pr-6"
-                required
-              />
-            )}
             <Input 
               type="email" 
               placeholder="البريد الإلكتروني" 
@@ -259,11 +244,6 @@ export default function Home() {
     );
   }
 
-  const handleStartClick = (section: Section) => {
-    setSelectedSection(section);
-    setActiveView('practice');
-  };
-
   const renderOverlay = () => {
     if (!activeOverlay) return null;
 
@@ -296,7 +276,7 @@ export default function Home() {
                     </div>
                     <div>
                       <h4 className="text-lg md:text-xl font-black text-white line-clamp-1 group-hover:text-goldenrod transition-colors">{p.displayName || 'مستكشف'}</h4>
-                      <p className="text-xs md:text-sm text-goldenrod font-bold uppercase tracking-tighter">LEVEL {p.level}</p>
+                      <p className="text-[10px] md:text-xs text-goldenrod font-bold uppercase tracking-widest">LEVEL {p.level}</p>
                     </div>
                   </div>
                 </div>
@@ -309,7 +289,7 @@ export default function Home() {
         </div>
       );
     } else if (activeOverlay === 'errors') {
-      title = "سجل الأخطاء";
+      title = "سجل الأخطاء الدائم";
       icon = <History className="w-8 h-8 md:w-10 md:h-10 text-vermillion" />;
       content = (
         <div className="space-y-6 md:space-y-8">
@@ -319,11 +299,14 @@ export default function Home() {
             errorLogsData.map((log, idx) => (
               <Card key={idx} className="p-6 md:p-8 glass border-vermillion/20 rounded-2xl md:rounded-[40px] space-y-4">
                 <div className="flex justify-between items-start gap-4">
-                  <h4 className="text-lg md:text-2xl font-black leading-tight flex-1">{log.questionData.question}</h4>
-                  <Badge className="bg-vermillion/10 text-vermillion border-vermillion/20 shrink-0">{log.count}</Badge>
+                  <div className="space-y-1 flex-1">
+                    <Badge className="bg-white/5 text-white/40">{log.questionData.sectionTitle || 'نموذج عام'}</Badge>
+                    <h4 className="text-lg md:text-2xl font-black leading-tight">{log.questionData.question}</h4>
+                  </div>
+                  <Badge className="bg-vermillion/10 text-vermillion border-vermillion/20 shrink-0">تكرر {log.count} مرات</Badge>
                 </div>
                 <div className="p-3 md:p-4 bg-green-500/10 rounded-xl md:rounded-2xl border border-green-500/20">
-                  <p className="text-xs md:text-sm text-green-500 font-bold mb-1">الصحيح:</p>
+                  <p className="text-xs md:text-sm text-green-500 font-bold mb-1">الإجابة الصحيحة:</p>
                   <p className="text-lg md:text-xl font-black">{log.questionData.correct}</p>
                 </div>
               </Card>
@@ -332,7 +315,7 @@ export default function Home() {
         </div>
       );
     } else if (activeOverlay === 'favorites') {
-      title = "المفضلة";
+      title = "الأسئلة المميزة";
       icon = <Star className="w-8 h-8 md:w-10 md:h-10 text-goldenrod fill-goldenrod" />;
       content = (
         <div className="space-y-6 md:space-y-8">
@@ -351,27 +334,27 @@ export default function Home() {
           )}
         </div>
       );
-    } else if (activeOverlay === 'edit-name') {
-      title = "تعديل الاسم";
-      icon = <Edit2 className="w-8 h-8 md:w-10 md:h-10 text-goldenrod" />;
+    } else if (activeOverlay === 'edit-name' || activeOverlay === 'welcome-name') {
+      title = activeOverlay === 'welcome-name' ? "مرحباً بك في EASY 🚀" : "تعديل الاسم";
+      icon = activeOverlay === 'welcome-name' ? <Sparkles className="w-8 h-8 md:w-10 md:h-10 text-goldenrod" /> : <Edit2 className="w-8 h-8 md:w-10 md:h-10 text-goldenrod" />;
       content = (
         <div className="space-y-8 py-10">
           <div className="space-y-4">
-            <label className="text-white font-black text-xl">الاسم الجديد</label>
+            <label className="text-white font-black text-xl">{activeOverlay === 'welcome-name' ? 'اختر اسمك المستعار الذي سيظهر للجميع:' : 'الاسم الجديد'}</label>
             <Input 
-              placeholder="أدخل اسمك الجديد..." 
+              placeholder="أدخل اسمك هنا..." 
               value={newDisplayName}
               onChange={(e) => setNewDisplayName(e.target.value)}
               className="h-16 rounded-2xl bg-white/5 border-white/10 text-white text-2xl pr-6 focus:border-goldenrod/50 transition-all"
             />
-            <p className="text-white/40 font-bold text-sm">سيظهر هذا الاسم للجميع في لوحة الصدارة.</p>
+            <p className="text-white/40 font-bold text-sm">سيظهر هذا الاسم في لوحة المتصدرين.</p>
           </div>
           <Button 
-            onClick={handleUpdateName} 
+            onClick={() => handleUpdateName(activeOverlay === 'welcome-name')} 
             disabled={isUpdatingName}
             className="w-full h-20 rounded-3xl bg-goldenrod text-midnight font-black text-2xl gold-glow hover:scale-105 transition-all"
           >
-            {isUpdatingName ? <Loader2 className="animate-spin" /> : <><Save className="ml-2" /> حفظ الاسم الجديد</>}
+            {isUpdatingName ? <Loader2 className="animate-spin" /> : <><CheckCircle2 className="ml-2" /> حفظ واستمرار</>}
           </Button>
         </div>
       );
@@ -379,16 +362,18 @@ export default function Home() {
 
     return (
       <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 md:p-12 animate-in fade-in duration-300">
-        <div className="absolute inset-0 bg-midnight/95 backdrop-blur-2xl" onClick={() => setActiveOverlay(null)} />
+        <div className="absolute inset-0 bg-midnight/95 backdrop-blur-2xl" onClick={() => activeOverlay !== 'welcome-name' && setActiveOverlay(null)} />
         <Card className="w-full max-w-4xl max-h-[90vh] overflow-hidden glass border-white/10 rounded-[30px] md:rounded-[60px] shadow-2xl relative z-10 flex flex-col animate-in zoom-in-95 duration-300">
           <div className="p-6 md:p-10 border-b border-white/10 flex items-center justify-between sticky top-0 bg-midnight/50 backdrop-blur-xl z-20">
             <div className="flex items-center gap-4 md:gap-6">
               {icon}
               <h2 className="text-2xl md:text-5xl font-black text-white">{title}</h2>
             </div>
-            <Button variant="ghost" size="icon" className="w-12 h-12 md:w-16 md:h-16 rounded-full hover:bg-white/10" onClick={() => setActiveOverlay(null)}>
-              <X className="w-8 h-8 md:w-10 md:h-10" />
-            </Button>
+            {activeOverlay !== 'welcome-name' && (
+              <Button variant="ghost" size="icon" className="w-12 h-12 md:w-16 md:h-16 rounded-full hover:bg-white/10" onClick={() => setActiveOverlay(null)}>
+                <X className="w-8 h-8 md:w-10 md:h-10" />
+              </Button>
+            )}
           </div>
           <div className="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar">
             {content}
@@ -412,35 +397,37 @@ export default function Home() {
     );
   }
 
-  const xpProgress = ((profile?.xp || 0) / ((profile?.level || 1) * 500)) * 100;
+  const xpProgress = (profile?.xp || 0) % 100;
 
   return (
     <main className="min-h-screen overflow-x-hidden relative bg-midnight text-white flex flex-col">
       {renderOverlay()}
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(230,172,0,0.15),transparent_60%)] pointer-events-none" />
       
+      {/* XP/LV BAR - TOP LEFT */}
       <div className="fixed top-4 left-4 md:top-8 md:left-8 z-[100] animate-in slide-in-from-left-10 duration-700">
-        <div className="glass p-2 pr-4 md:p-4 md:pr-12 rounded-full border-goldenrod/30 flex items-center gap-3 md:gap-6 gold-glow relative overflow-hidden group">
+        <div className="glass p-2 pr-4 md:p-4 md:pr-10 rounded-full border-goldenrod/30 flex items-center gap-3 md:gap-5 gold-glow relative overflow-hidden group">
           <div className="absolute inset-0 bg-gradient-to-r from-goldenrod/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-          <div className="w-10 h-10 md:w-16 md:h-16 rounded-full bg-goldenrod text-midnight flex items-center justify-center font-black text-lg md:text-2xl shadow-xl z-10 shrink-0">
+          <div className="w-10 h-10 md:w-14 md:h-14 rounded-full bg-goldenrod text-midnight flex items-center justify-center font-black text-lg md:text-xl shadow-xl z-10 shrink-0 animate-pulse">
             {profile?.level || 1}
           </div>
-          <div className="space-y-1 md:space-y-2 z-10 flex flex-col min-w-0">
+          <div className="space-y-1 md:space-y-1.5 z-10 flex flex-col min-w-0">
             <div className="flex justify-between items-end gap-2">
               <p className="text-[10px] md:text-xs font-black text-goldenrod/80 uppercase tracking-widest shrink-0">LVL</p>
               <div className="flex items-center gap-2 overflow-hidden">
-                <p className="text-[10px] md:text-xs font-bold text-white/80 truncate">{profile?.displayName}</p>
+                <p className="text-[10px] md:text-xs font-bold text-white/80 truncate">{profile?.displayName || 'مستكشف'}</p>
                 <button onClick={() => setActiveOverlay('edit-name')} className="text-white/30 hover:text-goldenrod transition-colors shrink-0">
                   <Edit2 className="w-3 h-3 md:w-4 md:h-4" />
                 </button>
               </div>
             </div>
-            <div className="w-24 md:w-48 h-1.5 md:h-2.5 bg-white/5 rounded-full border border-white/10 overflow-hidden">
+            <div className="w-24 md:w-40 h-1.5 md:h-2 bg-white/5 rounded-full border border-white/10 overflow-hidden">
               <div 
-                className="h-full bg-gradient-to-r from-goldenrod via-vermillion to-goldenrod transition-all duration-1000 shadow-[0_0_15px_rgba(230,172,0,0.5)]"
+                className="h-full bg-gradient-to-r from-goldenrod via-vermillion to-goldenrod transition-all duration-1000 shadow-[0_0_10px_rgba(230,172,0,0.5)]"
                 style={{ width: `${xpProgress}%` }}
               />
             </div>
+            <p className="text-[8px] md:text-[10px] text-white/30 font-bold text-right">{xpProgress}/100 XP</p>
           </div>
         </div>
       </div>
@@ -515,7 +502,10 @@ export default function Home() {
                       <p className="text-base md:text-xl text-muted-foreground font-bold line-clamp-1">{section.title}</p>
                     </div>
                     <Button 
-                      onClick={() => handleStartClick(section)} 
+                      onClick={() => {
+                        setSelectedSection(section);
+                        setActiveView('practice');
+                      }} 
                       className="w-full sm:w-auto h-16 md:h-24 px-8 md:px-12 rounded-2xl md:rounded-[35px] text-xl md:text-3xl font-black bg-goldenrod text-midnight hover:scale-105 transition-all shadow-xl gold-glow"
                     >
                       <PlayCircle className="ml-2 w-6 h-6 md:w-10 md:h-10" /> ابدأ 🚀

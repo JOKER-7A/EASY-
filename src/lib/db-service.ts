@@ -76,19 +76,16 @@ export const saveAttemptToDb = async (userId: string | undefined, attempt: {
       userId: userId || 'anonymous',
       createdAt: serverTimestamp(),
     };
-    const docRef = await addDoc(collection(db, ATTEMPTS_COLLECTION), data);
+    await addDoc(collection(db, ATTEMPTS_COLLECTION), data);
     
     if (userId) {
-      await updateUserXP(userId, attempt.correctCount, attempt.totalQuestions);
+      await updateUserXP(userId, attempt.correctCount);
     }
-    
-    return docRef;
   } catch (error) {
     console.error("Error saving attempt:", error);
   }
 };
 
-// --- Level System (LV) ---
 export const getUserProfile = async (userId: string, email?: string, displayName?: string) => {
   const userRef = doc(db, USER_PROFILES, userId);
   const userSnap = await getDoc(userRef);
@@ -96,53 +93,43 @@ export const getUserProfile = async (userId: string, email?: string, displayName
   if (userSnap.exists()) {
     const data = userSnap.data();
     if (email && !data.email) await updateDoc(userRef, { email });
-    if (displayName && !data.displayName) await updateDoc(userRef, { displayName });
-    return data;
+    // Don't overwrite displayName if it exists
+    return { id: userSnap.id, ...data };
   } else {
     const initialProfile = {
       level: 1,
       xp: 0,
-      totalSolved: 0,
       totalCorrect: 0,
       favorites: [],
-      displayName: displayName || 'مستكشف جديد',
+      displayName: displayName || '',
       email: email || '',
+      createdAt: serverTimestamp(),
       lastActive: serverTimestamp()
     };
     await setDoc(userRef, initialProfile);
-    return initialProfile;
+    return { id: userId, ...initialProfile };
   }
 };
 
 export const isDisplayNameTaken = async (name: string, currentUserId: string): Promise<boolean> => {
   const q = query(collection(db, USER_PROFILES), where("displayName", "==", name));
   const querySnapshot = await getDocs(q);
-  // Check if any other user has this name
   return querySnapshot.docs.some(doc => doc.id !== currentUserId);
 };
 
-export const updateUserXP = async (userId: string, correct: number, total: number) => {
+export const updateUserXP = async (userId: string, correct: number) => {
   const userRef = doc(db, USER_PROFILES, userId);
-  const xpEarned = (correct * 25) + (total * 5); 
-  
   const userSnap = await getDoc(userRef);
   if (!userSnap.exists()) return;
   
   const data = userSnap.data();
-  let newXp = (data.xp || 0) + xpEarned;
-  let newLevel = data.level || 1;
-  
-  let xpRequired = newLevel * 500;
-  while (newXp >= xpRequired) {
-    newXp -= xpRequired;
-    newLevel += 1;
-    xpRequired = newLevel * 500;
-  }
+  // New Logic: 1 Correct = 1 XP. 100 XP = 1 Level.
+  const currentTotalXp = (data.xp || 0) + correct;
+  const newLevel = Math.floor(currentTotalXp / 100) + 1;
   
   await updateDoc(userRef, {
-    xp: newXp,
+    xp: currentTotalXp,
     level: newLevel,
-    totalSolved: increment(total),
     totalCorrect: increment(correct),
     lastActive: serverTimestamp()
   });
@@ -166,7 +153,6 @@ export const updateUserProfileName = async (userId: string, newName: string) => 
   return await updateDoc(userRef, { displayName: newName });
 };
 
-// --- Favorites ---
 export const toggleFavoriteInDb = async (userId: string, question: any) => {
   const userRef = doc(db, USER_PROFILES, userId);
   const userSnap = await getDoc(userRef);
@@ -188,8 +174,7 @@ export const toggleFavoriteInDb = async (userId: string, question: any) => {
   }
 };
 
-// --- Error Logs ---
-export const saveErrorLogToDb = async (userId: string, question: Question) => {
+export const saveErrorLogToDb = async (userId: string, question: Question, sectionTitle: string) => {
   const errorId = `${userId}_${question.id}`;
   const errorRef = doc(db, ERROR_LOGS, errorId);
   
@@ -198,7 +183,10 @@ export const saveErrorLogToDb = async (userId: string, question: Question) => {
     await setDoc(errorRef, {
       userId,
       questionId: question.id,
-      questionData: question,
+      questionData: {
+        ...question,
+        sectionTitle
+      },
       count: 1,
       lastOccurred: serverTimestamp()
     });
@@ -217,20 +205,21 @@ export const getErrorLogs = async (userId: string) => {
       where("userId", "==", userId)
     );
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => doc.data()).sort((a, b) => (b.count || 0) - (a.count || 0));
+    return querySnapshot.docs.map(doc => doc.data()).sort((a, b) => (b.lastOccurred?.seconds || 0) - (a.lastOccurred?.seconds || 0));
   } catch (error) {
     console.error("Error fetching logs:", error);
     return [];
   }
 };
 
-// --- Leaderboard ---
 export const getLeaderboard = async () => {
   try {
+    // Correct sorting: Highest Level first, then highest XP
     const q = query(
       collection(db, USER_PROFILES), 
       orderBy("level", "desc"), 
-      limit(20)
+      orderBy("xp", "desc"),
+      limit(50)
     );
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({
@@ -238,10 +227,14 @@ export const getLeaderboard = async () => {
       ...doc.data()
     }));
   } catch (error) {
+    console.error("Error fetching leaderboard with index:", error);
     const snapshot = await getDocs(collection(db, USER_PROFILES));
     return snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
-    })).sort((a: any, b: any) => (b.level || 0) - (a.level || 0)).slice(0, 20);
+    })).sort((a: any, b: any) => {
+      if ((b.level || 0) !== (a.level || 0)) return (b.level || 0) - (a.level || 0);
+      return (b.xp || 0) - (a.xp || 0);
+    }).slice(0, 50);
   }
 };

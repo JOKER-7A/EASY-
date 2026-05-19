@@ -19,6 +19,8 @@ import {
   Play,
   XCircle,
   Moon,
+  Sparkles,
+  Flower
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -75,6 +77,7 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
     if (phase !== 'practicing' || !section.questions[currentQuestionIndex]) return [];
     const q = section.questions[currentQuestionIndex];
     if (q.type !== 'reading' || !q.passageTitle) return [q];
+    // Show all questions associated with this passage together
     return section.questions.filter(item => item.passageTitle === q.passageTitle);
   }, [section.questions, currentQuestionIndex, phase]);
 
@@ -93,7 +96,7 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
       } else {
         errors.push(q);
         if (auth.currentUser) {
-          saveErrorLogToDb(auth.currentUser.uid, q);
+          saveErrorLogToDb(auth.currentUser.uid, q, section.title);
         }
       }
     });
@@ -160,6 +163,47 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
     }
   };
 
+  const getCelebrationContent = (percentage: number) => {
+    if (percentage === 100) return {
+      title: "أنت أسطورة EASY 🔥",
+      phrase: "أداء أسطوري! لقد اكتسحت الاختبار 🌹",
+      icon: <div className="relative">
+              <PartyPopper className="w-24 h-24 md:w-40 md:h-40 text-goldenrod" />
+              <div className="absolute -top-4 -right-4 animate-bounce bg-white p-2 rounded-full border-2 border-goldenrod">
+                <Flower className="w-8 h-8 text-goldenrod" />
+              </div>
+            </div>,
+      color: "text-goldenrod"
+    };
+    if (percentage >= 99) return {
+      title: "اقتربت جداً 😄",
+      phrase: "سحقاً لواحد بالمئة! أنت رائع فعلاً ✨",
+      icon: <Sparkles className="w-24 h-24 md:w-40 md:h-40 text-goldenrod" />,
+      color: "text-goldenrod"
+    };
+    if (percentage >= 98) return {
+      title: "لقد اقتربت جداً 🔥",
+      phrase: "مستوى ناري، خطوة واحدة نحو المثالية!",
+      icon: <Trophy className="w-24 h-24 md:w-40 md:h-40 text-goldenrod" />,
+      color: "text-goldenrod"
+    };
+    if (percentage >= 80) {
+      const phrases = ["أداء ممتاز 🔥", "مستواك يتطور بسرعة 🚀", "استمر يا بطل 💪"];
+      return {
+        title: phrases[Math.floor(Math.random() * phrases.length)],
+        phrase: "مستوى رائع جداً، استمر في التقدم",
+        icon: <Trophy className="w-24 h-24 md:w-40 md:h-40 text-goldenrod" />,
+        color: "text-white"
+      };
+    }
+    return {
+      title: "شد حيلك شوية 💙",
+      phrase: "لا بأس، التدريب المستمر يوصلك للقمة",
+      icon: <RotateCcw className="w-24 h-24 md:w-40 md:h-40 text-white/50" />,
+      color: "text-white/80"
+    };
+  };
+
   if (phase === 'intro') {
     return (
       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-midnight/98 backdrop-blur-3xl p-6">
@@ -224,16 +268,18 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
     const durationInSeconds = Math.floor((Date.now() - (startTime || 0)) / 1000);
     const mins = Math.floor(durationInSeconds / 60);
     const secs = durationInSeconds % 60;
+    const celebration = getCelebrationContent(percentage);
 
     return (
       <div className="max-w-6xl mx-auto space-y-10 md:space-y-16 py-10 md:py-20 px-4 md:px-6 text-right animate-in fade-in duration-700" dir="rtl">
         <div className="text-center space-y-6 md:space-y-10">
-          <div className="inline-block p-8 md:p-14 rounded-full bg-goldenrod/10 border-4 md:border-8 border-goldenrod/30 shadow-[0_0_100px_rgba(230,172,0,0.3)] mb-4">
-            {percentage >= 90 ? <PartyPopper className="w-24 h-24 md:w-40 md:h-40 text-goldenrod" /> : <Trophy className="w-24 h-24 md:w-40 md:h-40 text-goldenrod" />}
+          <div className="inline-block p-8 md:p-14 rounded-full bg-goldenrod/10 border-4 md:border-8 border-goldenrod/30 shadow-[0_0_100px_rgba(230,172,0,0.3)] mb-4 animate-bounce">
+            {celebration.icon}
           </div>
-          <h1 className="text-5xl md:text-[8rem] font-black text-white tracking-tighter leading-tight">
-            {percentage >= 90 ? "أداء أسطوري! 🔥" : "استمر، أنت تبدع! 🚀"}
+          <h1 className={cn("text-5xl md:text-[8rem] font-black tracking-tighter leading-tight", celebration.color)}>
+            {celebration.title}
           </h1>
+          <p className="text-xl md:text-3xl font-bold text-white/60">{celebration.phrase}</p>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
@@ -259,8 +305,10 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
               {errors.map((q, idx) => (
                 <Card key={idx} className="p-8 md:p-12 glass border-vermillion/30 rounded-3xl md:rounded-[60px] space-y-6 md:space-y-8">
                   <div className="flex justify-between gap-4">
-                    <h3 className="text-2xl md:text-4xl font-black leading-tight flex-1">{q.question}</h3>
-                    <Badge className="bg-vermillion/20 text-vermillion h-10 px-4 rounded-xl text-lg hidden sm:flex">سؤال {idx + 1}</Badge>
+                    <div className="space-y-2 flex-1">
+                      <Badge className="bg-white/5 text-white/40 mb-2">سؤال {idx + 1}</Badge>
+                      <h3 className="text-2xl md:text-4xl font-black leading-tight">{q.question}</h3>
+                    </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                     <div className="p-6 bg-vermillion/10 rounded-2xl md:rounded-[35px] border border-vermillion/20">
@@ -286,6 +334,10 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
             الخروج
           </button>
         </div>
+        
+        <footer className="text-center py-10 opacity-30">
+          <p className="text-xl font-black">A/K SALAMAH ❤️</p>
+        </footer>
       </div>
     );
   }
