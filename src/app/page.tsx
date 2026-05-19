@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { sections as staticSections, Section, Question } from '@/lib/practice-data';
-import { getSectionsFromDb, getUserProfile, getLeaderboard, getErrorLogs } from '@/lib/db-service';
+import { getSectionsFromDb, getUserProfile, getLeaderboard, getErrorLogs, updateUserProfileName, isDisplayNameTaken } from '@/lib/db-service';
 import PracticeSession from '@/components/PracticeSession';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,6 +20,8 @@ import {
   LogOut,
   X,
   User as UserIcon,
+  Edit2,
+  Save,
 } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { 
@@ -32,8 +34,15 @@ import {
 } from 'firebase/auth';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
-type OverlayType = 'favorites' | 'errors' | 'leaderboard' | null;
+type OverlayType = 'favorites' | 'errors' | 'leaderboard' | 'edit-name' | null;
 
 export default function Home() {
   const [mounted, setMounted] = useState(false);
@@ -50,6 +59,8 @@ export default function Home() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [newDisplayName, setNewDisplayName] = useState('');
+  const [isUpdatingName, setIsUpdatingName] = useState(false);
   const [activeOverlay, setActiveOverlay] = useState<OverlayType>(null);
   const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
   const [errorLogsData, setErrorLogsData] = useState<any[]>([]);
@@ -62,6 +73,7 @@ export default function Home() {
       if (u) {
         const p = await getUserProfile(u.uid, u.email || '', u.displayName || '');
         setProfile(p);
+        setNewDisplayName(p.displayName || '');
       } else {
         setProfile(null);
       }
@@ -119,6 +131,12 @@ export default function Home() {
           toast({ title: "الاسم قصير جداً", variant: "destructive" });
           return;
         }
+        // Check if name is taken
+        const taken = await isDisplayNameTaken(displayName, "new");
+        if (taken) {
+          toast({ title: "هذا الاسم مستخدم بالفعل، اختر اسماً آخر", variant: "destructive" });
+          return;
+        }
         const cred = await createUserWithEmailAndPassword(auth, email, password);
         await updateProfile(cred.user, { displayName });
         await getUserProfile(cred.user.uid, email, displayName);
@@ -126,6 +144,37 @@ export default function Home() {
       }
     } catch (error: any) {
       toast({ title: "حدث خطأ", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleUpdateName = async () => {
+    if (!user || !newDisplayName.trim()) return;
+    if (newDisplayName.length < 3) {
+      toast({ title: "الاسم قصير جداً", variant: "destructive" });
+      return;
+    }
+    if (newDisplayName === profile.displayName) {
+      setActiveOverlay(null);
+      return;
+    }
+
+    setIsUpdatingName(true);
+    try {
+      const taken = await isDisplayNameTaken(newDisplayName, user.uid);
+      if (taken) {
+        toast({ title: "هذا الاسم مستخدم بالفعل", variant: "destructive" });
+        setIsUpdatingName(false);
+        return;
+      }
+      await updateUserProfileName(user.uid, newDisplayName);
+      await updateProfile(user, { displayName: newDisplayName });
+      await refreshProfile();
+      setActiveOverlay(null);
+      toast({ title: "تم تحديث الاسم بنجاح ✅" });
+    } catch (error: any) {
+      toast({ title: "فشل تحديث الاسم", variant: "destructive" });
+    } finally {
+      setIsUpdatingName(false);
     }
   };
 
@@ -302,6 +351,30 @@ export default function Home() {
           )}
         </div>
       );
+    } else if (activeOverlay === 'edit-name') {
+      title = "تعديل الاسم";
+      icon = <Edit2 className="w-8 h-8 md:w-10 md:h-10 text-goldenrod" />;
+      content = (
+        <div className="space-y-8 py-10">
+          <div className="space-y-4">
+            <label className="text-white font-black text-xl">الاسم الجديد</label>
+            <Input 
+              placeholder="أدخل اسمك الجديد..." 
+              value={newDisplayName}
+              onChange={(e) => setNewDisplayName(e.target.value)}
+              className="h-16 rounded-2xl bg-white/5 border-white/10 text-white text-2xl pr-6 focus:border-goldenrod/50 transition-all"
+            />
+            <p className="text-white/40 font-bold text-sm">سيظهر هذا الاسم للجميع في لوحة الصدارة.</p>
+          </div>
+          <Button 
+            onClick={handleUpdateName} 
+            disabled={isUpdatingName}
+            className="w-full h-20 rounded-3xl bg-goldenrod text-midnight font-black text-2xl gold-glow hover:scale-105 transition-all"
+          >
+            {isUpdatingName ? <Loader2 className="animate-spin" /> : <><Save className="ml-2" /> حفظ الاسم الجديد</>}
+          </Button>
+        </div>
+      );
     }
 
     return (
@@ -349,13 +422,18 @@ export default function Home() {
       <div className="fixed top-4 left-4 md:top-8 md:left-8 z-[100] animate-in slide-in-from-left-10 duration-700">
         <div className="glass p-2 pr-4 md:p-4 md:pr-12 rounded-full border-goldenrod/30 flex items-center gap-3 md:gap-6 gold-glow relative overflow-hidden group">
           <div className="absolute inset-0 bg-gradient-to-r from-goldenrod/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-          <div className="w-10 h-10 md:w-16 md:h-16 rounded-full bg-goldenrod text-midnight flex items-center justify-center font-black text-lg md:text-2xl shadow-xl z-10">
+          <div className="w-10 h-10 md:w-16 md:h-16 rounded-full bg-goldenrod text-midnight flex items-center justify-center font-black text-lg md:text-2xl shadow-xl z-10 shrink-0">
             {profile?.level || 1}
           </div>
-          <div className="space-y-1 md:space-y-2 z-10 hidden sm:block">
-            <div className="flex justify-between items-end">
-              <p className="text-[10px] md:text-xs font-black text-goldenrod/80 uppercase tracking-widest">LVL</p>
-              <p className="text-[10px] font-bold text-white/50">{profile?.displayName}</p>
+          <div className="space-y-1 md:space-y-2 z-10 flex flex-col min-w-0">
+            <div className="flex justify-between items-end gap-2">
+              <p className="text-[10px] md:text-xs font-black text-goldenrod/80 uppercase tracking-widest shrink-0">LVL</p>
+              <div className="flex items-center gap-2 overflow-hidden">
+                <p className="text-[10px] md:text-xs font-bold text-white/80 truncate">{profile?.displayName}</p>
+                <button onClick={() => setActiveOverlay('edit-name')} className="text-white/30 hover:text-goldenrod transition-colors shrink-0">
+                  <Edit2 className="w-3 h-3 md:w-4 md:h-4" />
+                </button>
+              </div>
             </div>
             <div className="w-24 md:w-48 h-1.5 md:h-2.5 bg-white/5 rounded-full border border-white/10 overflow-hidden">
               <div 

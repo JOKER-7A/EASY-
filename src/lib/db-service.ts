@@ -95,7 +95,6 @@ export const getUserProfile = async (userId: string, email?: string, displayName
   
   if (userSnap.exists()) {
     const data = userSnap.data();
-    // Update email or display name if missing but provided
     if (email && !data.email) await updateDoc(userRef, { email });
     if (displayName && !data.displayName) await updateDoc(userRef, { displayName });
     return data;
@@ -113,6 +112,13 @@ export const getUserProfile = async (userId: string, email?: string, displayName
     await setDoc(userRef, initialProfile);
     return initialProfile;
   }
+};
+
+export const isDisplayNameTaken = async (name: string, currentUserId: string): Promise<boolean> => {
+  const q = query(collection(db, USER_PROFILES), where("displayName", "==", name));
+  const querySnapshot = await getDocs(q);
+  // Check if any other user has this name
+  return querySnapshot.docs.some(doc => doc.id !== currentUserId);
 };
 
 export const updateUserXP = async (userId: string, correct: number, total: number) => {
