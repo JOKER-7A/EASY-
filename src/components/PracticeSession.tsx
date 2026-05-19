@@ -77,7 +77,6 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
     if (phase !== 'practicing' || !section.questions[currentQuestionIndex]) return [];
     const q = section.questions[currentQuestionIndex];
     if (q.type !== 'reading' || !q.passageTitle) return [q];
-    // Show all questions associated with this passage together
     return section.questions.filter(item => item.passageTitle === q.passageTitle);
   }, [section.questions, currentQuestionIndex, phase]);
 
@@ -336,7 +335,7 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
         </div>
         
         <footer className="text-center py-10 opacity-30">
-          <p className="text-xl font-black">A/K SALAMAH ❤️</p>
+          <p className="signature-text text-xl">DR.MAHMOUD ABD EL RAZEK ❤️</p>
         </footer>
       </div>
     );

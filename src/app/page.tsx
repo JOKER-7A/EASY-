@@ -529,8 +529,8 @@ export default function Home() {
             </Button>
           </div>
           <div className="pt-6 md:pt-10">
-            <p className="text-xl md:text-2xl font-headline font-black tracking-widest text-white/20">
-              A/K SALAMAH ❤️
+            <p className="signature-text text-xl md:text-2xl">
+              DR.MAHMOUD ABD EL RAZEK ❤️
             </p>
           </div>
         </footer>

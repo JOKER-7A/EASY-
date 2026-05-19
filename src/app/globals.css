@@ -52,13 +52,13 @@
   box-shadow: 0 0 30px rgba(255, 77, 51, 0.2);
 }
 
-/* Luxury Text Effects for EASY */
+/* Luxury Text Effects for EASY - Improved for clarity and depth */
 .text-luxury {
-  background: linear-gradient(135deg, #fff 0%, #e6ac00 50%, #ff4d33 100%);
+  background: linear-gradient(135deg, #ffffff 0%, #ffcf33 40%, #e6ac00 70%, #ff4d33 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 15px rgba(230, 172, 0, 0.4));
-  letter-spacing: -0.05em;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+  letter-spacing: -0.04em;
   position: relative;
 }
 
@@ -72,26 +72,37 @@
   position: absolute;
   top: 0;
   left: -100%;
-  width: 50%;
+  width: 60%;
   height: 100%;
   background: linear-gradient(
     to right,
     transparent,
-    rgba(255, 255, 255, 0.3),
+    rgba(255, 255, 255, 0.4),
     transparent
   );
-  transform: skewX(-25deg);
-  animation: shine 4s infinite;
+  transform: skewX(-20deg);
+  animation: shine 5s infinite;
 }
 
 @keyframes shine {
-  0% { left: -100%; }
-  20% { left: 100%; }
-  100% { left: 100%; }
+  0% { left: -120%; }
+  20% { left: 120%; }
+  100% { left: 120%; }
 }
 
 .text-glow-luxury {
-  text-shadow: 0 0 20px rgba(230, 172, 0, 0.5), 0 0 40px rgba(255, 77, 51, 0.2);
+  text-shadow: 0 0 15px rgba(230, 172, 0, 0.4), 0 0 30px rgba(255, 77, 51, 0.1);
+}
+
+/* Footer Signature Style */
+.signature-text {
+  @apply transition-all duration-500 cursor-default font-black tracking-[0.15em] opacity-30;
+  text-shadow: 0 0 10px transparent;
+}
+
+.signature-text:hover {
+  @apply opacity-100 text-goldenrod;
+  text-shadow: 0 0 15px rgba(230, 172, 0, 0.5);
 }
 
 @keyframes shake {
