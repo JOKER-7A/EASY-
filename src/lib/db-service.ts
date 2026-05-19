@@ -1,4 +1,3 @@
-
 import { db } from "./firebase";
 import { 
   collection, 
@@ -103,7 +102,7 @@ export const getUserProfile = async (userId: string) => {
       totalSolved: 0,
       totalCorrect: 0,
       favorites: [],
-      displayName: 'مستخدم جديد',
+      displayName: 'مستكشف جديد',
       lastActive: serverTimestamp()
     };
     await setDoc(userRef, initialProfile);
@@ -113,7 +112,7 @@ export const getUserProfile = async (userId: string) => {
 
 export const updateUserXP = async (userId: string, correct: number, total: number) => {
   const userRef = doc(db, USER_PROFILES, userId);
-  const xpEarned = (correct * 25) + (total * 5); // زيادة الـ XP بناءً على الأداء
+  const xpEarned = (correct * 25) + (total * 5); 
   
   const userSnap = await getDoc(userRef);
   if (!userSnap.exists()) return;
@@ -122,10 +121,12 @@ export const updateUserXP = async (userId: string, correct: number, total: numbe
   let newXp = (data.xp || 0) + xpEarned;
   let newLevel = data.level || 1;
   
-  const xpRequired = newLevel * 500; // تقليل المتطلبات لجعل التقدم أسرع قليلاً ومحفزاً
+  // خوارزمية المستويات: كل مستوى يحتاج 500 * رقم المستوى
+  let xpRequired = newLevel * 500;
   while (newXp >= xpRequired) {
     newXp -= xpRequired;
     newLevel += 1;
+    xpRequired = newLevel * 500;
   }
   
   await updateDoc(userRef, {
@@ -150,12 +151,12 @@ export const toggleFavoriteInDb = async (userId: string, question: any) => {
     await updateDoc(userRef, {
       favorites: arrayRemove(exists)
     });
-    return false;
+    return false; // تمت الإزالة
   } else {
     await updateDoc(userRef, {
       favorites: arrayUnion(question)
     });
-    return true;
+    return true; // تمت الإضافة
   }
 };
 
@@ -182,26 +183,39 @@ export const saveErrorLogToDb = async (userId: string, question: Question) => {
 };
 
 export const getErrorLogs = async (userId: string) => {
-  const q = query(
-    collection(db, ERROR_LOGS), 
-    where("userId", "==", userId), 
-    orderBy("lastOccurred", "desc")
-  );
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => doc.data());
+  try {
+    const q = query(
+      collection(db, ERROR_LOGS), 
+      where("userId", "==", userId)
+      // تم حذف orderBy مؤقتاً لتجنب خطأ الفهارس (Indexes) في البداية
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => doc.data()).sort((a, b) => (b.count || 0) - (a.count || 0));
+  } catch (error) {
+    console.error("Error fetching logs:", error);
+    return [];
+  }
 };
 
 // --- Leaderboard ---
 export const getLeaderboard = async () => {
-  const q = query(
-    collection(db, USER_PROFILES), 
-    orderBy("level", "desc"), 
-    orderBy("xp", "desc"), 
-    limit(20)
-  );
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  }));
+  try {
+    const q = query(
+      collection(db, USER_PROFILES), 
+      orderBy("level", "desc"), 
+      limit(20)
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+  } catch (error) {
+    // في حالة عدم وجود فهارس، نقوم بالفرز يدوياً
+    const snapshot = await getDocs(collection(db, USER_PROFILES));
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })).sort((a: any, b: any) => (b.level || 0) - (a.level || 0)).slice(0, 20);
+  }
 };

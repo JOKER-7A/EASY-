@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -14,16 +13,11 @@ import {
   Trophy, 
   RotateCcw, 
   PartyPopper,
-  Flame,
   BookOpen,
-  Moon,
   Clock,
   Zap,
   Play,
   XCircle,
-  CheckCircle2,
-  BrainCircuit,
-  ShieldCheck
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -205,7 +199,7 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
                 )}
               >
                 <div className={cn("w-28 h-28 rounded-full flex items-center justify-center mx-auto transition-transform group-hover:rotate-12", m.bg)}>
-                  <m.icon className="w-16 h-16" />
+                  {React.createElement(m.icon, { className: "w-16 h-16" })}
                 </div>
                 <div className="space-y-4">
                   <h3 className="text-5xl font-black text-white">{m.title}</h3>

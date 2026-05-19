@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -10,7 +9,6 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { 
-  Flame, 
   LayoutDashboard,
   Loader2,
   PlayCircle,
@@ -19,11 +17,8 @@ import {
   Trophy,
   Star,
   History,
-  User as UserIcon,
   LogOut,
   X,
-  CheckCircle2,
-  ArrowRight
 } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { 
@@ -121,7 +116,6 @@ export default function Home() {
       } else {
         const cred = await createUserWithEmailAndPassword(auth, email, password);
         await updateProfile(cred.user, { displayName });
-        // إنشاء ملف الشخص في Firestore فور التسجيل
         await getUserProfile(cred.user.uid);
         toast({ title: "تم إنشاء حسابك بنجاح ✅" });
       }
@@ -131,6 +125,7 @@ export default function Home() {
   };
 
   const openLeaderboard = async () => {
+    setLeaderboardData([]);
     setActiveOverlay('leaderboard');
     const data = await getLeaderboard();
     setLeaderboardData(data);
@@ -138,13 +133,15 @@ export default function Home() {
 
   const openErrorLogs = async () => {
     if (!user) return;
+    setErrorLogsData([]);
     setActiveOverlay('errors');
     const data = await getErrorLogs(user.uid);
     setErrorLogsData(data);
   };
 
   const openFavorites = async () => {
-    if (!profile) return;
+    if (!user) return;
+    await refreshProfile();
     setActiveOverlay('favorites');
   };
 
@@ -225,26 +222,32 @@ export default function Home() {
       icon = <Trophy className="w-10 h-10 text-goldenrod" />;
       content = (
         <div className="space-y-6">
-          {leaderboardData.map((p, idx) => (
-            <div key={p.id} className="flex items-center justify-between p-6 bg-white/5 rounded-3xl border border-white/10 hover:border-goldenrod/30 transition-all">
-              <div className="flex items-center gap-6">
-                <div className={cn(
-                  "w-12 h-12 rounded-full flex items-center justify-center font-black text-xl",
-                  idx === 0 ? "bg-goldenrod text-midnight gold-glow" : "bg-white/10 text-white"
-                )}>
-                  {idx + 1}
+          {leaderboardData.length === 0 ? (
+            <div className="flex justify-center py-10"><Loader2 className="w-10 h-10 animate-spin text-goldenrod" /></div>
+          ) : (
+            leaderboardData.map((p, idx) => (
+              <div key={p.id} className="flex items-center justify-between p-6 bg-white/5 rounded-3xl border border-white/10 hover:border-goldenrod/30 transition-all">
+                <div className="flex items-center gap-6">
+                  <div className={cn(
+                    "w-12 h-12 rounded-full flex items-center justify-center font-black text-xl",
+                    idx === 0 ? "bg-goldenrod text-midnight gold-glow" : 
+                    idx === 1 ? "bg-slate-300 text-midnight shadow-lg" :
+                    idx === 2 ? "bg-amber-600 text-white shadow-lg" : "bg-white/10 text-white"
+                  )}>
+                    {idx + 1}
+                  </div>
+                  <div>
+                    <h4 className="text-xl font-black text-white">{p.displayName || 'مستكشف'}</h4>
+                    <p className="text-sm text-goldenrod font-bold">المستوى {p.level}</p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-xl font-black text-white">{p.displayName || 'مستكشف'}</h4>
-                  <p className="text-sm text-goldenrod font-bold">المستوى {p.level}</p>
+                <div className="text-left">
+                  <p className="text-2xl font-black text-white">{Math.round(p.xp)} XP</p>
+                  <p className="text-xs text-muted-foreground">النقاط الحالية</p>
                 </div>
               </div>
-              <div className="text-left">
-                <p className="text-2xl font-black text-white">{p.xp + (p.level * 1000)} XP</p>
-                <p className="text-xs text-muted-foreground">إجمالي النقاط</p>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       );
     } else if (activeOverlay === 'errors') {
@@ -257,12 +260,24 @@ export default function Home() {
           ) : (
             errorLogsData.map((log, idx) => (
               <Card key={idx} className="p-8 glass border-vermillion/20 rounded-[40px] space-y-4">
-                <h4 className="text-2xl font-black leading-tight">{log.questionData.question}</h4>
+                <div className="flex justify-between items-start gap-4">
+                  <h4 className="text-2xl font-black leading-tight flex-1">{log.questionData.question}</h4>
+                  <Badge className="bg-vermillion/10 text-vermillion border-vermillion/20">{log.count} أخطاء</Badge>
+                </div>
                 <div className="p-4 bg-green-500/10 rounded-2xl border border-green-500/20">
                   <p className="text-sm text-green-500 font-bold mb-1">الإجابة الصحيحة:</p>
                   <p className="text-xl font-black">{log.questionData.correct}</p>
                 </div>
-                <p className="text-xs text-muted-foreground font-bold">تكرر الخطأ: {log.count} مرات</p>
+                <div className="grid grid-cols-2 gap-4">
+                  {log.questionData.options.map((opt: string, i: number) => (
+                    <div key={i} className={cn(
+                      "p-3 rounded-xl border text-sm font-bold",
+                      opt === log.questionData.correct ? "border-green-500/50 bg-green-500/5" : "border-white/5 bg-white/5 opacity-40"
+                    )}>
+                      {opt}
+                    </div>
+                  ))}
+                </div>
               </Card>
             ))
           )}
@@ -325,6 +340,8 @@ export default function Home() {
     );
   }
 
+  const xpProgress = ((profile?.xp || 0) / ((profile?.level || 1) * 500)) * 100;
+
   return (
     <main className="min-h-screen overflow-x-hidden relative bg-midnight text-white flex flex-col">
       {renderOverlay()}
@@ -335,17 +352,17 @@ export default function Home() {
         <div className="glass p-4 pr-12 rounded-full border-goldenrod/30 flex items-center gap-6 gold-glow relative overflow-hidden group">
           <div className="absolute inset-0 bg-gradient-to-r from-goldenrod/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
           <div className="w-16 h-16 rounded-full bg-goldenrod text-midnight flex items-center justify-center font-black text-2xl shadow-xl z-10">
-            LV.{profile?.level || 1}
+            {profile?.level || 1}
           </div>
           <div className="space-y-2 z-10">
             <p className="text-xs font-black text-goldenrod/80 uppercase tracking-widest">المستوى الحالي</p>
             <div className="w-48 h-2.5 bg-white/5 rounded-full border border-white/10 overflow-hidden">
               <div 
                 className="h-full bg-gradient-to-r from-goldenrod via-vermillion to-goldenrod transition-all duration-1000 shadow-[0_0_15px_rgba(230,172,0,0.5)]"
-                style={{ width: `${((profile?.xp || 0) / ((profile?.level || 1) * 500)) * 100}%` }}
+                style={{ width: `${xpProgress}%` }}
               />
             </div>
-            <p className="text-[10px] text-white/40 font-bold">{profile?.xp || 0} / {(profile?.level || 1) * 500} XP</p>
+            <p className="text-[10px] text-white/40 font-bold">{Math.round(profile?.xp || 0)} / {(profile?.level || 1) * 500} XP</p>
           </div>
         </div>
       </div>
@@ -404,7 +421,7 @@ export default function Home() {
             </div>
           ) : (
             <div className="grid lg:grid-cols-2 gap-10">
-              {filteredSections.map((section, idx) => (
+              {filteredSections.map((section) => (
                 <Card 
                   key={section.firebaseId || section.id} 
                   className="group relative bg-white/5 border-2 border-white/5 rounded-[50px] p-10 shadow-2xl overflow-hidden transition-all hover:border-goldenrod/50 hover:bg-white/[0.08] hover:scale-[1.01] duration-500 animate-in fade-in slide-in-from-bottom-10"
@@ -413,7 +430,7 @@ export default function Home() {
                   <div className="flex flex-col md:flex-row justify-between items-center gap-8">
                     <div className="space-y-3">
                       <div className="flex items-center gap-4">
-                        <span className="bg-goldenrod text-midnight px-4 py-1 rounded-2xl font-black text-lg">جديد</span>
+                        <span className="bg-goldenrod text-midnight px-4 py-1 rounded-2xl font-black text-lg">مفعل</span>
                         <h2 className="text-5xl font-black text-white group-hover:text-goldenrod transition-colors">
                            نموذج {section.id}
                         </h2>

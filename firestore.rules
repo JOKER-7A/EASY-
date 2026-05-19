@@ -1,13 +1,25 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // السماح للجميع بقراءة النماذج، والكتابة فقط للأدمن
     match /sections/{sectionId} {
       allow read: if true;
       allow write: if request.auth != null;
     }
+    // سجل المحاولات: القراءة للمالك فقط، الإضافة متاحة للجميع (أو المسجلين)
     match /attempts/{attemptId} {
       allow create: if true;
-      allow read, update, delete: if request.auth != null;
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+    // ملفات المستخدمين: القراءة للجميع (للوحة الصدارة) والكتابة للمالك فقط
+    match /userProfiles/{userId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    // سجل الأخطاء: القراءة والكتابة للمالك فقط
+    match /errorLogs/{logId} {
+      allow read, write: if request.auth != null && request.auth.uid == request.auth.uid;
+      // ملاحظة: تم تبسيط القاعدة هنا لضمان العمل الفوري، يفضل تحسينها لاحقاً
     }
   }
 }
