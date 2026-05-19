@@ -46,7 +46,6 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
   const [timeLeft, setTimeLeft] = useState(0); 
   const [startTime, setStartTime] = useState<number | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
-  const [showErrors, setShowErrors] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -86,7 +85,6 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
         correct++;
       } else {
         errors.push(q);
-        // Save to persistent error log if user is logged in
         if (auth.currentUser) {
           saveErrorLogToDb(auth.currentUser.uid, q);
         }
@@ -288,7 +286,6 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
       timeLeft < 20 && mode !== 'normal' && "animate-shake",
     )} dir="rtl">
       
-      {/* Header Sticky Bar */}
       <div className={cn(
         "flex justify-between items-center bg-midnight/90 p-10 rounded-[60px] border-2 border-white/5 backdrop-blur-3xl sticky top-8 z-50 shadow-2xl transition-all",
         timeLeft < 20 && mode !== 'normal' && "border-vermillion bg-vermillion/10"

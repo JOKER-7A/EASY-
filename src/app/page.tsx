@@ -19,11 +19,20 @@ import {
   Trophy,
   Star,
   History,
-  User as UserIcon
+  User as UserIcon,
+  LogOut
 } from 'lucide-react';
 import { auth } from '@/lib/firebase';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { 
+  onAuthStateChanged, 
+  User, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword,
+  signOut,
+  updateProfile
+} from 'firebase/auth';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Home() {
   const [mounted, setMounted] = useState(false);
@@ -35,6 +44,12 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<any>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const { toast } = useToast();
 
   useEffect(() => {
     setMounted(true);
@@ -44,6 +59,7 @@ export default function Home() {
         const p = await getUserProfile(u.uid);
         setProfile(p);
       }
+      setIsAuthLoading(false);
     });
 
     const fetchAllData = async () => {
@@ -79,7 +95,81 @@ export default function Home() {
     setFilteredSections(filtered);
   }, [searchQuery, allSections]);
 
-  if (!mounted) return <div className="min-h-screen bg-midnight" />;
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (authMode === 'login') {
+        await signInWithEmailAndPassword(auth, email, password);
+        toast({ title: "مرحباً بعودتك! 🚀" });
+      } else {
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        await updateProfile(cred.user, { displayName });
+        toast({ title: "تم إنشاء حسابك بنجاح ✅" });
+      }
+    } catch (error: any) {
+      toast({ title: "حدث خطأ", description: error.message, variant: "destructive" });
+    }
+  };
+
+  if (!mounted || isAuthLoading) return (
+    <div className="min-h-screen bg-midnight flex items-center justify-center">
+      <Loader2 className="w-20 h-20 text-goldenrod animate-spin" />
+    </div>
+  );
+
+  if (!user) {
+    return (
+      <main className="min-h-screen bg-midnight flex items-center justify-center p-6 relative overflow-hidden">
+        <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(230,172,0,0.1),transparent_70%)]" />
+        <Card className="w-full max-w-xl p-12 glass border-goldenrod/30 rounded-[60px] shadow-2xl relative z-10 animate-in fade-in zoom-in duration-500">
+          <div className="text-center mb-12">
+            <h1 className="text-7xl font-black text-white mb-4">EASY</h1>
+            <p className="text-2xl text-goldenrod font-bold">بوابة العبور نحو التميز 🎯</p>
+          </div>
+          
+          <form onSubmit={handleAuth} className="space-y-6">
+            {authMode === 'register' && (
+              <Input 
+                placeholder="الاسم الكامل" 
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                className="h-16 rounded-3xl bg-white/5 border-white/10 text-white text-xl pr-6"
+                required
+              />
+            )}
+            <Input 
+              type="email" 
+              placeholder="البريد الإلكتروني" 
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)}
+              className="h-16 rounded-3xl bg-white/5 border-white/10 text-white text-xl pr-6"
+              required
+            />
+            <Input 
+              type="password" 
+              placeholder="كلمة المرور" 
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)}
+              className="h-16 rounded-3xl bg-white/5 border-white/10 text-white text-xl pr-6"
+              required
+            />
+            <Button type="submit" className="w-full h-20 rounded-[30px] bg-goldenrod text-midnight font-black text-2xl gold-glow hover:scale-[1.02] transition-all border-b-8 border-goldenrod/50">
+              {authMode === 'login' ? "دخول 🚀" : "إنشاء حساب جديد ✨"}
+            </Button>
+          </form>
+
+          <div className="mt-8 text-center">
+            <button 
+              onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
+              className="text-white/60 hover:text-goldenrod font-bold text-lg transition-colors"
+            >
+              {authMode === 'login' ? "ليس لديك حساب؟ سجل الآن" : "لديك حساب بالفعل؟ سجل دخولك"}
+            </button>
+          </div>
+        </Card>
+      </main>
+    );
+  }
 
   const handleStartClick = (section: Section) => {
     setSelectedSection(section);
@@ -101,39 +191,30 @@ export default function Home() {
     <main className="min-h-screen overflow-x-hidden relative bg-midnight text-white flex flex-col">
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(230,172,0,0.15),transparent_60%)] pointer-events-none" />
       
-      <div className="relative z-10 container mx-auto px-6 py-10 max-w-7xl flex-1">
-        {/* User Stats Header */}
-        {user && profile && (
-          <div className="flex flex-wrap items-center justify-between gap-6 mb-12 p-6 glass rounded-[40px] border-goldenrod/20 animate-in fade-in slide-in-from-top-5 duration-700">
-            <div className="flex items-center gap-6">
-              <div className="w-20 h-20 rounded-full bg-goldenrod/20 flex items-center justify-center border-2 border-goldenrod/40 gold-glow">
-                <span className="text-3xl font-black text-goldenrod">LV.{profile.level}</span>
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-2xl font-black">{user.displayName || 'مبدع إيزي'}</h3>
-                <div className="w-64 h-3 bg-white/5 rounded-full overflow-hidden border border-white/10">
-                  <div 
-                    className="h-full bg-gradient-to-r from-goldenrod to-vermillion transition-all duration-1000 shadow-[0_0_10px_rgba(230,172,0,0.5)]" 
-                    style={{ width: `${(profile.xp / (profile.level * 1000)) * 100}%` }}
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground font-bold">{profile.xp} / {profile.level * 1000} XP</p>
-              </div>
-            </div>
-            <div className="flex gap-4">
-              <Button variant="ghost" className="rounded-2xl h-14 px-6 border border-white/5 hover:bg-goldenrod/10 hover:text-goldenrod text-lg font-black transition-all">
-                <Trophy className="ml-2 w-6 h-6" /> لوحة الصدارة
-              </Button>
-              <Button variant="ghost" className="rounded-2xl h-14 px-6 border border-white/5 hover:bg-vermillion/10 hover:text-vermillion text-lg font-black transition-all">
-                <History className="ml-2 w-6 h-6" /> سجل الأخطاء
-              </Button>
-            </div>
+      {/* XP & Level Bar - Top Left */}
+      <div className="fixed top-8 left-8 z-[100] animate-in slide-in-from-left-10 duration-700">
+        <div className="glass p-4 pr-12 rounded-full border-goldenrod/30 flex items-center gap-6 gold-glow relative overflow-hidden group">
+          <div className="absolute inset-0 bg-gradient-to-r from-goldenrod/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="w-16 h-16 rounded-full bg-goldenrod text-midnight flex items-center justify-center font-black text-2xl shadow-xl z-10">
+            LV.{profile?.level || 1}
           </div>
-        )}
+          <div className="space-y-2 z-10">
+            <p className="text-xs font-black text-goldenrod/80 uppercase tracking-widest">المستوى الحالي</p>
+            <div className="w-48 h-2.5 bg-white/5 rounded-full border border-white/10 overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-goldenrod via-vermillion to-goldenrod transition-all duration-1000 shadow-[0_0_15px_rgba(230,172,0,0.5)]"
+                style={{ width: `${((profile?.xp || 0) / ((profile?.level || 1) * 1000)) * 100}%` }}
+              />
+            </div>
+            <p className="text-[10px] text-white/40 font-bold">{profile?.xp || 0} / {(profile?.level || 1) * 1000} XP</p>
+          </div>
+        </div>
+      </div>
 
-        <header className="text-center mb-24 space-y-8">
+      <div className="relative z-10 container mx-auto px-6 py-10 max-w-7xl flex-1">
+        <header className="text-center mb-24 space-y-8 pt-20">
           <div className="inline-flex items-center gap-3 px-8 py-3 rounded-full glass border-goldenrod/30 text-goldenrod font-black text-lg mb-4 shadow-[0_0_30px_rgba(230,172,0,0.2)]">
-            <Zap className="w-5 h-5 fill-goldenrod animate-pulse" /> منصة EASY التدريبية 2.0 🔥
+            <Zap className="w-5 h-5 fill-goldenrod animate-pulse" /> منصة إيزي التعليمية 2.0 🔥
           </div>
           <h1 className="text-8xl md:text-[10rem] font-headline font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-goldenrod to-vermillion leading-none mb-4">
             EASY
@@ -142,15 +223,26 @@ export default function Home() {
             تعلّم بذكاء.. أهم شيء الفهم وليس الحفظ 💡
           </p>
 
-          {/* Search Bar */}
           <div className="max-w-2xl mx-auto pt-10 relative group">
             <Search className="absolute right-6 top-1/2 -translate-y-1/2 w-8 h-8 text-goldenrod/50 group-focus-within:text-goldenrod transition-colors z-10" />
             <Input 
-              placeholder="ابحث عن رقم النموذج أو عنوانه..."
+              placeholder="ابحث عن نموذج، عنوان، أو سؤال..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="h-20 w-full rounded-[30px] bg-white/5 border-2 border-white/10 pr-16 text-2xl font-bold focus:border-goldenrod/50 focus:bg-white/10 transition-all shadow-xl placeholder:text-white/20"
             />
+          </div>
+
+          <div className="flex flex-wrap justify-center gap-6 pt-10">
+            <Button className="h-16 px-10 rounded-3xl glass border-goldenrod/40 text-goldenrod font-black text-xl gold-glow hover:scale-110 transition-all">
+              <Star className="ml-2 w-6 h-6 fill-goldenrod" /> المفضلة
+            </Button>
+            <Button className="h-16 px-10 rounded-3xl glass border-vermillion/40 text-vermillion font-black text-xl vermillion-glow hover:scale-110 transition-all">
+              <History className="ml-2 w-6 h-6" /> سجل الأخطاء
+            </Button>
+            <Button className="h-16 px-10 rounded-3xl glass border-white/10 text-white font-black text-xl hover:scale-110 transition-all">
+              <Trophy className="ml-2 w-6 h-6" /> المتصدرين
+            </Button>
           </div>
         </header>
 
@@ -206,19 +298,20 @@ export default function Home() {
         </section>
 
         <footer className="text-center py-20 border-t border-white/5 space-y-8">
-          <div className="flex justify-center gap-8">
+          <div className="flex justify-center gap-12 items-center">
             <Button 
               variant="ghost" 
               onClick={() => window.location.href = '/admin'} 
               className="text-muted-foreground/30 hover:text-white transition-colors font-bold text-lg"
             >
-              <LayoutDashboard className="ml-2 w-6 h-6" /> لوحة التحكم
+              <LayoutDashboard className="ml-2 w-6 h-6" /> لوحة المشرف
             </Button>
             <Button 
               variant="ghost" 
-              className="text-muted-foreground/30 hover:text-goldenrod transition-colors font-bold text-lg"
+              onClick={() => signOut(auth)}
+              className="text-vermillion/30 hover:text-vermillion transition-colors font-bold text-lg"
             >
-              <Star className="ml-2 w-6 h-6" /> الأسئلة المفضلة
+              <LogOut className="ml-2 w-6 h-6" /> تسجيل الخروج
             </Button>
           </div>
           <div className="pt-10">

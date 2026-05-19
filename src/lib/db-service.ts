@@ -79,7 +79,6 @@ export const saveAttemptToDb = async (userId: string | undefined, attempt: {
     };
     const docRef = await addDoc(collection(db, ATTEMPTS_COLLECTION), data);
     
-    // Update XP and Level if user is logged in
     if (userId) {
       await updateUserXP(userId, attempt.correctCount, attempt.totalQuestions);
     }
@@ -98,7 +97,6 @@ export const getUserProfile = async (userId: string) => {
   if (userSnap.exists()) {
     return userSnap.data();
   } else {
-    // Initial profile
     const initialProfile = {
       level: 1,
       xp: 0,
@@ -114,7 +112,7 @@ export const getUserProfile = async (userId: string) => {
 
 export const updateUserXP = async (userId: string, correct: number, total: number) => {
   const userRef = doc(db, USER_PROFILES, userId);
-  const xpEarned = (correct * 10) + (total * 2); // 10 XP per correct, 2 XP per participation
+  const xpEarned = (correct * 10) + (total * 2);
   
   const userSnap = await getDoc(userRef);
   if (!userSnap.exists()) return;
@@ -123,7 +121,6 @@ export const updateUserXP = async (userId: string, correct: number, total: numbe
   let newXp = (data.xp || 0) + xpEarned;
   let newLevel = data.level || 1;
   
-  // Level up logic (Level * 100 XP required)
   const xpRequired = newLevel * 1000;
   if (newXp >= xpRequired) {
     newXp -= xpRequired;
