@@ -22,7 +22,8 @@ import {
   User as UserIcon,
   Edit2,
   Save,
-  CheckCircle2
+  CheckCircle2,
+  Sparkles
 } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { 
@@ -35,13 +36,6 @@ import {
 } from 'firebase/auth';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 
 type OverlayType = 'favorites' | 'errors' | 'leaderboard' | 'edit-name' | 'welcome-name' | null;
 
@@ -59,7 +53,6 @@ export default function Home() {
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
   const [newDisplayName, setNewDisplayName] = useState('');
   const [isUpdatingName, setIsUpdatingName] = useState(false);
   const [activeOverlay, setActiveOverlay] = useState<OverlayType>(null);
@@ -75,7 +68,6 @@ export default function Home() {
         const p = await getUserProfile(u.uid, u.email || '', u.displayName || '');
         setProfile(p);
         setNewDisplayName(p.displayName || '');
-        // Force user to pick a name if it's their first time
         if (!p.displayName) {
           setActiveOverlay('welcome-name');
         }
@@ -136,7 +128,6 @@ export default function Home() {
         toast({ title: "مرحباً بعودتك! 🚀" });
       } else {
         const cred = await createUserWithEmailAndPassword(auth, email, password);
-        // We will prompt for name in the welcome overlay
         await getUserProfile(cred.user.uid, email, '');
         toast({ title: "تم إنشاء حسابك بنجاح ✅" });
       }
@@ -204,9 +195,11 @@ export default function Home() {
       <main className="min-h-screen bg-midnight flex items-center justify-center p-4 relative overflow-hidden">
         <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(230,172,0,0.1),transparent_70%)]" />
         <Card className="w-full max-w-xl p-6 md:p-12 glass border-goldenrod/30 rounded-[30px] md:rounded-[60px] shadow-2xl relative z-10 animate-in fade-in zoom-in duration-500">
-          <div className="text-center mb-8 md:mb-12">
-            <h1 className="text-5xl md:text-7xl font-black text-white mb-2 md:mb-4 tracking-tighter">EASY</h1>
-            <p className="text-lg md:text-2xl text-goldenrod font-bold">بوابة العبور نحو التميز 🎯</p>
+          <div className="text-center mb-8 md:mb-12 group">
+            <h1 className="text-7xl md:text-9xl font-headline font-black text-luxury text-glow-luxury text-shine tracking-tighter mb-4 transition-transform group-hover:scale-105 duration-500">
+              EASY
+            </h1>
+            <p className="text-lg md:text-2xl text-goldenrod font-bold tracking-[0.2em] opacity-80">بوابة العبور نحو التميز 🎯</p>
           </div>
           
           <form onSubmit={handleAuth} className="space-y-4 md:space-y-6">
@@ -404,7 +397,6 @@ export default function Home() {
       {renderOverlay()}
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(230,172,0,0.15),transparent_60%)] pointer-events-none" />
       
-      {/* XP/LV BAR - TOP LEFT */}
       <div className="fixed top-4 left-4 md:top-8 md:left-8 z-[100] animate-in slide-in-from-left-10 duration-700">
         <div className="glass p-2 pr-4 md:p-4 md:pr-10 rounded-full border-goldenrod/30 flex items-center gap-3 md:gap-5 gold-glow relative overflow-hidden group">
           <div className="absolute inset-0 bg-gradient-to-r from-goldenrod/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -437,9 +429,11 @@ export default function Home() {
           <div className="inline-flex items-center gap-2 px-4 py-2 md:px-8 md:py-3 rounded-full glass border-goldenrod/30 text-goldenrod font-black text-sm md:text-lg mb-4 shadow-[0_0_30px_rgba(230,172,0,0.2)]">
             <Zap className="w-4 h-4 md:w-5 md:h-5 fill-goldenrod animate-pulse" /> منصة إيزي التعليمية 2.0
           </div>
-          <h1 className="text-6xl md:text-[10rem] font-headline font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-goldenrod to-vermillion leading-none mb-4">
-            EASY
-          </h1>
+          <div className="relative group cursor-default">
+            <h1 className="text-7xl md:text-[12rem] font-headline font-black text-luxury text-glow-luxury text-shine tracking-tighter leading-none mb-4 transition-transform group-hover:scale-105 duration-700">
+              EASY
+            </h1>
+          </div>
           <p className="text-xl md:text-4xl font-black text-white/80 leading-tight max-w-4xl mx-auto px-4">
             تعلّم بذكاء.. أهم شيء الفهم وليس الحفظ 💡
           </p>
