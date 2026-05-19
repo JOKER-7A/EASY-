@@ -92,6 +92,7 @@ export const getUserProfile = async (userId: string, email?: string, displayName
   
   if (userSnap.exists()) {
     const data = userSnap.data();
+    // Update email if it's missing or changed (for admin reference)
     if (email && data.email !== email) {
       await updateDoc(userRef, { email });
     }
@@ -233,6 +234,7 @@ export const getLeaderboard = async () => {
     }));
   } catch (error) {
     console.error("Error fetching leaderboard with index:", error);
+    // Fallback in case of missing index
     const snapshot = await getDocs(collection(db, USER_PROFILES));
     return snapshot.docs.map(doc => ({
       id: doc.id,

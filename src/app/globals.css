@@ -40,7 +40,7 @@
     --ring: 0 100% 50%;
   }
 
-  /* Theme: Purple OLED (Deals with higher contrast) */
+  /* Theme: Purple OLED */
   [data-theme='purple'] {
     --primary: 280 100% 60%;
     --accent: 300 100% 50%;
