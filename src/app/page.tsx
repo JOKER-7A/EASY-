@@ -271,7 +271,7 @@ export default function Home() {
 
     if (activeOverlay === 'leaderboard') {
       title = "نخبة EASY";
-      icon = <Trophy className="w-8 h-8 md:w-12 md:h-12 text-primary neon-text-purple" />;
+      icon = <Trophy className="w-8 h-8 md:w-12 md:h-12 text-primary" />;
       content = (
         <div className="space-y-4 md:space-y-6">
           {leaderboardData.length === 0 ? (
@@ -282,7 +282,7 @@ export default function Home() {
                 <div className="flex items-center gap-4 md:gap-8">
                   <div className={cn(
                     "w-12 h-12 md:w-16 md:h-16 rounded-2xl flex items-center justify-center font-black text-xl md:text-2xl shadow-xl",
-                    idx === 0 ? "bg-primary text-white shadow-primary/20" : 
+                    idx === 0 ? "bg-primary text-white" : 
                     idx === 1 ? "bg-white/20 text-white" :
                     idx === 2 ? "bg-white/10 text-white" : "bg-white/5 text-white/40"
                   )}>
@@ -294,7 +294,7 @@ export default function Home() {
                     </div>
                     <div>
                       <h4 className="text-xl md:text-2xl font-black text-white group-hover:text-primary transition-colors">{p.displayName || 'مستكشف'}</h4>
-                      <span className="text-[10px] text-primary font-black tracking-tighter uppercase">Level {p.level}</span>
+                      <span className="text-[10px] text-primary font-black uppercase">Level {p.level}</span>
                     </div>
                   </div>
                 </div>
@@ -362,7 +362,7 @@ export default function Home() {
       );
     } else if (activeOverlay === 'edit-name' || activeOverlay === 'welcome-name') {
       title = activeOverlay === 'welcome-name' ? "مرحباً في عالم EASY" : "تعديل الهوية الرقمية";
-      icon = <Sparkles className="w-8 h-8 md:w-12 md:h-12 text-primary neon-text-purple" />;
+      icon = <Sparkles className="w-8 h-8 md:w-12 md:h-12 text-primary" />;
       content = (
         <div className="space-y-10 py-10">
           <div className="space-y-6">
@@ -458,9 +458,10 @@ export default function Home() {
           </div>
           <button 
             onClick={() => setActiveOverlay('themes')}
-            className="absolute right-2 top-2 text-white/10 hover:text-primary transition-all active-press"
+            className="absolute left-2 top-2 text-white/40 hover:text-primary transition-all active-press"
+            title="تغيير الثيم"
           >
-            <Palette className="w-4 h-4" />
+            <Palette className="w-5 h-5" />
           </button>
         </div>
       </div>
@@ -471,9 +472,11 @@ export default function Home() {
             <Zap className="w-4 h-4 md:w-6 md:h-6 fill-primary" /> EASY PREP 3.0 OLED
           </div>
           
-          <h1 className="text-8xl md:text-[15rem] text-easy-premium text-shine leading-none mb-6">
-            EASY
-          </h1>
+          <div className="relative group">
+            <h1 className="text-8xl md:text-[15rem] text-easy-premium text-shine leading-none mb-6 text-center w-full">
+              EASY
+            </h1>
+          </div>
           
           <p className="text-xl md:text-4xl font-black text-white/60 leading-tight max-w-4xl mx-auto px-4">
             التحدي الحقيقي هو أن تتفوق على <span className="text-white">نفسك</span> كل يوم 💎
@@ -498,6 +501,9 @@ export default function Home() {
             </Button>
             <Button onClick={openLeaderboard} className="h-14 md:h-20 px-8 md:px-14 rounded-2xl md:rounded-[40px] glass border-white/10 text-white font-black text-sm md:text-2xl hover:scale-105 active-press transition-all">
               <Trophy className="ml-3 w-5 h-5 md:w-8 md:h-8" /> المتصدرين
+            </Button>
+            <Button onClick={() => setActiveOverlay('themes')} className="h-14 md:h-20 px-8 md:px-14 rounded-2xl md:rounded-[40px] glass border-primary/30 text-primary font-black text-sm md:text-2xl hover:scale-105 active-press transition-all">
+              <Palette className="ml-3 w-5 h-5 md:w-8 md:h-8" /> الألوان
             </Button>
           </div>
         </header>
@@ -532,7 +538,7 @@ export default function Home() {
                           🔥 القسم {section.id} 🔥
                         </span>
                       </div>
-                      <h2 className="text-3xl md:text-5xl font-black text-white group-hover:text-primary transition-colors leading-tight line-clamp-2">
+                      <h2 className="text-3xl md:text-4xl font-black text-white group-hover:text-primary transition-colors leading-tight line-clamp-2">
                         {section.title}
                       </h2>
                       <div className="flex items-center gap-4 text-white/30 font-bold">
@@ -574,7 +580,7 @@ export default function Home() {
             </Button>
           </div>
           <div className="pt-10">
-            <p className="signature-text text-2xl md:text-4xl">
+            <p className="signature-text text-2xl md:text-4xl tracking-widest uppercase font-black opacity-50">
               DR.MAHMOUD ABD EL RAZEK
             </p>
           </div>

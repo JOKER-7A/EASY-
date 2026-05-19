@@ -83,12 +83,14 @@
 
 .text-easy-premium {
   @apply font-black tracking-tighter text-center block w-full;
-  background: linear-gradient(180deg, #fff 0%, hsla(var(--primary), 1) 100%);
+  background: linear-gradient(180deg, #ffffff 0%, hsla(var(--primary), 1) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 30px hsla(var(--primary), 0.5));
+  filter: drop-shadow(0 0 15px hsla(var(--primary), 0.5));
   position: relative;
   transition: all 0.5s ease;
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
 .text-shine {
@@ -106,11 +108,11 @@
   background: linear-gradient(
     to right,
     transparent,
-    rgba(255, 255, 255, 0.3),
+    rgba(255, 255, 255, 0.4),
     transparent
   );
   transform: skewX(-25deg);
-  animation: shine 5s infinite;
+  animation: shine 4s infinite;
 }
 
 @keyframes shine {
