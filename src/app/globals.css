@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -42,11 +43,15 @@
 }
 
 .gold-glow {
-  box-shadow: 0 0 20px rgba(230, 172, 0, 0.3);
+  box-shadow: 0 0 30px rgba(230, 172, 0, 0.3);
 }
 
 .vermillion-glow {
-  box-shadow: 0 0 20px rgba(255, 77, 51, 0.3);
+  box-shadow: 0 0 30px rgba(255, 77, 51, 0.3);
+}
+
+.text-glow {
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
 }
 
 .pressure-glow {
@@ -70,11 +75,20 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
   @apply bg-midnight;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  @apply bg-goldenrod/30 rounded-full;
+  @apply bg-goldenrod/20 rounded-full hover:bg-goldenrod/40 transition-colors;
+}
+
+/* Animations */
+.hover-lift {
+  @apply transition-transform duration-300 hover:-translate-y-2;
+}
+
+.active-press {
+  @apply active:scale-95 transition-transform;
 }
