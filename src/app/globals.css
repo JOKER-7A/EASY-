@@ -4,26 +4,26 @@
 
 @layer base {
   :root {
-    --background: 30 20% 7%;
-    --foreground: 45 100% 98%;
-    --card: 30 20% 9%;
-    --card-foreground: 45 100% 98%;
-    --popover: 30 20% 9%;
-    --popover-foreground: 45 100% 98%;
-    --primary: 45 100% 45%;
-    --primary-foreground: 30 20% 7%;
-    --secondary: 30 20% 15%;
-    --secondary-foreground: 45 100% 98%;
-    --muted: 30 20% 15%;
-    --muted-foreground: 30 10% 70%;
-    --accent: 10 100% 60%;
-    --accent-foreground: 45 100% 98%;
+    --background: 0 0% 0%; /* Pure OLED Black */
+    --foreground: 210 40% 98%;
+    --card: 240 10% 4%;
+    --card-foreground: 210 40% 98%;
+    --popover: 240 10% 4%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 260 80% 60%; /* Neon Purple */
+    --primary-foreground: 210 40% 98%;
+    --secondary: 240 10% 10%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 240 10% 10%;
+    --muted-foreground: 240 5% 65%;
+    --accent: 190 90% 50%; /* Neon Cyan */
+    --accent-foreground: 240 10% 4%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 30 20% 20%;
-    --input: 30 20% 20%;
-    --ring: 45 100% 45%;
-    --radius: 1.5rem;
+    --destructive-foreground: 210 40% 98%;
+    --border: 240 10% 12%;
+    --input: 240 10% 12%;
+    --ring: 260 80% 60%;
+    --radius: 1.25rem;
   }
 }
 
@@ -37,29 +37,57 @@
     overflow-x: hidden;
     width: 100%;
     position: relative;
+    background-image: 
+      radial-gradient(circle at 50% -20%, rgba(120, 50, 255, 0.15), transparent 50%),
+      radial-gradient(circle at 0% 100%, rgba(0, 255, 255, 0.05), transparent 40%);
+    background-attachment: fixed;
   }
 }
 
 .glass {
-  @apply bg-midnight/80 backdrop-blur-xl border border-white/10 shadow-2xl;
+  @apply bg-white/5 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.8)];
 }
 
-.gold-glow {
-  box-shadow: 0 0 30px rgba(230, 172, 0, 0.2);
+.neon-border {
+  @apply border border-primary/30 relative overflow-hidden;
+  box-shadow: 0 0 15px rgba(120, 50, 255, 0.1);
 }
 
-.vermillion-glow {
-  box-shadow: 0 0 30px rgba(255, 77, 51, 0.2);
+.neon-border::after {
+  content: '';
+  @apply absolute inset-0 opacity-20 pointer-events-none;
+  background: linear-gradient(45deg, transparent, var(--primary), transparent);
 }
 
-/* Luxury Text Effects for EASY - Improved for clarity and depth */
-.text-luxury {
-  background: linear-gradient(135deg, #ffffff 0%, #ffcf33 40%, #e6ac00 70%, #ff4d33 100%);
+.neon-text-blue {
+  text-shadow: 0 0 10px rgba(0, 255, 255, 0.5), 0 0 20px rgba(0, 255, 255, 0.2);
+}
+
+.neon-text-purple {
+  text-shadow: 0 0 10px rgba(120, 50, 255, 0.5), 0 0 20px rgba(120, 50, 255, 0.2);
+}
+
+/* Luxury EASY Brand Header */
+.text-easy-premium {
+  @apply font-black tracking-tighter;
+  background: linear-gradient(180deg, #fff 0%, #a855f7 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
-  letter-spacing: -0.04em;
+  filter: drop-shadow(0 0 20px rgba(168, 85, 247, 0.4));
   position: relative;
+}
+
+.text-easy-premium::before {
+  content: attr(data-text);
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: -1;
+  filter: blur(15px);
+  background: linear-gradient(180deg, #a855f7, #06b6d4);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  opacity: 0.5;
 }
 
 .text-shine {
@@ -72,84 +100,55 @@
   position: absolute;
   top: 0;
   left: -100%;
-  width: 60%;
+  width: 50%;
   height: 100%;
   background: linear-gradient(
     to right,
     transparent,
-    rgba(255, 255, 255, 0.4),
+    rgba(255, 255, 255, 0.2),
     transparent
   );
-  transform: skewX(-20deg);
-  animation: shine 5s infinite;
+  transform: skewX(-25deg);
+  animation: shine 4s infinite;
 }
 
 @keyframes shine {
-  0% { left: -120%; }
-  20% { left: 120%; }
-  100% { left: 120%; }
+  0% { left: -150%; }
+  30% { left: 150%; }
+  100% { left: 150%; }
 }
 
-.text-glow-luxury {
-  text-shadow: 0 0 15px rgba(230, 172, 0, 0.4), 0 0 30px rgba(255, 77, 51, 0.1);
-}
-
-/* Footer Signature Style */
 .signature-text {
-  @apply transition-all duration-500 cursor-default font-black tracking-[0.15em] opacity-30;
-  text-shadow: 0 0 10px transparent;
+  @apply transition-all duration-500 cursor-default font-black tracking-[0.2em] opacity-40;
+  background: linear-gradient(90deg, #a855f7, #06b6d4);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .signature-text:hover {
-  @apply opacity-100 text-goldenrod;
-  text-shadow: 0 0 15px rgba(230, 172, 0, 0.5);
-}
-
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-4px); }
-  75% { transform: translateX(4px); }
-}
-
-.animate-shake {
-  animation: shake 0.2s ease-in-out infinite;
-}
-
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-  @apply bg-midnight;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  @apply bg-goldenrod/20 rounded-full;
-}
-
-.hover-lift {
-  @apply transition-transform duration-300 hover:-translate-y-1;
+  @apply opacity-100;
+  filter: drop-shadow(0 0 10px rgba(168, 85, 247, 0.8));
 }
 
 .active-press {
-  @apply active:scale-95 transition-transform;
+  @apply active:scale-95 transition-transform duration-100;
 }
 
-@media (max-width: 768px) {
-  h1 { @apply tracking-tight; }
-  .glass { @apply backdrop-blur-lg; }
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  @apply bg-black;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-primary/20 rounded-full hover:bg-primary/40 transition-colors;
 }
 
-/* Animations for Celebration */
-@keyframes confetti-slow {
-  0% { transform: translate3d(0, 0, 0) rotateX(0) rotateY(0); }
-  100% { transform: translate3d(25px, 105vh, 0) rotateX(360deg) rotateY(180deg); }
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
 }
 
-@keyframes confetti-medium {
-  0% { transform: translate3d(0, 0, 0) rotateX(0) rotateY(0); }
-  100% { transform: translate3d(100px, 105vh, 0) rotateX(100deg) rotateY(360deg); }
-}
-
-@keyframes confetti-fast {
-  0% { transform: translate3d(0, 0, 0) rotateX(0) rotateY(0); }
-  100% { transform: translate3d(-50px, 105vh, 0) rotateX(10deg) rotateY(250deg); }
+.animate-float {
+  animation: float 4s ease-in-out infinite;
 }

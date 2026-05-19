@@ -92,9 +92,11 @@ export const getUserProfile = async (userId: string, email?: string, displayName
   
   if (userSnap.exists()) {
     const data = userSnap.data();
-    if (email && !data.email) await updateDoc(userRef, { email });
-    // Don't overwrite displayName if it exists
-    return { id: userSnap.id, ...data };
+    // Ensure email is always up to date for Admin visibility
+    if (email && data.email !== email) {
+      await updateDoc(userRef, { email });
+    }
+    return { id: userSnap.id, ...data, email: email || data.email };
   } else {
     const initialProfile = {
       level: 1,
@@ -102,7 +104,7 @@ export const getUserProfile = async (userId: string, email?: string, displayName
       totalCorrect: 0,
       favorites: [],
       displayName: displayName || '',
-      email: email || '',
+      email: email || '', // Store email for Admin
       createdAt: serverTimestamp(),
       lastActive: serverTimestamp()
     };
@@ -123,7 +125,6 @@ export const updateUserXP = async (userId: string, correct: number) => {
   if (!userSnap.exists()) return;
   
   const data = userSnap.data();
-  // New Logic: 1 Correct = 1 XP. 100 XP = 1 Level.
   const currentTotalXp = (data.xp || 0) + correct;
   const newLevel = Math.floor(currentTotalXp / 100) + 1;
   
@@ -214,7 +215,6 @@ export const getErrorLogs = async (userId: string) => {
 
 export const getLeaderboard = async () => {
   try {
-    // Correct sorting: Highest Level first, then highest XP
     const q = query(
       collection(db, USER_PROFILES), 
       orderBy("level", "desc"), 
