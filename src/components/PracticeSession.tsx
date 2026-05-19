@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { saveAttemptToDb, toggleFavoriteInDb, saveErrorLogToDb } from '@/lib/db-service';
+import { saveAttemptToDb, toggleFavoriteInDb, saveErrorLogToDb, getUserProfile } from '@/lib/db-service';
 import { auth } from '@/lib/firebase';
 
 type Phase = 'intro' | 'mode-selection' | 'practicing' | 'finished';
@@ -54,6 +54,19 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
       return () => clearTimeout(timer);
     }
   }, [phase]);
+
+  // جلب المفضلات عند البداية
+  useEffect(() => {
+    const fetchFavs = async () => {
+      if (auth.currentUser) {
+        const profile = await getUserProfile(auth.currentUser.uid);
+        if (profile?.favorites) {
+          setFavorites(profile.favorites.map((f: any) => f.id));
+        }
+      }
+    };
+    fetchFavs();
+  }, []);
 
   const selectMode = (selectedMode: PracticeMode) => {
     setMode(selectedMode);
@@ -94,15 +107,17 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
     const score = Math.round((correct / section.questions.length) * 100);
     const durationInSeconds = Math.floor((Date.now() - startTime) / 1000);
     
-    await saveAttemptToDb(auth.currentUser?.uid, {
-      sectionId: section.id,
-      mode,
-      score,
-      correctCount: correct,
-      totalQuestions: section.questions.length,
-      durationSeconds: durationInSeconds,
-      answers: userAnswers
-    });
+    if (auth.currentUser) {
+      await saveAttemptToDb(auth.currentUser.uid, {
+        sectionId: section.id,
+        mode,
+        score,
+        correctCount: correct,
+        totalQuestions: section.questions.length,
+        durationSeconds: durationInSeconds,
+        answers: userAnswers
+      });
+    }
   }, [phase, section, userAnswers, mode, startTime]);
 
   const handleNext = useCallback(() => {
@@ -157,7 +172,7 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
         <div className="text-center space-y-12 animate-in zoom-in duration-1000">
           <div className="relative">
             <div className="absolute -inset-10 bg-goldenrod/20 blur-[100px] rounded-full animate-pulse" />
-            <h2 className="text-6xl md:text-9xl font-black text-white drop-shadow-[0_0_40px_rgba(230,172,0,0.6)] leading-tight">
+            <h2 className="text-6xl md:text-9xl font-black text-white drop-shadow-[0_0_40px_rgba(230,172,0,0.6)] leading-tight tracking-tighter">
               أهم شيء الفهم <br/> وليس الحفظ 💡
             </h2>
           </div>
@@ -171,8 +186,8 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
       <div className="min-h-screen flex items-center justify-center p-6 bg-midnight animate-in fade-in duration-1000">
         <div className="max-w-6xl w-full space-y-20">
           <div className="text-center space-y-6">
-            <h1 className="text-7xl md:text-9xl font-black text-white text-glow">اختر التحدي 🎮</h1>
-            <p className="text-2xl text-muted-foreground font-black opacity-60 tracking-widest">حدد مسارك نحو التميز</p>
+            <h1 className="text-7xl md:text-9xl font-black text-white text-glow tracking-tighter">اختر التحدي 🎮</h1>
+            <p className="text-2xl text-muted-foreground font-black opacity-60 tracking-widest uppercase">حدد مسارك نحو التميز</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-10">
@@ -212,6 +227,9 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
       else errors.push(q);
     });
     const percentage = Math.round((correct / section.questions.length) * 100);
+    const durationInSeconds = Math.floor((Date.now() - (startTime || 0)) / 1000);
+    const mins = Math.floor(durationInSeconds / 60);
+    const secs = durationInSeconds % 60;
 
     return (
       <div className="max-w-6xl mx-auto space-y-16 py-20 px-6 text-right animate-in fade-in zoom-in duration-700" dir="rtl">
@@ -219,7 +237,7 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
           <div className="inline-block p-14 rounded-full bg-goldenrod/10 border-8 border-goldenrod/30 shadow-[0_0_100px_rgba(230,172,0,0.4)] mb-6">
             {percentage >= 90 ? <PartyPopper className="w-40 h-40 text-goldenrod" /> : <Trophy className="w-40 h-40 text-goldenrod" />}
           </div>
-          <h1 className="text-8xl md:text-[10rem] font-black text-white drop-shadow-2xl">
+          <h1 className="text-8xl md:text-[10rem] font-black text-white drop-shadow-2xl tracking-tighter">
             {percentage >= 90 ? "أداء أسطوري! 🔥" : "استمر، أنت تبدع! 🚀"}
           </h1>
         </div>
@@ -229,7 +247,7 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
             { label: 'النسبة', val: percentage + '%', color: 'border-goldenrod', text: 'text-goldenrod' },
             { label: 'صحيحة', val: correct, color: 'border-green-500', text: 'text-green-500' },
             { label: 'خاطئة', val: errors.length, color: 'border-vermillion', text: 'text-vermillion' },
-            { label: 'الوقت', val: '04:12', color: 'border-white/10', text: 'text-white' }
+            { label: 'الوقت', val: `${mins}:${secs.toString().padStart(2, '0')}`, color: 'border-white/10', text: 'text-white' }
           ].map((stat, i) => (
             <Card key={i} className={cn("p-10 text-center glass rounded-[50px] border-2", stat.color)}>
               <p className="text-muted-foreground mb-4 font-black text-2xl">{stat.label}</p>
@@ -252,11 +270,11 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
                   </div>
                   <div className="grid md:grid-cols-2 gap-6">
                     <div className="p-8 bg-vermillion/10 rounded-[35px] border-2 border-vermillion/20">
-                      <p className="text-muted-foreground font-bold mb-2">إجابتك:</p>
+                      <p className="text-sm text-muted-foreground font-bold mb-2">إجابتك:</p>
                       <p className="text-3xl font-black text-vermillion">{userAnswers[q.id] || 'لم يتم الحل'}</p>
                     </div>
                     <div className="p-8 bg-green-500/10 rounded-[35px] border-2 border-green-500/20">
-                      <p className="text-muted-foreground font-bold mb-2">الإجابة الصحيحة:</p>
+                      <p className="text-sm text-muted-foreground font-bold mb-2">الإجابة الصحيحة:</p>
                       <p className="text-3xl font-black text-green-500">{q.correct}</p>
                     </div>
                   </div>
@@ -334,7 +352,7 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
                 size="icon" 
                 className={cn(
                   "rounded-full w-24 h-24 transition-all shadow-xl border-2",
-                  favorites.includes(q.id) ? 'bg-goldenrod text-midnight border-white' : 'bg-white/5 text-white border-white/10'
+                  favorites.includes(q.id) ? 'bg-goldenrod text-midnight border-white gold-glow' : 'bg-white/5 text-white border-white/10'
                 )}
                 onClick={() => toggleFavorite(q)}
               >

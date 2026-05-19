@@ -2,8 +2,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { sections as staticSections, Section } from '@/lib/practice-data';
-import { getSectionsFromDb, getUserProfile } from '@/lib/db-service';
+import { sections as staticSections, Section, Question } from '@/lib/practice-data';
+import { getSectionsFromDb, getUserProfile, getLeaderboard, getErrorLogs } from '@/lib/db-service';
 import PracticeSession from '@/components/PracticeSession';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,7 +20,10 @@ import {
   Star,
   History,
   User as UserIcon,
-  LogOut
+  LogOut,
+  X,
+  CheckCircle2,
+  ArrowRight
 } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { 
@@ -33,6 +36,8 @@ import {
 } from 'firebase/auth';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+
+type OverlayType = 'favorites' | 'errors' | 'leaderboard' | null;
 
 export default function Home() {
   const [mounted, setMounted] = useState(false);
@@ -49,6 +54,9 @@ export default function Home() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [activeOverlay, setActiveOverlay] = useState<OverlayType>(null);
+  const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
+  const [errorLogsData, setErrorLogsData] = useState<any[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -58,6 +66,8 @@ export default function Home() {
       if (u) {
         const p = await getUserProfile(u.uid);
         setProfile(p);
+      } else {
+        setProfile(null);
       }
       setIsAuthLoading(false);
     });
@@ -95,6 +105,13 @@ export default function Home() {
     setFilteredSections(filtered);
   }, [searchQuery, allSections]);
 
+  const refreshProfile = async () => {
+    if (user) {
+      const p = await getUserProfile(user.uid);
+      setProfile(p);
+    }
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -104,11 +121,31 @@ export default function Home() {
       } else {
         const cred = await createUserWithEmailAndPassword(auth, email, password);
         await updateProfile(cred.user, { displayName });
+        // إنشاء ملف الشخص في Firestore فور التسجيل
+        await getUserProfile(cred.user.uid);
         toast({ title: "تم إنشاء حسابك بنجاح ✅" });
       }
     } catch (error: any) {
       toast({ title: "حدث خطأ", description: error.message, variant: "destructive" });
     }
+  };
+
+  const openLeaderboard = async () => {
+    setActiveOverlay('leaderboard');
+    const data = await getLeaderboard();
+    setLeaderboardData(data);
+  };
+
+  const openErrorLogs = async () => {
+    if (!user) return;
+    setActiveOverlay('errors');
+    const data = await getErrorLogs(user.uid);
+    setErrorLogsData(data);
+  };
+
+  const openFavorites = async () => {
+    if (!profile) return;
+    setActiveOverlay('favorites');
   };
 
   if (!mounted || isAuthLoading) return (
@@ -123,7 +160,7 @@ export default function Home() {
         <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(230,172,0,0.1),transparent_70%)]" />
         <Card className="w-full max-w-xl p-12 glass border-goldenrod/30 rounded-[60px] shadow-2xl relative z-10 animate-in fade-in zoom-in duration-500">
           <div className="text-center mb-12">
-            <h1 className="text-7xl font-black text-white mb-4">EASY</h1>
+            <h1 className="text-7xl font-black text-white mb-4 tracking-tighter">EASY</h1>
             <p className="text-2xl text-goldenrod font-bold">بوابة العبور نحو التميز 🎯</p>
           </div>
           
@@ -176,12 +213,113 @@ export default function Home() {
     setActiveView('practice');
   };
 
+  const renderOverlay = () => {
+    if (!activeOverlay) return null;
+
+    let content = null;
+    let title = "";
+    let icon = null;
+
+    if (activeOverlay === 'leaderboard') {
+      title = "لوحة الصدارة";
+      icon = <Trophy className="w-10 h-10 text-goldenrod" />;
+      content = (
+        <div className="space-y-6">
+          {leaderboardData.map((p, idx) => (
+            <div key={p.id} className="flex items-center justify-between p-6 bg-white/5 rounded-3xl border border-white/10 hover:border-goldenrod/30 transition-all">
+              <div className="flex items-center gap-6">
+                <div className={cn(
+                  "w-12 h-12 rounded-full flex items-center justify-center font-black text-xl",
+                  idx === 0 ? "bg-goldenrod text-midnight gold-glow" : "bg-white/10 text-white"
+                )}>
+                  {idx + 1}
+                </div>
+                <div>
+                  <h4 className="text-xl font-black text-white">{p.displayName || 'مستكشف'}</h4>
+                  <p className="text-sm text-goldenrod font-bold">المستوى {p.level}</p>
+                </div>
+              </div>
+              <div className="text-left">
+                <p className="text-2xl font-black text-white">{p.xp + (p.level * 1000)} XP</p>
+                <p className="text-xs text-muted-foreground">إجمالي النقاط</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    } else if (activeOverlay === 'errors') {
+      title = "سجل الأخطاء";
+      icon = <History className="w-10 h-10 text-vermillion" />;
+      content = (
+        <div className="space-y-8">
+          {errorLogsData.length === 0 ? (
+            <p className="text-center py-20 text-white/20 text-2xl font-black">لا توجد أخطاء مسجلة حالياً! أنت مبدع 🚀</p>
+          ) : (
+            errorLogsData.map((log, idx) => (
+              <Card key={idx} className="p-8 glass border-vermillion/20 rounded-[40px] space-y-4">
+                <h4 className="text-2xl font-black leading-tight">{log.questionData.question}</h4>
+                <div className="p-4 bg-green-500/10 rounded-2xl border border-green-500/20">
+                  <p className="text-sm text-green-500 font-bold mb-1">الإجابة الصحيحة:</p>
+                  <p className="text-xl font-black">{log.questionData.correct}</p>
+                </div>
+                <p className="text-xs text-muted-foreground font-bold">تكرر الخطأ: {log.count} مرات</p>
+              </Card>
+            ))
+          )}
+        </div>
+      );
+    } else if (activeOverlay === 'favorites') {
+      title = "الأسئلة المفضلة";
+      icon = <Star className="w-10 h-10 text-goldenrod fill-goldenrod" />;
+      content = (
+        <div className="space-y-8">
+          {(!profile?.favorites || profile.favorites.length === 0) ? (
+            <p className="text-center py-20 text-white/20 text-2xl font-black">قائمة المفضلة فارغة حالياً ⭐</p>
+          ) : (
+            profile.favorites.map((q: any, idx: number) => (
+              <Card key={idx} className="p-8 glass border-goldenrod/20 rounded-[40px] space-y-4">
+                <h4 className="text-2xl font-black leading-tight">{q.question}</h4>
+                <div className="p-4 bg-goldenrod/10 rounded-2xl border border-goldenrod/20">
+                  <p className="text-sm text-goldenrod font-bold mb-1">الإجابة الصحيحة:</p>
+                  <p className="text-xl font-black">{q.correct}</p>
+                </div>
+              </Card>
+            ))
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 md:p-12 animate-in fade-in duration-300">
+        <div className="absolute inset-0 bg-midnight/95 backdrop-blur-2xl" onClick={() => setActiveOverlay(null)} />
+        <Card className="w-full max-w-4xl max-h-[85vh] overflow-hidden glass border-white/10 rounded-[60px] shadow-2xl relative z-10 flex flex-col animate-in zoom-in-95 duration-300">
+          <div className="p-10 border-b border-white/10 flex items-center justify-between sticky top-0 bg-midnight/50 backdrop-blur-xl z-20">
+            <div className="flex items-center gap-6">
+              {icon}
+              <h2 className="text-4xl md:text-5xl font-black text-white">{title}</h2>
+            </div>
+            <Button variant="ghost" size="icon" className="w-16 h-16 rounded-full hover:bg-white/10" onClick={() => setActiveOverlay(null)}>
+              <X className="w-10 h-10" />
+            </Button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
+            {content}
+          </div>
+        </Card>
+      </div>
+    );
+  };
+
   if (activeView === 'practice' && selectedSection) {
     return (
       <main className="min-h-screen p-0 bg-midnight">
         <PracticeSession 
           section={selectedSection} 
-          onExit={() => setActiveView('landing')} 
+          onExit={() => {
+            setActiveView('landing');
+            refreshProfile();
+          }} 
         />
       </main>
     );
@@ -189,6 +327,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen overflow-x-hidden relative bg-midnight text-white flex flex-col">
+      {renderOverlay()}
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(230,172,0,0.15),transparent_60%)] pointer-events-none" />
       
       {/* XP & Level Bar - Top Left */}
@@ -203,10 +342,10 @@ export default function Home() {
             <div className="w-48 h-2.5 bg-white/5 rounded-full border border-white/10 overflow-hidden">
               <div 
                 className="h-full bg-gradient-to-r from-goldenrod via-vermillion to-goldenrod transition-all duration-1000 shadow-[0_0_15px_rgba(230,172,0,0.5)]"
-                style={{ width: `${((profile?.xp || 0) / ((profile?.level || 1) * 1000)) * 100}%` }}
+                style={{ width: `${((profile?.xp || 0) / ((profile?.level || 1) * 500)) * 100}%` }}
               />
             </div>
-            <p className="text-[10px] text-white/40 font-bold">{profile?.xp || 0} / {(profile?.level || 1) * 1000} XP</p>
+            <p className="text-[10px] text-white/40 font-bold">{profile?.xp || 0} / {(profile?.level || 1) * 500} XP</p>
           </div>
         </div>
       </div>
@@ -234,13 +373,13 @@ export default function Home() {
           </div>
 
           <div className="flex flex-wrap justify-center gap-6 pt-10">
-            <Button className="h-16 px-10 rounded-3xl glass border-goldenrod/40 text-goldenrod font-black text-xl gold-glow hover:scale-110 transition-all">
+            <Button onClick={openFavorites} className="h-16 px-10 rounded-3xl glass border-goldenrod/40 text-goldenrod font-black text-xl gold-glow hover:scale-110 transition-all">
               <Star className="ml-2 w-6 h-6 fill-goldenrod" /> المفضلة
             </Button>
-            <Button className="h-16 px-10 rounded-3xl glass border-vermillion/40 text-vermillion font-black text-xl vermillion-glow hover:scale-110 transition-all">
+            <Button onClick={openErrorLogs} className="h-16 px-10 rounded-3xl glass border-vermillion/40 text-vermillion font-black text-xl vermillion-glow hover:scale-110 transition-all">
               <History className="ml-2 w-6 h-6" /> سجل الأخطاء
             </Button>
-            <Button className="h-16 px-10 rounded-3xl glass border-white/10 text-white font-black text-xl hover:scale-110 transition-all">
+            <Button onClick={openLeaderboard} className="h-16 px-10 rounded-3xl glass border-white/10 text-white font-black text-xl hover:scale-110 transition-all">
               <Trophy className="ml-2 w-6 h-6" /> المتصدرين
             </Button>
           </div>
@@ -268,10 +407,7 @@ export default function Home() {
               {filteredSections.map((section, idx) => (
                 <Card 
                   key={section.firebaseId || section.id} 
-                  className={cn(
-                    "group relative bg-white/5 border-2 border-white/5 rounded-[50px] p-10 shadow-2xl overflow-hidden transition-all hover:border-goldenrod/50 hover:bg-white/[0.08] hover:scale-[1.01] duration-500 animate-in fade-in slide-in-from-bottom-10",
-                    `delay-[${idx * 100}ms]`
-                  )}
+                  className="group relative bg-white/5 border-2 border-white/5 rounded-[50px] p-10 shadow-2xl overflow-hidden transition-all hover:border-goldenrod/50 hover:bg-white/[0.08] hover:scale-[1.01] duration-500 animate-in fade-in slide-in-from-bottom-10"
                 >
                   <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-goldenrod via-vermillion to-goldenrod opacity-30 group-hover:opacity-100 transition-opacity" />
                   <div className="flex flex-col md:flex-row justify-between items-center gap-8">

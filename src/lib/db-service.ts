@@ -103,6 +103,7 @@ export const getUserProfile = async (userId: string) => {
       totalSolved: 0,
       totalCorrect: 0,
       favorites: [],
+      displayName: 'مستخدم جديد',
       lastActive: serverTimestamp()
     };
     await setDoc(userRef, initialProfile);
@@ -112,7 +113,7 @@ export const getUserProfile = async (userId: string) => {
 
 export const updateUserXP = async (userId: string, correct: number, total: number) => {
   const userRef = doc(db, USER_PROFILES, userId);
-  const xpEarned = (correct * 10) + (total * 2);
+  const xpEarned = (correct * 25) + (total * 5); // زيادة الـ XP بناءً على الأداء
   
   const userSnap = await getDoc(userRef);
   if (!userSnap.exists()) return;
@@ -121,8 +122,8 @@ export const updateUserXP = async (userId: string, correct: number, total: numbe
   let newXp = (data.xp || 0) + xpEarned;
   let newLevel = data.level || 1;
   
-  const xpRequired = newLevel * 1000;
-  if (newXp >= xpRequired) {
+  const xpRequired = newLevel * 500; // تقليل المتطلبات لجعل التقدم أسرع قليلاً ومحفزاً
+  while (newXp >= xpRequired) {
     newXp -= xpRequired;
     newLevel += 1;
   }
@@ -140,7 +141,7 @@ export const updateUserXP = async (userId: string, correct: number, total: numbe
 export const toggleFavoriteInDb = async (userId: string, question: any) => {
   const userRef = doc(db, USER_PROFILES, userId);
   const userSnap = await getDoc(userRef);
-  if (!userSnap.exists()) return;
+  if (!userSnap.exists()) return false;
   
   const favorites = userSnap.data().favorites || [];
   const exists = favorites.find((f: any) => f.id === question.id);
@@ -158,7 +159,7 @@ export const toggleFavoriteInDb = async (userId: string, question: any) => {
   }
 };
 
-// --- Error Logs (Persistent) ---
+// --- Error Logs ---
 export const saveErrorLogToDb = async (userId: string, question: Question) => {
   const errorId = `${userId}_${question.id}`;
   const errorRef = doc(db, ERROR_LOGS, errorId);
@@ -181,14 +182,23 @@ export const saveErrorLogToDb = async (userId: string, question: Question) => {
 };
 
 export const getErrorLogs = async (userId: string) => {
-  const q = query(collection(db, ERROR_LOGS), where("userId", "==", userId), orderBy("lastOccurred", "desc"));
+  const q = query(
+    collection(db, ERROR_LOGS), 
+    where("userId", "==", userId), 
+    orderBy("lastOccurred", "desc")
+  );
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => doc.data());
 };
 
 // --- Leaderboard ---
 export const getLeaderboard = async () => {
-  const q = query(collection(db, USER_PROFILES), orderBy("level", "desc"), orderBy("xp", "desc"), limit(10));
+  const q = query(
+    collection(db, USER_PROFILES), 
+    orderBy("level", "desc"), 
+    orderBy("xp", "desc"), 
+    limit(20)
+  );
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => ({
     id: doc.id,
