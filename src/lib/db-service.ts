@@ -20,7 +20,6 @@ import { Section, Question, sections as staticSections } from "./practice-data";
  */
 export const getSectionsFromDb = async (): Promise<Section[]> => {
   try {
-    // محاولة جلب البيانات بمهلة زمنية قصيرة (Timeout يدوي غير مباشر عبر Promise.race)
     const sectionsRef = collection(db, "sections");
     const querySnapshot = await getDocs(sectionsRef);
     
@@ -32,7 +31,6 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
       } as any));
     }
     
-    // دمج البيانات مع التأكد من عدم تكرار النماذج الثابتة
     const combined = [...dbSections];
     staticSections.forEach(s => {
       if (!combined.find(c => Number(c.id) === Number(s.id))) {

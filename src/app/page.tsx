@@ -56,11 +56,11 @@ export default function Home() {
 
   useEffect(() => {
     setHasMounted(true);
-    // صمام أمان: اختفاء شاشة التحميل إجبارياً بعد 2.5 ثانية
-    const safetyTimer = setTimeout(() => {
+    // صمام أمان لضمان اختفاء شاشة التحميل
+    const timer = setTimeout(() => {
       setIsAuthLoading(false);
     }, 2500);
-    return () => clearTimeout(safetyTimer);
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -84,7 +84,10 @@ export default function Home() {
     if (!hasMounted) return;
     getSectionsFromDb().then(data => {
       if (data && data.length > 0) setSections(data);
-    }).catch(e => console.error("Sections load failed", e));
+    }).catch(e => {
+      console.error("Sections load failed", e);
+      setSections(staticSections);
+    });
   }, [hasMounted]);
 
   const filteredSections = useMemo(() => {
@@ -135,7 +138,6 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-black text-white flex flex-col relative overflow-x-hidden">
       
-      {/* Auth Screen - Only shown when definitely not logged in and not loading */}
       {!user && !isAuthLoading && (
         <div className="fixed inset-0 z-[300] bg-black flex items-center justify-center p-4">
           <Card className="w-full max-w-xl p-10 glass border-white/5 rounded-[50px] shadow-2xl">
@@ -157,7 +159,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* Main Content */}
       <div className="container mx-auto px-4 md:px-8 py-20 max-w-7xl relative z-10">
         
         {user && profile && (
@@ -258,7 +259,6 @@ export default function Home() {
         </footer>
       </div>
 
-      {/* Safety Loading screen */}
       {isAuthLoading && (
         <div className="fixed inset-0 bg-black flex items-center justify-center z-[500] backdrop-blur-xl">
           <div className="text-center space-y-6">
@@ -269,7 +269,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* Overlays */}
       {activeOverlay && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/90 backdrop-blur-3xl" onClick={() => setActiveOverlay(null)} />
