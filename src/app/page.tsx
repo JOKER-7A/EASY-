@@ -57,7 +57,7 @@ export default function Home() {
   useEffect(() => {
     setHasMounted(true);
     
-    // صمام أمان لإغلاق شاشة التحميل مهما حدث بعد 2.5 ثانية
+    // صمام أمان لضمان اختفاء شاشة التحميل مهما حدث بعد 2.5 ثانية
     const safetyTimer = setTimeout(() => {
       setIsLoading(false);
     }, 2500);
@@ -69,19 +69,17 @@ export default function Home() {
           const p = await getUserProfile(u.uid, u.email || '');
           setProfile(p);
         } catch (e) {
-          console.error("Profile fetch failed, using defaults", e);
+          console.error("Profile fetch failed", e);
         }
       }
       setIsLoading(false);
     });
 
-    // جلب البيانات مع ضمان عدم التعليق
     getSectionsFromDb().then(data => {
       if (data && data.length > 0) {
         setSections(data);
       }
-    }).catch(err => {
-      console.warn("Firestore error, falling back to static", err);
+    }).catch(() => {
       setSections(staticSections);
     });
 
@@ -111,7 +109,7 @@ export default function Home() {
         toast({ title: "تم إنشاء الحساب بنجاح ✅" });
       }
     } catch (error: any) {
-      toast({ title: "خطأ في الدخول", variant: "destructive", description: "تأكد من البيانات وحاول مرة أخرى" });
+      toast({ title: "خطأ في الدخول", variant: "destructive" });
     }
   };
 
@@ -134,10 +132,9 @@ export default function Home() {
 
   if (isLoading) {
     return (
-      <div className="fixed inset-0 bg-black flex flex-col items-center justify-center z-[500] backdrop-blur-xl">
+      <div className="fixed inset-0 bg-black flex flex-col items-center justify-center z-[500]">
         <Loader2 className="w-16 h-16 text-primary animate-spin mb-8" />
-        <h2 className="text-4xl font-black text-white text-shine">EASY PREP MASTER</h2>
-        <p className="text-white/20 font-bold mt-4 tracking-widest uppercase">Elite Training Platform</p>
+        <h2 className="text-4xl font-black text-white">EASY PREP MASTER</h2>
       </div>
     );
   }
@@ -170,24 +167,6 @@ export default function Home() {
       )}
 
       <div className="container mx-auto px-4 md:px-8 py-20 max-w-7xl relative z-10">
-        {user && profile && (
-          <div className="fixed top-8 left-8 z-[100] hidden lg:block">
-            <div className="glass p-5 pr-14 rounded-[30px] border-primary/20 flex items-center gap-7">
-              <div className="w-16 h-16 rounded-2xl bg-primary text-white flex items-center justify-center font-black text-3xl shadow-xl">
-                {profile.level || 1}
-              </div>
-              <div className="space-y-2 flex flex-col min-w-[180px]">
-                <div className="flex justify-between items-end">
-                  <p className="text-xs font-black text-primary tracking-widest uppercase">LEVEL</p>
-                  <p className="text-sm font-bold text-white/60 truncate max-w-[120px]">{profile.displayName || 'مستكشف'}</p>
-                </div>
-                <Progress value={profile.xp ? (profile.xp % 100) : 0} className="h-3 bg-white/5" />
-                <p className="text-[10px] text-white/30 font-black">{profile.xp || 0} XP TOTAL</p>
-              </div>
-            </div>
-          </div>
-        )}
-
         <header className="text-center mb-32 space-y-12 pt-20">
           <div className="inline-flex items-center gap-3 px-10 py-4 rounded-full glass border-primary/30 text-primary font-black animate-float">
             <Zap className="w-6 h-6 fill-primary" /> EASY PREP V3.2
@@ -208,91 +187,58 @@ export default function Home() {
           </div>
 
           <div className="flex flex-wrap justify-center gap-8 pt-10">
-            <Button onClick={() => openOverlay('errors')} className="h-20 px-14 rounded-[40px] glass border-destructive/30 text-destructive font-black text-2xl hover:bg-destructive/10">
+            <Button onClick={() => openOverlay('errors')} className="h-20 px-14 rounded-[40px] glass border-destructive/30 text-destructive font-black text-2xl">
               <History className="ml-3 w-8 h-8" /> سجل الأخطاء
             </Button>
-            <Button onClick={() => openOverlay('leaderboard')} className="h-20 px-14 rounded-[40px] glass border-white/10 text-white font-black text-2xl hover:bg-white/5">
+            <Button onClick={() => openOverlay('leaderboard')} className="h-20 px-14 rounded-[40px] glass border-white/10 text-white font-black text-2xl">
               <Trophy className="ml-3 w-8 h-8" /> لوحة الشرف
             </Button>
           </div>
         </header>
 
-        <section className="space-y-16">
-          <div className="flex items-center justify-between px-4">
-            <h2 className="text-5xl font-black text-white">النماذج التدريبية</h2>
-            <Badge className="bg-primary/20 text-primary text-2xl px-10 py-4 border border-primary/20 rounded-full font-black">
-              {filteredSections.length} متاح
-            </Badge>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-            {filteredSections.map((section) => (
-              <Card 
-                key={section.firebaseId || section.id} 
-                className="group bg-white/[0.02] border border-white/5 rounded-[50px] p-10 shadow-2xl transition-all hover:border-primary/50"
-              >
-                <div className="flex flex-col sm:flex-row justify-between items-center gap-8">
-                  <div className="space-y-4 text-right">
-                    <span className="bg-primary/20 text-primary px-6 py-2 rounded-xl font-black text-xl">قسم {section.id}</span>
-                    <h2 className="text-4xl font-black text-white group-hover:text-primary transition-colors">
-                      {section.title}
-                    </h2>
-                    <p className="text-white/30 font-bold text-lg">{section.questions?.length || 0} سؤال • {section.duration} دقيقة</p>
-                  </div>
-                  <Button 
-                    onClick={() => { setSelectedSection(section); setActiveView('practice'); }} 
-                    className="w-full sm:w-auto h-28 px-14 rounded-[40px] text-3xl font-black bg-primary text-white hover:scale-105 transition-transform"
-                  >
-                    ابدأ <ChevronRight className="mr-2 w-10 h-10" />
-                  </Button>
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+          {filteredSections.map((section) => (
+            <Card key={section.firebaseId || section.id} className="group bg-white/[0.02] border border-white/5 rounded-[50px] p-10 shadow-2xl">
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-8">
+                <div className="space-y-4 text-right">
+                  <span className="bg-primary/20 text-primary px-6 py-2 rounded-xl font-black text-xl">قسم {section.id}</span>
+                  <h2 className="text-4xl font-black text-white group-hover:text-primary transition-colors">{section.title}</h2>
+                  <p className="text-white/30 font-bold text-lg">{section.questions?.length || 0} سؤال • {section.duration} دقيقة</p>
                 </div>
-              </Card>
-            ))}
-          </div>
+                <Button onClick={() => { setSelectedSection(section); setActiveView('practice'); }} className="w-full sm:w-auto h-28 px-14 rounded-[40px] text-3xl font-black bg-primary text-white hover:scale-105 transition-transform">
+                  ابدأ <ChevronRight className="mr-2 w-10 h-10" />
+                </Button>
+              </div>
+            </Card>
+          ))}
         </section>
 
         <footer className="text-center py-20 border-t border-white/5 mt-32 space-y-12">
           <div className="flex flex-wrap justify-center gap-16 items-center">
-            {profile?.status === 'admin' && (
-              <Button onClick={() => window.location.href = '/admin'} variant="ghost" className="text-white/20 hover:text-white font-black text-xl">
-                <LayoutDashboard className="ml-3 w-7 h-7" /> لوحة التحكم
-              </Button>
-            )}
-            {user && (
-              <Button onClick={() => signOut(auth)} variant="ghost" className="text-destructive/30 hover:text-destructive font-black text-xl">
-                <LogOut className="ml-3 w-7 h-7" /> تسجيل الخروج
-              </Button>
-            )}
+            {profile?.status === 'admin' && <Button onClick={() => window.location.href = '/admin'} variant="ghost" className="text-white/20 font-black">لوحة التحكم</Button>}
+            {user && <Button onClick={() => signOut(auth)} variant="ghost" className="text-destructive/30 font-black">تسجيل الخروج</Button>}
           </div>
-          <p className="text-4xl tracking-[0.4em] uppercase font-black opacity-30 text-shine">DR.MAHMOUD ABD EL RAZEK</p>
+          <p className="text-4xl tracking-[0.4em] uppercase font-black opacity-30">DR.MAHMOUD ABD EL RAZEK</p>
         </footer>
       </div>
 
       {activeOverlay && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/90 backdrop-blur-3xl" onClick={() => setActiveOverlay(null)} />
-          <Card className="w-full max-w-4xl max-h-[80vh] overflow-hidden glass border-white/5 rounded-[40px] relative z-10 flex flex-col">
+          <div className="absolute inset-0 bg-black/90" onClick={() => setActiveOverlay(null)} />
+          <Card className="w-full max-w-4xl max-h-[80vh] overflow-hidden glass rounded-[40px] relative z-10 flex flex-col">
             <div className="p-8 border-b border-white/5 flex items-center justify-between">
-              <h2 className="text-4xl font-black text-white">
-                {activeOverlay === 'leaderboard' ? "نخبة EASY 🏆" : "سجل الأخطاء ⚠️"}
-              </h2>
+              <h2 className="text-4xl font-black text-white">{activeOverlay === 'leaderboard' ? "نخبة EASY 🏆" : "سجل الأخطاء ⚠️"}</h2>
               <Button variant="ghost" onClick={() => setActiveOverlay(null)}><X className="w-8 h-8" /></Button>
             </div>
-            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-              {overlayData.length === 0 ? (
-                <div className="text-center py-20 opacity-30 text-2xl font-black">لا توجد بيانات حالياً 🚀</div>
-              ) : (
+            <div className="flex-1 overflow-y-auto p-8">
+              {overlayData.length === 0 ? <div className="text-center py-20 opacity-30 text-2xl font-black">لا توجد بيانات حالياً 🚀</div> : 
                 overlayData.map((item, idx) => (
                   <div key={idx} className="mb-4 p-6 bg-white/5 rounded-3xl border border-white/5 flex justify-between items-center">
-                    <span className="text-2xl font-bold">
-                      {activeOverlay === 'leaderboard' ? `${idx + 1}. ${item.displayName || 'مستخدم'}` : (item.questionData?.question || 'سؤال')}
-                    </span>
-                    <span className="text-primary font-black">
-                      {activeOverlay === 'leaderboard' ? `${item.xp || 0} XP` : `تكرر ${item.count || 1} مرة`}
-                    </span>
+                    <span className="text-2xl font-bold">{activeOverlay === 'leaderboard' ? `${idx + 1}. ${item.displayName || 'مستخدم'}` : (item.questionData?.question || 'سؤال')}</span>
+                    <span className="text-primary font-black">{activeOverlay === 'leaderboard' ? `${item.xp || 0} XP` : `تكرر ${item.count || 1} مرة`}</span>
                   </div>
                 ))
-              )}
+              }
             </div>
           </Card>
         </div>

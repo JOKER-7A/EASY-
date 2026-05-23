@@ -28,7 +28,6 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
       } as any));
     }
     
-    // دمج البيانات المسترجعة مع البيانات الثابتة لضمان عدم وجود فراغ
     const combined = [...dbSections];
     staticSections.forEach(s => {
       if (!combined.find(c => Number(c.id) === Number(s.id))) {
@@ -38,7 +37,7 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
     
     return combined.sort((a, b) => Number(b.id) - Number(a.id));
   } catch (error) {
-    console.warn("DB Connection failed, using fallback data", error);
+    console.warn("Firestore access error, returning static data", error);
     return [...staticSections];
   }
 };
