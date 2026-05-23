@@ -54,47 +54,33 @@ export default function Home() {
   
   const { toast } = useToast();
 
-  // منع أخطاء Hydration وضمان استقرار العرض
   useEffect(() => {
     setHasMounted(true);
-    // مؤقت أمان لإنهاء شاشة التحميل إجبارياً بعد 2.5 ثانية لضمان ظهور الموقع دائماً
-    const safetyTimer = setTimeout(() => {
-      setIsAuthLoading(false);
-    }, 2500);
-    return () => clearTimeout(safetyTimer);
+    // Safety timeout to ensure loading screen vanishes
+    const timer = setTimeout(() => setIsAuthLoading(false), 2000);
+    return () => clearTimeout(timer);
   }, []);
 
-  // إدارة جلسة المستخدم
   useEffect(() => {
     if (!hasMounted) return;
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
-        try {
-          const p = await getUserProfile(u.uid, u.email || '');
-          setProfile(p);
-        } catch (e) {
-          console.warn("Auth sync delay");
-        }
-      } else {
-        setProfile(null);
+        const p = await getUserProfile(u.uid, u.email || '');
+        setProfile(p);
       }
       setIsAuthLoading(false);
     });
     return () => unsubscribe();
   }, [hasMounted]);
 
-  // جلب المحتوى من قاعدة البيانات
   useEffect(() => {
     if (!hasMounted) return;
     getSectionsFromDb().then(data => {
       if (data && data.length > 0) setSections(data);
-    }).catch(() => {
-      setSections(staticSections);
     });
   }, [hasMounted]);
 
-  // محرك البحث
   const filteredSections = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return sections;
@@ -105,70 +91,62 @@ export default function Home() {
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) return;
     try {
       if (authMode === 'login') {
         await signInWithEmailAndPassword(auth, email, password);
         toast({ title: "أهلاً بك مجدداً! 🚀" });
       } else {
-        const cred = await createUserWithEmailAndPassword(auth, email, password);
-        await getUserProfile(cred.user.uid, email);
+        await createUserWithEmailAndPassword(auth, email, password);
         toast({ title: "تم إنشاء الحساب بنجاح ✅" });
       }
     } catch (error: any) {
-      toast({ title: "فشل الدخول", variant: "destructive", description: "تأكد من البريد وكلمة المرور" });
+      toast({ title: "خطأ في الدخول", variant: "destructive" });
     }
   };
 
   const openOverlay = async (type: 'leaderboard' | 'errors') => {
     setActiveOverlay(type);
-    setOverlayData([]);
-    try {
-      if (type === 'leaderboard') {
-        const data = await getLeaderboard();
-        setOverlayData(data || []);
-      } else if (type === 'errors' && user) {
-        const data = await getErrorLogs(user.uid);
-        setOverlayData(data || []);
-      }
-    } catch (error) {
-      setOverlayData([]);
+    if (type === 'leaderboard') {
+      const data = await getLeaderboard();
+      setOverlayData(data);
+    } else if (type === 'errors' && user) {
+      const data = await getErrorLogs(user.uid);
+      setOverlayData(data);
     }
   };
 
-  // حماية ضد أخطاء السيرفر الجانبية (OLED Black background)
   if (!hasMounted) return <div className="min-h-screen bg-black" />;
 
   if (activeView === 'practice' && selectedSection) {
-    return <PracticeSession section={selectedSection} onExit={() => window.location.reload()} />;
+    return <PracticeSession section={selectedSection} onExit={() => setActiveView('landing')} />;
   }
 
   return (
-    <main className="min-h-screen bg-black text-white flex flex-col relative overflow-x-hidden selection:bg-primary selection:text-white">
+    <main className="min-h-screen bg-black text-white flex flex-col relative overflow-x-hidden">
       
-      {/* واجهة الدخول - تظهر فقط عند عدم وجود مستخدم وبعد انتهاء التحميل الأولي */}
+      {/* Auth Screen */}
       {!user && !isAuthLoading && (
         <div className="fixed inset-0 z-[300] bg-black flex items-center justify-center p-4">
-          <Card className="w-full max-w-xl p-10 glass border-white/5 rounded-[50px] shadow-2xl animate-in zoom-in duration-500">
+          <Card className="w-full max-w-xl p-10 glass border-white/5 rounded-[50px] shadow-2xl">
             <div className="text-center mb-10">
               <h1 className="text-8xl md:text-[10rem] text-easy-premium mb-4">EASY</h1>
               <p className="text-lg text-primary font-bold tracking-widest opacity-80 uppercase">Elite Training Master</p>
             </div>
             <form onSubmit={handleAuth} className="space-y-6">
-              <Input type="email" placeholder="البريد الإلكتروني" value={email} onChange={(e) => setEmail(e.target.value)} className="h-16 rounded-2xl bg-white/5 border-white/10 text-xl" required />
-              <Input type="password" placeholder="كلمة المرور" value={password} onChange={(e) => setPassword(e.target.value)} className="h-16 rounded-2xl bg-white/5 border-white/10 text-xl" required />
-              <Button type="submit" className="w-full h-18 rounded-2xl bg-primary text-white font-black text-2xl hover:scale-[1.02] transition-transform">
+              <Input type="email" placeholder="البريد الإلكتروني" value={email} onChange={(e) => setEmail(e.target.value)} className="h-16 rounded-2xl bg-white/5 border-white/10 text-xl" />
+              <Input type="password" placeholder="كلمة المرور" value={password} onChange={(e) => setPassword(e.target.value)} className="h-16 rounded-2xl bg-white/5 border-white/10 text-xl" />
+              <Button type="submit" className="w-full h-18 rounded-2xl bg-primary text-white font-black text-2xl">
                 {authMode === 'login' ? "دخول 🚀" : "انضم الآن ✨"}
               </Button>
             </form>
-            <button onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')} className="mt-8 w-full text-white/40 font-bold hover:text-white transition-colors">
+            <button onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')} className="mt-8 w-full text-white/40 font-bold hover:text-white">
               {authMode === 'login' ? "لا تملك حساباً؟ سجل هنا" : "لديك حساب؟ سجل دخولك"}
             </button>
           </Card>
         </div>
       )}
 
-      {/* المحتوى الرئيسي */}
+      {/* Main Content */}
       <div className="container mx-auto px-4 md:px-8 py-20 max-w-7xl relative z-10">
         
         {user && profile && (
@@ -227,7 +205,7 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            {filteredSections.length > 0 ? filteredSections.map((section) => (
+            {filteredSections.map((section) => (
               <Card 
                 key={section.firebaseId || section.id} 
                 className="group bg-white/[0.02] border border-white/5 rounded-[60px] p-12 shadow-2xl transition-all hover:border-primary/50"
@@ -248,9 +226,7 @@ export default function Home() {
                   </Button>
                 </div>
               </Card>
-            )) : (
-              <div className="col-span-full text-center py-20 opacity-30 text-4xl font-black">لا توجد نماذج متوفرة حالياً 🚀</div>
-            )}
+            ))}
           </div>
         </section>
 
@@ -271,36 +247,36 @@ export default function Home() {
         </footer>
       </div>
 
-      {/* شاشة التحميل الذكية (صمام الأمان) */}
+      {/* Safety Loading screen */}
       {isAuthLoading && (
         <div className="fixed inset-0 bg-black flex items-center justify-center z-[500] backdrop-blur-xl">
           <div className="text-center space-y-6">
             <Loader2 className="w-20 h-20 text-primary animate-spin mx-auto" />
-            <h2 className="text-3xl font-black text-white animate-pulse">EASY PREP MASTER</h2>
+            <h2 className="text-3xl font-black text-white">EASY PREP MASTER</h2>
             <p className="text-white/20 font-bold">جاري تأمين الاتصال...</p>
           </div>
         </div>
       )}
 
-      {/* النوافذ المنبثقة */}
+      {/* Overlays */}
       {activeOverlay && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/90 backdrop-blur-3xl" onClick={() => setActiveOverlay(null)} />
-          <Card className="w-full max-w-4xl max-h-[85vh] overflow-hidden glass border-white/5 rounded-[40px] relative z-10 flex flex-col animate-in slide-in-from-bottom-10">
+          <Card className="w-full max-w-4xl max-h-[85vh] overflow-hidden glass border-white/5 rounded-[40px] relative z-10 flex flex-col">
             <div className="p-8 border-b border-white/5 flex items-center justify-between">
               <h2 className="text-4xl font-black text-white">
                 {activeOverlay === 'leaderboard' ? "نخبة EASY 🏆" : "سجل الأخطاء ⚠️"}
               </h2>
               <Button variant="ghost" onClick={() => setActiveOverlay(null)}><X className="w-8 h-8" /></Button>
             </div>
-            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-8">
               {overlayData.length === 0 ? (
                 <div className="text-center py-20 opacity-30 text-2xl font-black">لا توجد بيانات حالياً 🚀</div>
               ) : (
                 overlayData.map((item, idx) => (
-                  <div key={idx} className="mb-4 p-6 bg-white/5 rounded-3xl border border-white/5 flex justify-between items-center hover:bg-white/10 transition-colors">
-                    <span className="text-2xl font-bold truncate max-w-[60%]">
-                      {activeOverlay === 'leaderboard' ? (item.displayName || 'مستخدم') : (item.questionData?.question || 'سؤال غير معروف')}
+                  <div key={idx} className="mb-4 p-6 bg-white/5 rounded-3xl border border-white/5 flex justify-between items-center">
+                    <span className="text-2xl font-bold">
+                      {activeOverlay === 'leaderboard' ? (item.displayName || 'مستخدم') : (item.questionData?.question || 'سؤال')}
                     </span>
                     <span className="text-primary font-black">
                       {activeOverlay === 'leaderboard' ? `${item.xp || 0} XP` : `تكرر ${item.count || 1} مرة`}

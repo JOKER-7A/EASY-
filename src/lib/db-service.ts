@@ -17,7 +17,6 @@ import { Section, Question, sections as staticSections } from "./practice-data";
 
 /**
  * جلب النماذج مع نظام حماية "Anti-Crash"
- * يضمن دائماً عودة بيانات سليمة حتى لو فشل Firestore
  */
 export const getSectionsFromDb = async (): Promise<Section[]> => {
   try {
@@ -32,7 +31,6 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
       } as any));
     }
     
-    // دمج النماذج الثابتة مع نماذج قاعدة البيانات لضمان عدم وجود صفحة فارغة
     const combined = [...dbSections];
     staticSections.forEach(s => {
       if (!combined.find(c => Number(c.id) === Number(s.id))) {
@@ -42,14 +40,11 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
     
     return combined.sort((a, b) => Number(b.id) - Number(a.id));
   } catch (error) {
-    console.warn("Using fail-safe static sections", error);
+    console.warn("DB Failure - Fallback to static", error);
     return [...staticSections];
   }
 };
 
-/**
- * جلب الملف الشخصي بأسلوب "Zero-Error"
- */
 export const getUserProfile = async (userId: string, email?: string) => {
   if (!userId) return null;
   try {
@@ -57,36 +52,21 @@ export const getUserProfile = async (userId: string, email?: string) => {
     const userSnap = await getDoc(userRef);
     
     if (userSnap.exists()) {
-      const data = userSnap.data();
-      return { 
-        id: userSnap.id, 
-        ...data,
-        displayName: data.displayName || email?.split('@')[0] || 'مستكشف EASY',
-        level: data.level || 1,
-        xp: data.xp || 0
-      };
+      return { id: userSnap.id, ...userSnap.data() };
     } else {
       const initialProfile = {
         level: 1,
         xp: 0,
-        totalCorrect: 0,
         displayName: email?.split('@')[0] || 'مستكشف EASY',
         email: email || '',
         createdAt: serverTimestamp(),
-        lastActive: serverTimestamp(),
         status: 'student'
       };
       await setDoc(userRef, initialProfile);
       return { id: userId, ...initialProfile };
     }
   } catch (error) {
-    return { 
-      id: userId, 
-      level: 1, 
-      xp: 0, 
-      displayName: 'مستكشف EASY', 
-      status: 'student' 
-    };
+    return { id: userId, level: 1, xp: 0, displayName: 'مستكشف EASY' };
   }
 };
 
@@ -94,17 +74,7 @@ export const saveAttemptToDb = async (userId: string | undefined, attempt: any) 
   try {
     const data = { ...attempt, userId: userId || 'anonymous', createdAt: serverTimestamp() };
     await setDoc(doc(collection(db, "attempts")), data);
-    if (userId) {
-      const userRef = doc(db, "userProfiles", userId);
-      updateDoc(userRef, {
-        xp: increment(attempt.correctCount * 10),
-        totalCorrect: increment(attempt.correctCount),
-        lastActive: serverTimestamp()
-      }).catch(() => {});
-    }
-  } catch (error) {
-    console.error("Save attempt failed silently");
-  }
+  } catch (e) {}
 };
 
 export const getLeaderboard = async () => {
@@ -112,9 +82,7 @@ export const getLeaderboard = async () => {
     const q = query(collection(db, "userProfiles"), orderBy("xp", "desc"), limit(5));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  } catch (error) { 
-    return []; 
-  }
+  } catch (e) { return []; }
 };
 
 export const getErrorLogs = async (userId: string) => {
@@ -122,9 +90,7 @@ export const getErrorLogs = async (userId: string) => {
     const q = query(collection(db, "errorLogs"), where("userId", "==", userId));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => doc.data());
-  } catch (error) { 
-    return []; 
-  }
+  } catch (e) { return []; }
 };
 
 export const saveErrorLogToDb = async (userId: string, question: Question, sectionTitle: string) => {
@@ -136,10 +102,8 @@ export const saveErrorLogToDb = async (userId: string, question: Question, secti
       questionData: { ...question, sectionTitle },
       lastOccurred: serverTimestamp(),
       count: increment(1)
-    }, { merge: true }).catch(() => {});
-  } catch (error) {
-    // فشل صامت
-  }
+    }, { merge: true });
+  } catch (e) {}
 };
 
 export const toggleFavoriteInDb = async (userId: string, question: Question) => {
@@ -148,20 +112,15 @@ export const toggleFavoriteInDb = async (userId: string, question: Question) => 
     const userSnap = await getDoc(userRef);
     if (!userSnap.exists()) return false;
     
-    const data = userSnap.data();
-    const favorites = data.favorites || [];
+    const favorites = userSnap.data().favorites || [];
     const exists = favorites.find((f: any) => f.id === question.id);
     
     if (exists) {
-      const newFavs = favorites.filter((f: any) => f.id !== question.id);
-      await updateDoc(userRef, { favorites: newFavs });
+      await updateDoc(userRef, { favorites: favorites.filter((f: any) => f.id !== question.id) });
       return false;
     } else {
-      const newFavs = [...favorites, question];
-      await updateDoc(userRef, { favorites: newFavs });
+      await updateDoc(userRef, { favorites: [...favorites, question] });
       return true;
     }
-  } catch (error) { 
-    return false; 
-  }
+  } catch (e) { return false; }
 };

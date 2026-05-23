@@ -1,4 +1,3 @@
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -9,7 +8,6 @@ const nextConfig = {
       { protocol: 'https', hostname: 'picsum.photos' },
     ],
   },
-  // تجاهل أخطاء التايب سكريبت أثناء بناء المشروع لضمان التشغيل السريع
   typescript: {
     ignoreBuildErrors: true,
   },
