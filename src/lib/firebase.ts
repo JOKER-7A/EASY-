@@ -11,7 +11,7 @@ const firebaseConfig = {
   appId: "1:698116507939:web:389055c6223cbcd7cfa496"
 };
 
-// تهيئة التطبيق بشكل صحيح وتجنب التكرار في تعريف المتغير
+// تهيئة التطبيق بشكل آمن
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);

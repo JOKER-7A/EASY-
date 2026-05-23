@@ -10,7 +10,7 @@
     --card-foreground: 210 40% 98%;
     --popover: 240 10% 4%;
     --popover-foreground: 210 40% 98%;
-    --primary: 260 80% 60%; /* Default Purple */
+    --primary: 260 80% 60%; 
     --primary-foreground: 210 40% 98%;
     --secondary: 240 10% 10%;
     --secondary-foreground: 210 40% 98%;
@@ -25,34 +25,6 @@
     --ring: 260 80% 60%;
     --radius: 1.5rem;
   }
-
-  /* Theme: Neon Blue */
-  [data-theme='blue'] {
-    --primary: 200 100% 50%;
-    --accent: 180 100% 50%;
-    --ring: 200 100% 50%;
-  }
-
-  /* Theme: Red Gaming */
-  [data-theme='red'] {
-    --primary: 0 100% 50%;
-    --accent: 20 100% 50%;
-    --ring: 0 100% 50%;
-  }
-
-  /* Theme: Purple OLED */
-  [data-theme='purple'] {
-    --primary: 280 100% 60%;
-    --accent: 300 100% 50%;
-    --ring: 280 100% 60%;
-  }
-
-  /* Theme: Dark Premium (Gold/Sand) */
-  [data-theme='gold'] {
-    --primary: 45 100% 50%;
-    --accent: 45 100% 30%;
-    --ring: 45 100% 50%;
-  }
 }
 
 @layer base {
@@ -60,10 +32,8 @@
     @apply border-border outline-none;
   }
   body {
-    @apply bg-background text-foreground font-body transition-colors duration-500;
+    @apply bg-background text-foreground transition-colors duration-500 overflow-x-hidden;
     direction: rtl;
-    overflow-x: hidden;
-    width: 100%;
     background-image: 
       radial-gradient(circle at 50% -20%, hsla(var(--primary), 0.15), transparent 50%),
       radial-gradient(circle at 0% 100%, hsla(var(--accent), 0.05), transparent 40%);
@@ -72,13 +42,7 @@
 }
 
 .glass {
-  @apply bg-white/5 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.8)];
-}
-
-.neon-border {
-  @apply border relative overflow-hidden;
-  border-color: hsla(var(--primary), 0.3);
-  box-shadow: 0 0 15px hsla(var(--primary), 0.1);
+  @apply bg-white/[0.03] backdrop-blur-3xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.8)];
 }
 
 .text-easy-premium {
@@ -86,11 +50,7 @@
   background: linear-gradient(180deg, #ffffff 0%, hsla(var(--primary), 1) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 15px hsla(var(--primary), 0.5));
-  position: relative;
-  transition: all 0.5s ease;
-  opacity: 1 !important;
-  visibility: visible !important;
+  filter: drop-shadow(0 0 20px hsla(var(--primary), 0.4));
 }
 
 .text-shine {
@@ -101,28 +61,25 @@
 .text-shine::after {
   content: "";
   position: absolute;
-  top: 0;
-  left: -100%;
-  width: 50%;
-  height: 100%;
-  background: linear-gradient(
-    to right,
-    transparent,
-    rgba(255, 255, 255, 0.4),
-    transparent
-  );
+  top: 0; left: -100%;
+  width: 50%; height: 100%;
+  background: linear-gradient(to right, transparent, rgba(255,255,255,0.4), transparent);
   transform: skewX(-25deg);
-  animation: shine 4s infinite;
+  animation: shine 5s infinite;
 }
 
 @keyframes shine {
   0% { left: -150%; }
-  20% { left: 150%; }
-  100% { left: 150%; }
+  20%, 100% { left: 150%; }
 }
 
-.active-press {
-  @apply active:scale-95 transition-transform duration-150;
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -133,21 +90,4 @@
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
   @apply bg-primary/20 rounded-full hover:bg-primary/40 transition-colors;
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-15px); }
-}
-
-.animate-float {
-  animation: float 5s ease-in-out infinite;
-}
-
-.gold-glow {
-  box-shadow: 0 0 20px hsla(var(--primary), 0.2);
-}
-
-.theme-transition {
-  transition: background-color 0.5s ease, border-color 0.5s ease, color 0.5s ease, box-shadow 0.5s ease;
 }

@@ -4,7 +4,6 @@ import {
   getDocs, 
   addDoc, 
   doc, 
-  deleteDoc,
   serverTimestamp,
   query,
   where,
@@ -19,14 +18,12 @@ import {
 } from "firebase/firestore";
 import { Section, Question, sections as staticSections } from "./practice-data";
 
-const SECTIONS_COLLECTION = "sections";
-const ATTEMPTS_COLLECTION = "attempts";
-const USER_PROFILES = "userProfiles";
-const ERROR_LOGS = "errorLogs";
-
+/**
+ * جلب الأقسام من Firestore مع خيار العودة للبيانات الثابتة في حال الفشل
+ */
 export const getSectionsFromDb = async (): Promise<Section[]> => {
   try {
-    const querySnapshot = await getDocs(collection(db, SECTIONS_COLLECTION));
+    const querySnapshot = await getDocs(collection(db, "sections"));
     const dbSections = querySnapshot.docs.map(doc => ({
       firebaseId: doc.id,
       ...(doc.data() as any)
@@ -41,15 +38,18 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
     
     return combined.sort((a, b) => Number(b.id) - Number(a.id));
   } catch (error) {
-    console.error("Error fetching sections:", error);
+    console.error("Error fetching sections, using static:", error);
     return [...staticSections].sort((a, b) => Number(b.id) - Number(a.id));
   }
 };
 
+/**
+ * جلب أو إنشاء ملف تعريف المستخدم
+ */
 export const getUserProfile = async (userId: string, email?: string, displayName?: string) => {
   if (!userId) return null;
   try {
-    const userRef = doc(db, USER_PROFILES, userId);
+    const userRef = doc(db, "userProfiles", userId);
     const userSnap = await getDoc(userRef);
     
     if (userSnap.exists()) {
@@ -60,9 +60,8 @@ export const getUserProfile = async (userId: string, email?: string, displayName
         xp: 0,
         totalCorrect: 0,
         favorites: [],
-        displayName: displayName || 'مستكشف EASY',
+        displayName: displayName || email?.split('@')[0] || 'مستكشف EASY',
         email: email || '',
-        theme: 'default',
         createdAt: serverTimestamp(),
         lastActive: serverTimestamp(),
         status: 'approved'
@@ -71,15 +70,13 @@ export const getUserProfile = async (userId: string, email?: string, displayName
       return { id: userId, ...initialProfile };
     }
   } catch (error) {
-    console.error("Error in getUserProfile:", error);
+    console.error("Profile fetch failed:", error);
     return { 
       id: userId, 
       level: 1, 
       xp: 0, 
       displayName: displayName || 'مستكشف EASY',
-      status: 'approved',
-      favorites: [],
-      theme: 'default'
+      status: 'approved'
     };
   }
 };
@@ -91,39 +88,29 @@ export const saveAttemptToDb = async (userId: string | undefined, attempt: any) 
       userId: userId || 'anonymous',
       createdAt: serverTimestamp(),
     };
-    await addDoc(collection(db, ATTEMPTS_COLLECTION), data);
+    await addDoc(collection(db, "attempts"), data);
     if (userId) {
-      await updateUserXP(userId, attempt.correctCount);
+      const userRef = doc(db, "userProfiles", userId);
+      await updateDoc(userRef, {
+        xp: increment(attempt.correctCount * 10),
+        totalCorrect: increment(attempt.correctCount),
+        lastActive: serverTimestamp()
+      });
+      // تحديث الليفل
+      const snap = await getDoc(userRef);
+      if (snap.exists()) {
+        const newXp = snap.data().xp;
+        const newLevel = Math.floor(newXp / 100) + 1;
+        await updateDoc(userRef, { level: newLevel });
+      }
     }
-  } catch (error) {}
-};
-
-export const updateUserXP = async (userId: string, correct: number) => {
-  try {
-    const userRef = doc(db, USER_PROFILES, userId);
-    const userSnap = await getDoc(userRef);
-    if (!userSnap.exists()) return;
-    
-    const data = userSnap.data();
-    const currentTotalXp = (data.xp || 0) + (correct * 10);
-    const newLevel = Math.floor(currentTotalXp / 100) + 1;
-    
-    await updateDoc(userRef, {
-      xp: currentTotalXp,
-      level: newLevel,
-      totalCorrect: increment(correct),
-      lastActive: serverTimestamp()
-    });
   } catch (error) {}
 };
 
 export const getLeaderboard = async () => {
   try {
-    const snapshot = await getDocs(collection(db, USER_PROFILES));
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })).sort((a: any, b: any) => (b.xp || 0) - (a.xp || 0)).slice(0, 5);
+    const snapshot = await getDocs(query(collection(db, "userProfiles"), orderBy("xp", "desc"), limit(5)));
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
     return [];
   }
@@ -132,7 +119,7 @@ export const getLeaderboard = async () => {
 export const saveErrorLogToDb = async (userId: string, question: Question, sectionTitle: string) => {
   try {
     const errorId = `${userId}_${question.id}`;
-    const errorRef = doc(db, ERROR_LOGS, errorId);
+    const errorRef = doc(db, "errorLogs", errorId);
     await setDoc(errorRef, {
       userId,
       questionId: question.id,
@@ -145,53 +132,10 @@ export const saveErrorLogToDb = async (userId: string, question: Question, secti
 
 export const getErrorLogs = async (userId: string) => {
   try {
-    const q = query(collection(db, ERROR_LOGS), where("userId", "==", userId));
+    const q = query(collection(db, "errorLogs"), where("userId", "==", userId));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => doc.data());
   } catch (error) {
     return [];
   }
-};
-
-export const toggleFavoriteInDb = async (userId: string, question: any) => {
-  try {
-    const userRef = doc(db, USER_PROFILES, userId);
-    const userSnap = await getDoc(userRef);
-    if (!userSnap.exists()) return false;
-    const favorites = userSnap.data().favorites || [];
-    const exists = favorites.find((f: any) => f.id === question.id);
-    if (exists) {
-      await updateDoc(userRef, { favorites: arrayRemove(exists) });
-      return false;
-    } else {
-      await updateDoc(userRef, { favorites: arrayUnion(question) });
-      return true;
-    }
-  } catch (error) {
-    return false;
-  }
-};
-
-export const updateUserTheme = async (userId: string, theme: string) => {
-  try {
-    const userRef = doc(db, USER_PROFILES, userId);
-    await updateDoc(userRef, { theme });
-  } catch (error) {}
-};
-
-export const updateUserProfileName = async (userId: string, newName: string) => {
-  try {
-    const userRef = doc(db, USER_PROFILES, userId);
-    await updateDoc(userRef, { displayName: newName });
-  } catch (error) {}
-};
-
-export const isDisplayNameTaken = async (name: string, currentUserId: string): Promise<boolean> => {
-  try {
-    const q = query(collection(db, USER_PROFILES), where("displayName", "==", name));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.some(doc => doc.id !== currentUserId);
-  } catch (error) {
-    return false;
-  }
-};
+}
