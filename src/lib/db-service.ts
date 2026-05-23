@@ -15,9 +15,6 @@ import {
 } from "firebase/firestore";
 import { Section, Question, sections as staticSections } from "./practice-data";
 
-/**
- * جلب النماذج بنظام Fail-Safe مطلق لضمان عدم توقف الموقع
- */
 export const getSectionsFromDb = async (): Promise<Section[]> => {
   try {
     const sectionsRef = collection(db, "sections");
@@ -97,7 +94,7 @@ export const getErrorLogs = async (userId: string) => {
 export const saveErrorLogToDb = async (userId: string, question: Question, sectionTitle: string) => {
   try {
     const errorId = `${userId}_${question.id}`;
-    setDoc(doc(db, "errorLogs", errorId), {
+    await setDoc(doc(db, "errorLogs", errorId), {
       userId,
       questionId: question.id,
       questionData: { ...question, sectionTitle },

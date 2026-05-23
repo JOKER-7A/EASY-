@@ -37,6 +37,7 @@ import { useToast } from '@/hooks/use-toast';
 
 export default function Home() {
   const [hasMounted, setHasMounted] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeView, setActiveView] = useState<'landing' | 'practice'>('landing');
   const [sections, setSections] = useState<Section[]>(staticSections);
   const [selectedSection, setSelectedSection] = useState<Section | null>(null);
@@ -44,7 +45,6 @@ export default function Home() {
   
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<any>(null);
-  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -56,15 +56,11 @@ export default function Home() {
 
   useEffect(() => {
     setHasMounted(true);
-    // صمام أمان لضمان اختفاء شاشة التحميل
+    // صمام أمان لضمان اختفاء شاشة التحميل مهما حدث
     const timer = setTimeout(() => {
-      setIsAuthLoading(false);
-    }, 2500);
-    return () => clearTimeout(timer);
-  }, []);
+      setIsLoading(false);
+    }, 2000);
 
-  useEffect(() => {
-    if (!hasMounted) return;
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
@@ -72,23 +68,21 @@ export default function Home() {
           const p = await getUserProfile(u.uid, u.email || '');
           setProfile(p);
         } catch (e) {
-          console.error("Profile load failed", e);
+          console.error("Profile error", e);
         }
       }
-      setIsAuthLoading(false);
+      setIsLoading(false);
     });
-    return () => unsubscribe();
-  }, [hasMounted]);
 
-  useEffect(() => {
-    if (!hasMounted) return;
     getSectionsFromDb().then(data => {
       if (data && data.length > 0) setSections(data);
-    }).catch(e => {
-      console.error("Sections load failed", e);
-      setSections(staticSections);
-    });
-  }, [hasMounted]);
+    }).catch(() => setSections(staticSections));
+
+    return () => {
+      clearTimeout(timer);
+      unsubscribe();
+    };
+  }, []);
 
   const filteredSections = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
@@ -110,7 +104,7 @@ export default function Home() {
         toast({ title: "تم إنشاء الحساب بنجاح ✅" });
       }
     } catch (error: any) {
-      toast({ title: "خطأ في الدخول", description: "تأكد من البيانات وحاول مرة أخرى", variant: "destructive" });
+      toast({ title: "خطأ في الدخول", variant: "destructive" });
     }
   };
 
@@ -131,6 +125,18 @@ export default function Home() {
 
   if (!hasMounted) return <div className="min-h-screen bg-black" />;
 
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 bg-black flex items-center justify-center z-[500] backdrop-blur-xl">
+        <div className="text-center space-y-6">
+          <Loader2 className="w-20 h-20 text-primary animate-spin mx-auto" />
+          <h2 className="text-3xl font-black text-white">EASY PREP MASTER</h2>
+          <p className="text-white/20 font-bold">جاري التحميل...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (activeView === 'practice' && selectedSection) {
     return <PracticeSession section={selectedSection} onExit={() => setActiveView('landing')} />;
   }
@@ -138,7 +144,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-black text-white flex flex-col relative overflow-x-hidden">
       
-      {!user && !isAuthLoading && (
+      {!user && (
         <div className="fixed inset-0 z-[300] bg-black flex items-center justify-center p-4">
           <Card className="w-full max-w-xl p-10 glass border-white/5 rounded-[50px] shadow-2xl">
             <div className="text-center mb-10">
@@ -258,16 +264,6 @@ export default function Home() {
           <p className="text-5xl tracking-[0.5em] uppercase font-black opacity-30 text-shine">DR.MAHMOUD ABD EL RAZEK</p>
         </footer>
       </div>
-
-      {isAuthLoading && (
-        <div className="fixed inset-0 bg-black flex items-center justify-center z-[500] backdrop-blur-xl">
-          <div className="text-center space-y-6">
-            <Loader2 className="w-20 h-20 text-primary animate-spin mx-auto" />
-            <h2 className="text-3xl font-black text-white">EASY PREP MASTER</h2>
-            <p className="text-white/20 font-bold">جاري تأمين الاتصال...</p>
-          </div>
-        </div>
-      )}
 
       {activeOverlay && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
