@@ -57,14 +57,14 @@ export default function Home() {
   // منع أخطاء Hydration وضمان استقرار العرض
   useEffect(() => {
     setHasMounted(true);
-    // مؤقت أمان لإنهاء شاشة التحميل إجبارياً بعد 2.5 ثانية
+    // مؤقت أمان لإنهاء شاشة التحميل إجبارياً بعد 2.5 ثانية لضمان ظهور الموقع دائماً
     const safetyTimer = setTimeout(() => {
       setIsAuthLoading(false);
     }, 2500);
     return () => clearTimeout(safetyTimer);
   }, []);
 
-  // إدارة جلسة المستخدم بأسلوب مستقر
+  // إدارة جلسة المستخدم
   useEffect(() => {
     if (!hasMounted) return;
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
@@ -94,7 +94,7 @@ export default function Home() {
     });
   }, [hasMounted]);
 
-  // محرك البحث الفائق
+  // محرك البحث
   const filteredSections = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return sections;
@@ -136,7 +136,7 @@ export default function Home() {
     }
   };
 
-  // حماية ضد أخطاء السيرفر الجانبية
+  // حماية ضد أخطاء السيرفر الجانبية (OLED Black background)
   if (!hasMounted) return <div className="min-h-screen bg-black" />;
 
   if (activeView === 'practice' && selectedSection) {
@@ -146,7 +146,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-black text-white flex flex-col relative overflow-x-hidden selection:bg-primary selection:text-white">
       
-      {/* واجهة الدخول - تظهر فقط عند الحاجة وبعد انتهاء التحميل */}
+      {/* واجهة الدخول - تظهر فقط عند عدم وجود مستخدم وبعد انتهاء التحميل الأولي */}
       {!user && !isAuthLoading && (
         <div className="fixed inset-0 z-[300] bg-black flex items-center justify-center p-4">
           <Card className="w-full max-w-xl p-10 glass border-white/5 rounded-[50px] shadow-2xl animate-in zoom-in duration-500">
@@ -271,9 +271,9 @@ export default function Home() {
         </footer>
       </div>
 
-      {/* شاشة التحميل الذكية */}
+      {/* شاشة التحميل الذكية (صمام الأمان) */}
       {isAuthLoading && (
-        <div className="fixed inset-0 bg-black flex items-center justify-center z-[500] backdrop-blur-xl animate-out fade-out duration-1000 delay-1000">
+        <div className="fixed inset-0 bg-black flex items-center justify-center z-[500] backdrop-blur-xl">
           <div className="text-center space-y-6">
             <Loader2 className="w-20 h-20 text-primary animate-spin mx-auto" />
             <h2 className="text-3xl font-black text-white animate-pulse">EASY PREP MASTER</h2>
@@ -300,7 +300,7 @@ export default function Home() {
                 overlayData.map((item, idx) => (
                   <div key={idx} className="mb-4 p-6 bg-white/5 rounded-3xl border border-white/5 flex justify-between items-center hover:bg-white/10 transition-colors">
                     <span className="text-2xl font-bold truncate max-w-[60%]">
-                      {activeOverlay === 'leaderboard' ? item.displayName : (item.questionData?.question || 'سؤال غير معروف')}
+                      {activeOverlay === 'leaderboard' ? (item.displayName || 'مستخدم') : (item.questionData?.question || 'سؤال غير معروف')}
                     </span>
                     <span className="text-primary font-black">
                       {activeOverlay === 'leaderboard' ? `${item.xp || 0} XP` : `تكرر ${item.count || 1} مرة`}

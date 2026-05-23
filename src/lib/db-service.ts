@@ -17,6 +17,7 @@ import { Section, Question, sections as staticSections } from "./practice-data";
 
 /**
  * جلب النماذج مع نظام حماية "Anti-Crash"
+ * يضمن دائماً عودة بيانات سليمة حتى لو فشل Firestore
  */
 export const getSectionsFromDb = async (): Promise<Section[]> => {
   try {
@@ -99,7 +100,7 @@ export const saveAttemptToDb = async (userId: string | undefined, attempt: any) 
         xp: increment(attempt.correctCount * 10),
         totalCorrect: increment(attempt.correctCount),
         lastActive: serverTimestamp()
-      }).catch(() => {}); // إخفاق غير حرج
+      }).catch(() => {});
     }
   } catch (error) {
     console.error("Save attempt failed silently");
