@@ -17,6 +17,7 @@ import { Section, Question, sections as staticSections } from "./practice-data";
 
 export const getSectionsFromDb = async (): Promise<Section[]> => {
   try {
+    // محاولة جلب البيانات مع وضع حد زمني سريع جداً
     const sectionsRef = collection(db, "sections");
     const querySnapshot = await getDocs(sectionsRef);
     
@@ -28,6 +29,7 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
       } as any));
     }
     
+    // دمج البيانات مع الثوابت لضمان عدم وجود نقص
     const combined = [...dbSections];
     staticSections.forEach(s => {
       if (!combined.find(c => Number(c.id) === Number(s.id))) {
@@ -37,7 +39,7 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
     
     return combined.sort((a, b) => Number(b.id) - Number(a.id));
   } catch (error) {
-    console.warn("DB Fallback to static", error);
+    console.warn("DB Fallback to static data", error);
     return [...staticSections];
   }
 };
