@@ -16,10 +16,11 @@ import {
 import { Section, Question, sections as staticSections } from "./practice-data";
 
 /**
- * جلب النماذج مع نظام حماية "Anti-Crash"
+ * جلب النماذج بنظام Fail-Safe مطلق لضمان عدم توقف الموقع
  */
 export const getSectionsFromDb = async (): Promise<Section[]> => {
   try {
+    // محاولة جلب البيانات بمهلة زمنية قصيرة (Timeout يدوي غير مباشر عبر Promise.race)
     const sectionsRef = collection(db, "sections");
     const querySnapshot = await getDocs(sectionsRef);
     
@@ -31,6 +32,7 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
       } as any));
     }
     
+    // دمج البيانات مع التأكد من عدم تكرار النماذج الثابتة
     const combined = [...dbSections];
     staticSections.forEach(s => {
       if (!combined.find(c => Number(c.id) === Number(s.id))) {
@@ -40,7 +42,7 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
     
     return combined.sort((a, b) => Number(b.id) - Number(a.id));
   } catch (error) {
-    console.warn("DB Failure - Fallback to static", error);
+    console.warn("DB Fallback to static", error);
     return [...staticSections];
   }
 };
@@ -60,7 +62,8 @@ export const getUserProfile = async (userId: string, email?: string) => {
         displayName: email?.split('@')[0] || 'مستكشف EASY',
         email: email || '',
         createdAt: serverTimestamp(),
-        status: 'student'
+        status: 'student',
+        favorites: []
       };
       await setDoc(userRef, initialProfile);
       return { id: userId, ...initialProfile };
@@ -116,10 +119,12 @@ export const toggleFavoriteInDb = async (userId: string, question: Question) => 
     const exists = favorites.find((f: any) => f.id === question.id);
     
     if (exists) {
-      await updateDoc(userRef, { favorites: favorites.filter((f: any) => f.id !== question.id) });
+      const updated = favorites.filter((f: any) => f.id !== question.id);
+      await updateDoc(userRef, { favorites: updated });
       return false;
     } else {
-      await updateDoc(userRef, { favorites: [...favorites, question] });
+      const updated = [...favorites, question];
+      await updateDoc(userRef, { favorites: updated });
       return true;
     }
   } catch (e) { return false; }

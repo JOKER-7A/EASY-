@@ -56,9 +56,11 @@ export default function Home() {
 
   useEffect(() => {
     setHasMounted(true);
-    // Safety timeout to ensure loading screen vanishes
-    const timer = setTimeout(() => setIsAuthLoading(false), 2000);
-    return () => clearTimeout(timer);
+    // صمام أمان: اختفاء شاشة التحميل إجبارياً بعد 2.5 ثانية
+    const safetyTimer = setTimeout(() => {
+      setIsAuthLoading(false);
+    }, 2500);
+    return () => clearTimeout(safetyTimer);
   }, []);
 
   useEffect(() => {
@@ -66,8 +68,12 @@ export default function Home() {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
-        const p = await getUserProfile(u.uid, u.email || '');
-        setProfile(p);
+        try {
+          const p = await getUserProfile(u.uid, u.email || '');
+          setProfile(p);
+        } catch (e) {
+          console.error("Profile load failed", e);
+        }
       }
       setIsAuthLoading(false);
     });
@@ -78,7 +84,7 @@ export default function Home() {
     if (!hasMounted) return;
     getSectionsFromDb().then(data => {
       if (data && data.length > 0) setSections(data);
-    });
+    }).catch(e => console.error("Sections load failed", e));
   }, [hasMounted]);
 
   const filteredSections = useMemo(() => {
@@ -91,6 +97,7 @@ export default function Home() {
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email || !password) return;
     try {
       if (authMode === 'login') {
         await signInWithEmailAndPassword(auth, email, password);
@@ -100,18 +107,22 @@ export default function Home() {
         toast({ title: "تم إنشاء الحساب بنجاح ✅" });
       }
     } catch (error: any) {
-      toast({ title: "خطأ في الدخول", variant: "destructive" });
+      toast({ title: "خطأ في الدخول", description: "تأكد من البيانات وحاول مرة أخرى", variant: "destructive" });
     }
   };
 
   const openOverlay = async (type: 'leaderboard' | 'errors') => {
     setActiveOverlay(type);
-    if (type === 'leaderboard') {
-      const data = await getLeaderboard();
-      setOverlayData(data);
-    } else if (type === 'errors' && user) {
-      const data = await getErrorLogs(user.uid);
-      setOverlayData(data);
+    try {
+      if (type === 'leaderboard') {
+        const data = await getLeaderboard();
+        setOverlayData(data);
+      } else if (type === 'errors' && user) {
+        const data = await getErrorLogs(user.uid);
+        setOverlayData(data);
+      }
+    } catch (e) {
+      setOverlayData([]);
     }
   };
 
@@ -124,7 +135,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-black text-white flex flex-col relative overflow-x-hidden">
       
-      {/* Auth Screen */}
+      {/* Auth Screen - Only shown when definitely not logged in and not loading */}
       {!user && !isAuthLoading && (
         <div className="fixed inset-0 z-[300] bg-black flex items-center justify-center p-4">
           <Card className="w-full max-w-xl p-10 glass border-white/5 rounded-[50px] shadow-2xl">
