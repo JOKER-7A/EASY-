@@ -57,6 +57,7 @@ export default function Home() {
   useEffect(() => {
     setHasMounted(true);
     
+    // صمام أمان لإغلاق شاشة التحميل مهما حدث بعد 2.5 ثانية
     const safetyTimer = setTimeout(() => {
       setIsLoading(false);
     }, 2500);
@@ -68,15 +69,19 @@ export default function Home() {
           const p = await getUserProfile(u.uid, u.email || '');
           setProfile(p);
         } catch (e) {
-          console.error("Profile error", e);
+          console.error("Profile fetch failed, using defaults", e);
         }
       }
       setIsLoading(false);
     });
 
+    // جلب البيانات مع ضمان عدم التعليق
     getSectionsFromDb().then(data => {
-      if (data && data.length > 0) setSections(data);
-    }).catch(() => {
+      if (data && data.length > 0) {
+        setSections(data);
+      }
+    }).catch(err => {
+      console.warn("Firestore error, falling back to static", err);
       setSections(staticSections);
     });
 
@@ -115,10 +120,10 @@ export default function Home() {
     try {
       if (type === 'leaderboard') {
         const data = await getLeaderboard();
-        setOverlayData(data);
+        setOverlayData(data || []);
       } else if (type === 'errors' && user) {
         const data = await getErrorLogs(user.uid);
-        setOverlayData(data);
+        setOverlayData(data || []);
       }
     } catch (e) {
       setOverlayData([]);
@@ -132,7 +137,7 @@ export default function Home() {
       <div className="fixed inset-0 bg-black flex flex-col items-center justify-center z-[500] backdrop-blur-xl">
         <Loader2 className="w-16 h-16 text-primary animate-spin mb-8" />
         <h2 className="text-4xl font-black text-white text-shine">EASY PREP MASTER</h2>
-        <p className="text-white/20 font-bold mt-4 tracking-widest">أهم شيء الفهم وليس الحفظ...</p>
+        <p className="text-white/20 font-bold mt-4 tracking-widest uppercase">Elite Training Platform</p>
       </div>
     );
   }
@@ -185,7 +190,7 @@ export default function Home() {
 
         <header className="text-center mb-32 space-y-12 pt-20">
           <div className="inline-flex items-center gap-3 px-10 py-4 rounded-full glass border-primary/30 text-primary font-black animate-float">
-            <Zap className="w-6 h-6 fill-primary" /> EASY PREP V3.1
+            <Zap className="w-6 h-6 fill-primary" /> EASY PREP V3.2
           </div>
           <h1 className="text-[10rem] md:text-[15rem] text-easy-premium text-shine leading-none">EASY</h1>
           <p className="text-3xl font-black text-white/50 max-w-4xl mx-auto">أهم شيء الفهم <span className="text-white">وليس الحفظ</span> 💎</p>
