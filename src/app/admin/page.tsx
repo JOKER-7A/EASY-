@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -62,8 +61,7 @@ export default function AdminPage() {
     title: '',
     questions: [],
     readingPassages: [],
-    duration: 13,
-    pdfLink: ''
+    duration: 13
   });
 
   useEffect(() => {
@@ -127,8 +125,7 @@ export default function AdminPage() {
         title: '', 
         questions: [], 
         readingPassages: [], 
-        duration: 13,
-        pdfLink: ''
+        duration: 13
       });
       await fetchSections();
       toast({ title: "تم نشر النموذج بنجاح! 🚀" });
@@ -298,10 +295,6 @@ export default function AdminPage() {
                 <div className="space-y-3 md:col-span-2">
                   <label className="text-white/40 font-bold pr-1 text-sm">عنوان النموذج</label>
                   <Input placeholder="اسم النموذج التدريبي" value={newSection.title || ''} onChange={(e) => setNewSection(prev => ({ ...prev, title: e.target.value }))} className="bg-black border-white/10 h-16 text-xl rounded-2xl" />
-                </div>
-                <div className="space-y-3 md:col-span-3">
-                  <label className="text-white/40 font-bold pr-1 text-sm">رابط ملف PDF (اختياري)</label>
-                  <Input placeholder="https://example.com/file.pdf" value={newSection.pdfLink || ''} onChange={(e) => setNewSection(prev => ({ ...prev, pdfLink: e.target.value }))} className="bg-black border-white/10 h-16 rounded-2xl" />
                 </div>
               </div>
 

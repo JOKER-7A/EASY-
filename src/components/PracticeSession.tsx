@@ -174,18 +174,6 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
             </div>,
       color: "text-goldenrod"
     };
-    if (percentage >= 99) return {
-      title: "اقتربت جداً 😄",
-      phrase: "سحقاً لواحد بالمئة! أنت رائع فعلاً ✨",
-      icon: <Sparkles className="w-24 h-24 md:w-40 md:h-40 text-goldenrod" />,
-      color: "text-goldenrod"
-    };
-    if (percentage >= 98) return {
-      title: "لقد اقتربت جداً 🔥",
-      phrase: "مستوى ناري، خطوة واحدة نحو المثالية!",
-      icon: <Trophy className="w-24 h-24 md:w-40 md:h-40 text-goldenrod" />,
-      color: "text-goldenrod"
-    };
     if (percentage >= 80) {
       const phrases = ["أداء ممتاز 🔥", "مستواك يتطور بسرعة 🚀", "استمر يا بطل 💪"];
       return {
@@ -310,10 +298,6 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
                     </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                    <div className="p-6 bg-vermillion/10 rounded-2xl md:rounded-[35px] border border-vermillion/20">
-                      <p className="text-xs text-muted-foreground font-bold mb-1">إجابتك:</p>
-                      <p className="text-xl md:text-3xl font-black text-vermillion">{userAnswers[q.id] || 'لم يتم الحل'}</p>
-                    </div>
                     <div className="p-6 bg-green-500/10 rounded-2xl md:rounded-[35px] border border-green-500/20">
                       <p className="text-xs text-muted-foreground font-bold mb-1">الصحيح:</p>
                       <p className="text-xl md:text-3xl font-black text-green-500">{q.correct}</p>

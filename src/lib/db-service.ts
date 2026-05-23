@@ -1,4 +1,3 @@
-
 import { db } from "./firebase";
 import { 
   collection, 
@@ -241,7 +240,7 @@ export const toggleFavoriteInDb = async (userId: string, question: any) => {
   }
 };
 
-export const saveErrorLogToDb = async (userId: string, question: Question, sectionTitle: string, userAnswer: string) => {
+export const saveErrorLogToDb = async (userId: string, question: Question, sectionTitle: string) => {
   try {
     const errorId = `${userId}_${question.id}`;
     const errorRef = doc(db, ERROR_LOGS, errorId);
@@ -251,8 +250,7 @@ export const saveErrorLogToDb = async (userId: string, question: Question, secti
       questionId: question.id,
       questionData: {
         ...question,
-        sectionTitle,
-        userAnswer // حفظ إجابة المستخدم للمراجعة
+        sectionTitle
       },
       lastOccurred: serverTimestamp(),
       count: increment(1)
@@ -274,7 +272,7 @@ export const getErrorLogs = async (userId: string) => {
       .sort((a: any, b: any) => {
         const timeA = a.lastOccurred?.seconds || 0;
         const timeB = b.lastOccurred?.seconds || 0;
-        return timeB - timeA; // ترتيب زمني برمي لتجنب الحاجة لفهرس مركب
+        return timeB - timeA;
       });
   } catch (error) {
     console.error("Error fetching logs:", error);
