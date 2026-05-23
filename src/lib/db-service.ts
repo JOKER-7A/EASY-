@@ -15,13 +15,10 @@ import {
 } from "firebase/firestore";
 import { Section, Question, sections as staticSections } from "./practice-data";
 
-/**
- * جلب الأقسام مع ضمان عدم الفشل أبداً (Fail-Safe)
- */
 export const getSectionsFromDb = async (): Promise<Section[]> => {
   try {
     const querySnapshot = await getDocs(collection(db, "sections"));
-    if (querySnapshot.empty) return [...staticSections].sort((a, b) => b.id - a.id);
+    if (querySnapshot.empty) return [...staticSections];
     
     const dbSections = querySnapshot.docs.map(doc => ({
       firebaseId: doc.id,
@@ -37,14 +34,11 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
     
     return combined.sort((a, b) => Number(b.id) - Number(a.id));
   } catch (error) {
-    console.warn("Firestore Error, fallback to static:", error);
-    return [...staticSections].sort((a, b) => b.id - a.id);
+    console.error("Database Error (Sections):", error);
+    return [...staticSections];
   }
 };
 
-/**
- * جلب بروفايل المستخدم بأمان (Fail-Safe)
- */
 export const getUserProfile = async (userId: string, email?: string, displayName?: string) => {
   if (!userId) return null;
   try {
@@ -62,19 +56,19 @@ export const getUserProfile = async (userId: string, email?: string, displayName
         email: email || '',
         createdAt: serverTimestamp(),
         lastActive: serverTimestamp(),
-        status: 'approved'
+        status: 'student'
       };
       await setDoc(userRef, initialProfile);
       return { id: userId, ...initialProfile };
     }
   } catch (error) {
-    console.warn("Profile Fetch Error, returning fallback:", error);
+    console.error("Database Error (Profile):", error);
     return { 
       id: userId, 
       level: 1, 
       xp: 0, 
       displayName: displayName || 'مستكشف', 
-      status: 'approved',
+      status: 'student',
       isFallback: true 
     };
   }
@@ -93,7 +87,7 @@ export const saveAttemptToDb = async (userId: string | undefined, attempt: any) 
       });
     }
   } catch (error) {
-    console.warn("Failed to save attempt:", error);
+    console.error("Database Error (Attempt):", error);
   }
 };
 
@@ -128,6 +122,6 @@ export const saveErrorLogToDb = async (userId: string, question: Question, secti
       count: increment(1)
     }, { merge: true });
   } catch (error) {
-    console.warn("Failed to save error log:", error);
+    console.error("Database Error (ErrorLog):", error);
   }
 };

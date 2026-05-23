@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { sections as staticSections, Section } from '@/lib/practice-data';
+import { Section, sections as staticSections } from '@/lib/practice-data';
 import { 
   getSectionsFromDb, 
   getUserProfile, 
@@ -33,7 +33,6 @@ import {
   createUserWithEmailAndPassword,
   signOut
 } from 'firebase/auth';
-import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
 export default function Home() {
@@ -55,43 +54,40 @@ export default function Home() {
   
   const { toast } = useToast();
 
-  // مؤقت أمان لإنهاء التحميل في كل الحالات
+  // تأمين إنهاء شاشة التحميل مهما حدث
   useEffect(() => {
-    const safetyTimer = setTimeout(() => {
-      setIsAuthLoading(false);
-    }, 3000);
-
+    const authTimer = setTimeout(() => setIsAuthLoading(false), 3000);
+    
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
         try {
-          const p = await getUserProfile(u.uid, u.email || '', u.displayName || '');
+          const p = await getUserProfile(u.uid, u.email || '');
           setProfile(p);
         } catch (e) {
-          console.error("Profile fetch error:", e);
+          console.error("Auth Effect Error:", e);
         }
       } else {
         setProfile(null);
       }
       setIsAuthLoading(false);
-      clearTimeout(safetyTimer);
+      clearTimeout(authTimer);
     });
 
     return () => {
       unsubscribe();
-      clearTimeout(safetyTimer);
+      clearTimeout(authTimer);
     };
   }, []);
 
-  // جلب المحتوى
+  // جلب المحتوى بشكل مستقر
   useEffect(() => {
     const fetchContent = async () => {
       try {
         const data = await getSectionsFromDb();
-        setSections(data);
-        setFilteredSections(data);
+        setSections(data || staticSections);
       } catch (error) {
-        console.warn("Failed to fetch content, using static:", error);
+        setSections(staticSections);
       }
     };
     fetchContent();
@@ -132,7 +128,6 @@ export default function Home() {
         setOverlayData(data);
       }
     } catch (error) {
-      console.warn("Overlay fetch error:", error);
       setOverlayData([]);
     }
   };
@@ -141,44 +136,13 @@ export default function Home() {
     return <PracticeSession section={selectedSection} onExit={() => window.location.reload()} />;
   }
 
-  const currentXpProgress = profile ? (profile.xp % 100) : 0;
-
   return (
-    <main className="min-h-screen bg-black text-white relative flex flex-col overflow-x-hidden">
+    <main className="min-h-screen bg-black text-white flex flex-col relative overflow-x-hidden">
       
-      {/* Overlay: Leaderboard / Errors */}
-      {activeOverlay && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/90 backdrop-blur-3xl" onClick={() => setActiveOverlay(null)} />
-          <Card className="w-full max-w-4xl max-h-[85vh] overflow-hidden glass border-white/5 rounded-[40px] relative z-10 flex flex-col animate-in zoom-in duration-300">
-            <div className="p-8 border-b border-white/5 flex items-center justify-between">
-              <h2 className="text-4xl font-black text-white">
-                {activeOverlay === 'leaderboard' ? "نخبة EASY 🏆" : "سجل الأخطاء ⚠️"}
-              </h2>
-              <Button variant="ghost" onClick={() => setActiveOverlay(null)}><X className="w-8 h-8" /></Button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-              {overlayData.length === 0 ? (
-                <div className="text-center py-20 opacity-30">
-                  <p className="text-2xl font-black">لا توجد بيانات حالياً 🚀</p>
-                </div>
-              ) : (
-                overlayData.map((item, idx) => (
-                  <div key={idx} className="mb-4 p-6 bg-white/5 rounded-3xl border border-white/5 flex justify-between items-center">
-                    <span className="text-2xl font-bold">{item.displayName || item.questionData?.question}</span>
-                    <span className="text-primary font-black">{item.xp ? `${item.xp} XP` : 'خطأ مسجل'}</span>
-                  </div>
-                ))
-              )}
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* Auth Gate */}
+      {/* Auth Guard UI */}
       {!user && !isAuthLoading && (
         <div className="fixed inset-0 z-[300] bg-black flex items-center justify-center p-4">
-          <Card className="w-full max-w-xl p-10 md:p-14 glass border-white/5 rounded-[50px] shadow-2xl animate-in fade-in zoom-in duration-500">
+          <Card className="w-full max-w-xl p-10 glass border-white/5 rounded-[50px] shadow-2xl animate-in zoom-in duration-500">
             <div className="text-center mb-10">
               <h1 className="text-8xl md:text-[10rem] text-easy-premium mb-4">EASY</h1>
               <p className="text-lg text-primary font-bold tracking-widest opacity-80 uppercase">Elite Training Master</p>
@@ -197,7 +161,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* Main Content */}
+      {/* Main App UI */}
       <div className="container mx-auto px-4 md:px-8 py-20 max-w-7xl relative z-10">
         
         {user && profile && (
@@ -211,8 +175,8 @@ export default function Home() {
                   <p className="text-xs font-black text-primary tracking-widest uppercase">PROGRESS</p>
                   <p className="text-sm font-bold text-white/60">{profile.displayName || 'مستكشف'}</p>
                 </div>
-                <Progress value={currentXpProgress} className="h-3 bg-white/5 rounded-full" />
-                <p className="text-[10px] text-white/30 font-black">{profile.xp} XP TOTAL</p>
+                <Progress value={profile.xp ? (profile.xp % 100) : 0} className="h-3 bg-white/5" />
+                <p className="text-[10px] text-white/30 font-black">{profile.xp || 0} XP TOTAL</p>
               </div>
             </div>
           </div>
@@ -225,14 +189,16 @@ export default function Home() {
           <h1 className="text-[10rem] md:text-[15rem] text-easy-premium text-shine leading-none">EASY</h1>
           <p className="text-3xl font-black text-white/50 max-w-4xl mx-auto">أهم شيء الفهم <span className="text-white">وليس الحفظ</span> 💎</p>
 
-          <div className="max-w-3xl mx-auto pt-20 px-4 relative group">
-            <Search className="absolute right-12 top-1/2 -translate-y-1/2 w-10 h-10 text-white/20" />
-            <Input 
-              placeholder="ابحث عن نموذج..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-24 w-full rounded-[45px] bg-white/5 border-2 border-white/5 pr-24 text-3xl font-bold transition-all focus:border-primary/30"
-            />
+          <div className="max-w-3xl mx-auto pt-20 px-4">
+            <div className="relative group">
+              <Search className="absolute right-12 top-1/2 -translate-y-1/2 w-10 h-10 text-white/20" />
+              <Input 
+                placeholder="ابحث عن نموذج..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-24 w-full rounded-[45px] bg-white/5 border-2 border-white/5 pr-24 text-3xl font-bold transition-all focus:border-primary/30"
+              />
+            </div>
           </div>
 
           <div className="flex flex-wrap justify-center gap-8 pt-10">
@@ -262,7 +228,7 @@ export default function Home() {
                 <div className="flex flex-col sm:flex-row justify-between items-center gap-10">
                   <div className="space-y-4 text-right">
                     <span className="bg-primary/20 text-primary px-6 py-2 rounded-xl font-black text-2xl">🔥 قسم {section.id}</span>
-                    <h2 className="text-4xl font-black text-white group-hover:text-primary transition-colors leading-tight">
+                    <h2 className="text-4xl font-black text-white group-hover:text-primary transition-colors">
                       {section.title}
                     </h2>
                     <p className="text-white/30 font-bold text-xl">{section.questions.length} سؤال • {section.duration} دقيقة</p>
@@ -301,6 +267,33 @@ export default function Home() {
             <h2 className="text-3xl font-black text-white animate-pulse">EASY PREP MASTER</h2>
             <p className="text-white/20 font-bold">جاري تأمين الاتصال...</p>
           </div>
+        </div>
+      )}
+
+      {/* Leaderboard/Errors Overlay */}
+      {activeOverlay && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/90 backdrop-blur-3xl" onClick={() => setActiveOverlay(null)} />
+          <Card className="w-full max-w-4xl max-h-[85vh] overflow-hidden glass border-white/5 rounded-[40px] relative z-10 flex flex-col">
+            <div className="p-8 border-b border-white/5 flex items-center justify-between">
+              <h2 className="text-4xl font-black text-white">
+                {activeOverlay === 'leaderboard' ? "نخبة EASY 🏆" : "سجل الأخطاء ⚠️"}
+              </h2>
+              <Button variant="ghost" onClick={() => setActiveOverlay(null)}><X className="w-8 h-8" /></Button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-8">
+              {overlayData.length === 0 ? (
+                <div className="text-center py-20 opacity-30 text-2xl font-black">لا توجد بيانات حالياً 🚀</div>
+              ) : (
+                overlayData.map((item, idx) => (
+                  <div key={idx} className="mb-4 p-6 bg-white/5 rounded-3xl border border-white/5 flex justify-between items-center">
+                    <span className="text-2xl font-bold">{item.displayName || item.questionData?.question || 'غير معروف'}</span>
+                    <span className="text-primary font-black">{item.xp ? `${item.xp} XP` : 'خطأ مسجل'}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </Card>
         </div>
       )}
     </main>
