@@ -16,7 +16,7 @@ import {
 import { Section, Question, sections as staticSections } from "./practice-data";
 
 /**
- * جلب الأقسام مع ضمان عدم الفشل أبداً
+ * جلب الأقسام مع ضمان عدم الفشل أبداً (Fail-Safe)
  */
 export const getSectionsFromDb = async (): Promise<Section[]> => {
   try {
@@ -36,13 +36,13 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
     
     return combined.sort((a, b) => Number(b.id) - Number(a.id));
   } catch (error) {
-    console.error("Firestore Error, fallback to static:", error);
+    console.warn("Firestore Error, fallback to static:", error);
     return [...staticSections].sort((a, b) => Number(b.id) - Number(a.id));
   }
 };
 
 /**
- * جلب بروفايل المستخدم بأمان
+ * جلب بروفايل المستخدم بأمان (Fail-Safe)
  */
 export const getUserProfile = async (userId: string, email?: string, displayName?: string) => {
   if (!userId) return null;
@@ -67,8 +67,8 @@ export const getUserProfile = async (userId: string, email?: string, displayName
       return { id: userId, ...initialProfile };
     }
   } catch (error) {
-    console.error("Profile Fetch Error:", error);
-    return { id: userId, level: 1, xp: 0, displayName: 'مستكشف', status: 'approved' };
+    console.warn("Profile Fetch Error, returning fallback:", error);
+    return { id: userId, level: 1, xp: 0, displayName: displayName || 'مستكشف', status: 'approved' };
   }
 };
 
@@ -84,7 +84,9 @@ export const saveAttemptToDb = async (userId: string | undefined, attempt: any) 
         lastActive: serverTimestamp()
       });
     }
-  } catch (error) {}
+  } catch (error) {
+    console.warn("Failed to save attempt:", error);
+  }
 };
 
 export const getLeaderboard = async () => {
@@ -92,7 +94,9 @@ export const getLeaderboard = async () => {
     const q = query(collection(db, "userProfiles"), orderBy("xp", "desc"), limit(5));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  } catch (error) { return []; }
+  } catch (error) { 
+    return []; 
+  }
 };
 
 export const getErrorLogs = async (userId: string) => {
@@ -100,7 +104,9 @@ export const getErrorLogs = async (userId: string) => {
     const q = query(collection(db, "errorLogs"), where("userId", "==", userId));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => doc.data());
-  } catch (error) { return []; }
+  } catch (error) { 
+    return []; 
+  }
 };
 
 export const saveErrorLogToDb = async (userId: string, question: Question, sectionTitle: string) => {
@@ -113,5 +119,7 @@ export const saveErrorLogToDb = async (userId: string, question: Question, secti
       lastOccurred: serverTimestamp(),
       count: increment(1)
     }, { merge: true });
-  } catch (error) {}
+  } catch (error) {
+    console.warn("Failed to save error log:", error);
+  }
 };

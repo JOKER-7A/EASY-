@@ -55,10 +55,12 @@ export default function Home() {
   
   const { toast } = useToast();
 
-  // 1. مراقبة حالة الدخول مع ضمان عدم التعليق
+  // 1. مراقبة حالة الدخول مع ضمان عدم التعليق (Safety Timeout)
   useEffect(() => {
-    // إيقاف التحميل إجبارياً بعد 3 ثواني كحد أقصى لمنع التعليق
-    const safetyTimer = setTimeout(() => setIsAuthLoading(false), 3000);
+    // مؤقت أمان ينهي التحميل إجبارياً بعد 3 ثواني
+    const safetyTimer = setTimeout(() => {
+      setIsAuthLoading(false);
+    }, 3000);
 
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
@@ -82,12 +84,18 @@ export default function Home() {
     };
   }, []);
 
-  // 2. جلب الأقسام
+  // 2. جلب الأقسام مع معالجة الأخطاء
   useEffect(() => {
-    getSectionsFromDb().then(data => {
-      setSections(data);
-      setFilteredSections(data);
-    });
+    const fetchContent = async () => {
+      try {
+        const data = await getSectionsFromDb();
+        setSections(data);
+        setFilteredSections(data);
+      } catch (error) {
+        console.warn("Failed to fetch sections:", error);
+      }
+    };
+    fetchContent();
   }, []);
 
   // 3. البحث
@@ -110,24 +118,37 @@ export default function Home() {
         toast({ title: "تم إنشاء الحساب بنجاح ✅" });
       }
     } catch (error: any) {
-      toast({ title: "فشل الدخول", variant: "destructive" });
+      toast({ title: "فشل الدخول", variant: "destructive", description: error.message });
     }
   };
 
   const openOverlay = async (type: 'leaderboard' | 'errors') => {
     setActiveOverlay(type);
-    if (type === 'leaderboard') {
-      const data = await getLeaderboard();
-      setOverlayData(data);
-    } else if (type === 'errors' && user) {
-      const data = await getErrorLogs(user.uid);
-      setOverlayData(data);
+    try {
+      if (type === 'leaderboard') {
+        const data = await getLeaderboard();
+        setOverlayData(data);
+      } else if (type === 'errors' && user) {
+        const data = await getErrorLogs(user.uid);
+        setOverlayData(data);
+      }
+    } catch (error) {
+      console.warn("Failed to open overlay:", error);
     }
   };
 
-  // عرض الواجهة المطلوبة
+  // عرض واجهة التدريب
   if (activeView === 'practice' && selectedSection) {
-    return <PracticeSession section={selectedSection} onExit={() => { setActiveView('landing'); window.location.reload(); }} />;
+    return (
+      <PracticeSession 
+        section={selectedSection} 
+        onExit={() => { 
+          setActiveView('landing'); 
+          // تحديث الصفحة لضمان استقرار الحالة
+          window.location.reload(); 
+        }} 
+      />
+    );
   }
 
   const currentXpProgress = profile ? (profile.xp % 100) : 0;
@@ -147,20 +168,24 @@ export default function Home() {
               <Button variant="ghost" onClick={() => setActiveOverlay(null)}><X className="w-8 h-8" /></Button>
             </div>
             <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-              {overlayData.length === 0 ? <p className="text-center py-20 opacity-30">لا توجد بيانات حالياً 🚀</p> : 
+              {overlayData.length === 0 ? (
+                <div className="text-center py-20 opacity-30">
+                  <p className="text-2xl font-black">لا توجد بيانات حالياً 🚀</p>
+                </div>
+              ) : (
                 overlayData.map((item, idx) => (
-                  <div key={idx} className="mb-4 p-6 bg-white/5 rounded-3xl border border-white/5 flex justify-between items-center">
+                  <div key={idx} className="mb-4 p-6 bg-white/5 rounded-3xl border border-white/5 flex justify-between items-center hover:bg-white/10 transition-all">
                     <span className="text-2xl font-bold">{item.displayName || item.questionData?.question}</span>
                     <span className="text-primary font-black">{item.xp ? `${item.xp} XP` : 'خطأ مسجل'}</span>
                   </div>
                 ))
-              }
+              )}
             </div>
           </Card>
         </div>
       )}
 
-      {/* Auth Gate - يظهر فقط إذا لم يكن هناك مستخدم والتحميل انتهى */}
+      {/* Auth Gate - يظهر فقط في حالة عدم وجود مستخدم وانتهاء التحميل */}
       {!user && !isAuthLoading && (
         <div className="fixed inset-0 z-[300] bg-black flex items-center justify-center p-4">
           <Card className="w-full max-w-xl p-10 md:p-14 glass border-white/5 rounded-[50px] shadow-2xl animate-in fade-in zoom-in duration-500">
@@ -182,7 +207,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* Main Content Shell - يظهر دائماً */}
+      {/* Main Content Shell - يظهر دائماً لضمان عدم وجود شاشة بيضاء */}
       <div className="container mx-auto px-4 md:px-8 py-20 max-w-7xl relative z-10">
         
         {/* Profile Stats Floating */}
@@ -280,12 +305,13 @@ export default function Home() {
         </footer>
       </div>
 
-      {/* Loading Barrier - يظهر فقط في البداية وإذا كان التحميل مفعلاً */}
+      {/* Loading Barrier - يظهر فقط إذا كان التحميل مفعلاً بوضوح */}
       {isAuthLoading && (
         <div className="fixed inset-0 bg-black flex items-center justify-center z-[500] backdrop-blur-xl transition-opacity duration-500">
           <div className="text-center space-y-6">
             <Loader2 className="w-20 h-20 text-primary animate-spin mx-auto" />
             <h2 className="text-3xl font-black text-white animate-pulse">EASY PREP MASTER</h2>
+            <p className="text-white/20 font-bold">جاري تأمين الاتصال...</p>
           </div>
         </div>
       )}
