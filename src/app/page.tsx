@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Section, sections as staticSections } from '@/lib/practice-data';
 import { 
   getSectionsFromDb, 
@@ -36,9 +36,9 @@ import {
 import { useToast } from '@/hooks/use-toast';
 
 export default function Home() {
+  const [hasMounted, setHasMounted] = useState(false);
   const [activeView, setActiveView] = useState<'landing' | 'practice'>('landing');
   const [sections, setSections] = useState<Section[]>(staticSections);
-  const [filteredSections, setFilteredSections] = useState<Section[]>(staticSections);
   const [selectedSection, setSelectedSection] = useState<Section | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -54,16 +54,19 @@ export default function Home() {
   
   const { toast } = useToast();
 
-  // نظام حماية ضد التعليق: ينهي حالة التحميل إجبارياً بعد 3 ثواني
+  // منع أخطاء Hydration وضمان استقرار العرض
   useEffect(() => {
-    const timer = setTimeout(() => {
+    setHasMounted(true);
+    // مؤقت أمان لإنهاء شاشة التحميل إجبارياً بعد 2.5 ثانية
+    const safetyTimer = setTimeout(() => {
       setIsAuthLoading(false);
-    }, 3000);
-    return () => clearTimeout(timer);
+    }, 2500);
+    return () => clearTimeout(safetyTimer);
   }, []);
 
-  // إدارة جلسة المستخدم
+  // إدارة جلسة المستخدم بأسلوب مستقر
   useEffect(() => {
+    if (!hasMounted) return;
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
@@ -71,7 +74,7 @@ export default function Home() {
           const p = await getUserProfile(u.uid, u.email || '');
           setProfile(p);
         } catch (e) {
-          console.error("Auth error:", e);
+          console.warn("Auth sync delay");
         }
       } else {
         setProfile(null);
@@ -79,29 +82,25 @@ export default function Home() {
       setIsAuthLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [hasMounted]);
 
-  // جلب المحتوى
+  // جلب المحتوى من قاعدة البيانات
   useEffect(() => {
+    if (!hasMounted) return;
     getSectionsFromDb().then(data => {
-      if (data && data.length > 0) {
-        setSections(data);
-      }
+      if (data && data.length > 0) setSections(data);
     }).catch(() => {
       setSections(staticSections);
     });
-  }, []);
+  }, [hasMounted]);
 
-  // محرك البحث
-  useEffect(() => {
+  // محرك البحث الفائق
+  const filteredSections = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    if (!q) {
-      setFilteredSections(sections);
-      return;
-    }
-    setFilteredSections(sections.filter(s => 
+    if (!q) return sections;
+    return sections.filter(s => 
       s.title.toLowerCase().includes(q) || s.id.toString().includes(q)
-    ));
+    );
   }, [searchQuery, sections]);
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -117,7 +116,7 @@ export default function Home() {
         toast({ title: "تم إنشاء الحساب بنجاح ✅" });
       }
     } catch (error: any) {
-      toast({ title: "فشل الدخول", variant: "destructive", description: "تأكد من البيانات" });
+      toast({ title: "فشل الدخول", variant: "destructive", description: "تأكد من البريد وكلمة المرور" });
     }
   };
 
@@ -137,17 +136,20 @@ export default function Home() {
     }
   };
 
+  // حماية ضد أخطاء السيرفر الجانبية
+  if (!hasMounted) return <div className="min-h-screen bg-black" />;
+
   if (activeView === 'practice' && selectedSection) {
     return <PracticeSession section={selectedSection} onExit={() => window.location.reload()} />;
   }
 
   return (
-    <main className="min-h-screen bg-black text-white flex flex-col relative overflow-x-hidden">
+    <main className="min-h-screen bg-black text-white flex flex-col relative overflow-x-hidden selection:bg-primary selection:text-white">
       
-      {/* واجهة الدخول */}
+      {/* واجهة الدخول - تظهر فقط عند الحاجة وبعد انتهاء التحميل */}
       {!user && !isAuthLoading && (
         <div className="fixed inset-0 z-[300] bg-black flex items-center justify-center p-4">
-          <Card className="w-full max-w-xl p-10 glass border-white/5 rounded-[50px] shadow-2xl">
+          <Card className="w-full max-w-xl p-10 glass border-white/5 rounded-[50px] shadow-2xl animate-in zoom-in duration-500">
             <div className="text-center mb-10">
               <h1 className="text-8xl md:text-[10rem] text-easy-premium mb-4">EASY</h1>
               <p className="text-lg text-primary font-bold tracking-widest opacity-80 uppercase">Elite Training Master</p>
@@ -155,7 +157,7 @@ export default function Home() {
             <form onSubmit={handleAuth} className="space-y-6">
               <Input type="email" placeholder="البريد الإلكتروني" value={email} onChange={(e) => setEmail(e.target.value)} className="h-16 rounded-2xl bg-white/5 border-white/10 text-xl" required />
               <Input type="password" placeholder="كلمة المرور" value={password} onChange={(e) => setPassword(e.target.value)} className="h-16 rounded-2xl bg-white/5 border-white/10 text-xl" required />
-              <Button type="submit" className="w-full h-18 rounded-2xl bg-primary text-white font-black text-2xl">
+              <Button type="submit" className="w-full h-18 rounded-2xl bg-primary text-white font-black text-2xl hover:scale-[1.02] transition-transform">
                 {authMode === 'login' ? "دخول 🚀" : "انضم الآن ✨"}
               </Button>
             </form>
@@ -166,7 +168,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* الهيكل الأساسي */}
+      {/* المحتوى الرئيسي */}
       <div className="container mx-auto px-4 md:px-8 py-20 max-w-7xl relative z-10">
         
         {user && profile && (
@@ -269,9 +271,9 @@ export default function Home() {
         </footer>
       </div>
 
-      {/* شاشة التحميل */}
+      {/* شاشة التحميل الذكية */}
       {isAuthLoading && (
-        <div className="fixed inset-0 bg-black flex items-center justify-center z-[500] backdrop-blur-xl">
+        <div className="fixed inset-0 bg-black flex items-center justify-center z-[500] backdrop-blur-xl animate-out fade-out duration-1000 delay-1000">
           <div className="text-center space-y-6">
             <Loader2 className="w-20 h-20 text-primary animate-spin mx-auto" />
             <h2 className="text-3xl font-black text-white animate-pulse">EASY PREP MASTER</h2>
@@ -284,7 +286,7 @@ export default function Home() {
       {activeOverlay && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/90 backdrop-blur-3xl" onClick={() => setActiveOverlay(null)} />
-          <Card className="w-full max-w-4xl max-h-[85vh] overflow-hidden glass border-white/5 rounded-[40px] relative z-10 flex flex-col">
+          <Card className="w-full max-w-4xl max-h-[85vh] overflow-hidden glass border-white/5 rounded-[40px] relative z-10 flex flex-col animate-in slide-in-from-bottom-10">
             <div className="p-8 border-b border-white/5 flex items-center justify-between">
               <h2 className="text-4xl font-black text-white">
                 {activeOverlay === 'leaderboard' ? "نخبة EASY 🏆" : "سجل الأخطاء ⚠️"}
@@ -296,7 +298,7 @@ export default function Home() {
                 <div className="text-center py-20 opacity-30 text-2xl font-black">لا توجد بيانات حالياً 🚀</div>
               ) : (
                 overlayData.map((item, idx) => (
-                  <div key={idx} className="mb-4 p-6 bg-white/5 rounded-3xl border border-white/5 flex justify-between items-center">
+                  <div key={idx} className="mb-4 p-6 bg-white/5 rounded-3xl border border-white/5 flex justify-between items-center hover:bg-white/10 transition-colors">
                     <span className="text-2xl font-bold truncate max-w-[60%]">
                       {activeOverlay === 'leaderboard' ? item.displayName : (item.questionData?.question || 'سؤال غير معروف')}
                     </span>

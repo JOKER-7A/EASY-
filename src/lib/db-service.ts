@@ -16,21 +16,22 @@ import {
 import { Section, Question, sections as staticSections } from "./practice-data";
 
 /**
- * جلب النماذج مع حماية قصوى ضد الفشل
- * يعود دائماً بالبيانات الثابتة كحد أدنى لمنع تعليق الصفحة
+ * جلب النماذج مع نظام حماية "Anti-Crash"
  */
 export const getSectionsFromDb = async (): Promise<Section[]> => {
   try {
     const sectionsRef = collection(db, "sections");
     const querySnapshot = await getDocs(sectionsRef);
     
-    if (querySnapshot.empty) return [...staticSections];
-
-    const dbSections = querySnapshot.docs.map(doc => ({
-      firebaseId: doc.id,
-      ...doc.data()
-    } as any));
+    let dbSections: Section[] = [];
+    if (!querySnapshot.empty) {
+      dbSections = querySnapshot.docs.map(doc => ({
+        firebaseId: doc.id,
+        ...doc.data()
+      } as any));
+    }
     
+    // دمج النماذج الثابتة مع نماذج قاعدة البيانات لضمان عدم وجود صفحة فارغة
     const combined = [...dbSections];
     staticSections.forEach(s => {
       if (!combined.find(c => Number(c.id) === Number(s.id))) {
@@ -40,13 +41,13 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
     
     return combined.sort((a, b) => Number(b.id) - Number(a.id));
   } catch (error) {
-    console.error("Fail-safe: Using static sections due to error", error);
+    console.warn("Using fail-safe static sections", error);
     return [...staticSections];
   }
 };
 
 /**
- * جلب الملف الشخصي بأسلوب آمن
+ * جلب الملف الشخصي بأسلوب "Zero-Error"
  */
 export const getUserProfile = async (userId: string, email?: string) => {
   if (!userId) return null;
@@ -78,7 +79,6 @@ export const getUserProfile = async (userId: string, email?: string) => {
       return { id: userId, ...initialProfile };
     }
   } catch (error) {
-    console.error("Profile error:", error);
     return { 
       id: userId, 
       level: 1, 
@@ -95,14 +95,14 @@ export const saveAttemptToDb = async (userId: string | undefined, attempt: any) 
     await setDoc(doc(collection(db, "attempts")), data);
     if (userId) {
       const userRef = doc(db, "userProfiles", userId);
-      await updateDoc(userRef, {
+      updateDoc(userRef, {
         xp: increment(attempt.correctCount * 10),
         totalCorrect: increment(attempt.correctCount),
         lastActive: serverTimestamp()
-      });
+      }).catch(() => {}); // إخفاق غير حرج
     }
   } catch (error) {
-    console.error("Save attempt error:", error);
+    console.error("Save attempt failed silently");
   }
 };
 
@@ -129,15 +129,15 @@ export const getErrorLogs = async (userId: string) => {
 export const saveErrorLogToDb = async (userId: string, question: Question, sectionTitle: string) => {
   try {
     const errorId = `${userId}_${question.id}`;
-    await setDoc(doc(db, "errorLogs", errorId), {
+    setDoc(doc(db, "errorLogs", errorId), {
       userId,
       questionId: question.id,
       questionData: { ...question, sectionTitle },
       lastOccurred: serverTimestamp(),
       count: increment(1)
-    }, { merge: true });
+    }, { merge: true }).catch(() => {});
   } catch (error) {
-    console.error("Error logging failed:", error);
+    // فشل صامت
   }
 };
 
