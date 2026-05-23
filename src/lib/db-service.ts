@@ -21,12 +21,13 @@ import { Section, Question, sections as staticSections } from "./practice-data";
 export const getSectionsFromDb = async (): Promise<Section[]> => {
   try {
     const querySnapshot = await getDocs(collection(db, "sections"));
+    if (querySnapshot.empty) return [...staticSections].sort((a, b) => b.id - a.id);
+    
     const dbSections = querySnapshot.docs.map(doc => ({
       firebaseId: doc.id,
       ...doc.data()
     } as any));
     
-    // دمج البيانات والتأكد من عدم التكرار
     const combined = [...dbSections];
     staticSections.forEach(s => {
       if (!combined.find(c => Number(c.id) === Number(s.id))) {
@@ -37,7 +38,7 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
     return combined.sort((a, b) => Number(b.id) - Number(a.id));
   } catch (error) {
     console.warn("Firestore Error, fallback to static:", error);
-    return [...staticSections].sort((a, b) => Number(b.id) - Number(a.id));
+    return [...staticSections].sort((a, b) => b.id - a.id);
   }
 };
 
@@ -68,7 +69,14 @@ export const getUserProfile = async (userId: string, email?: string, displayName
     }
   } catch (error) {
     console.warn("Profile Fetch Error, returning fallback:", error);
-    return { id: userId, level: 1, xp: 0, displayName: displayName || 'مستكشف', status: 'approved' };
+    return { 
+      id: userId, 
+      level: 1, 
+      xp: 0, 
+      displayName: displayName || 'مستكشف', 
+      status: 'approved',
+      isFallback: true 
+    };
   }
 };
 

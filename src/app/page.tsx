@@ -55,9 +55,8 @@ export default function Home() {
   
   const { toast } = useToast();
 
-  // 1. مراقبة حالة الدخول مع ضمان عدم التعليق (Safety Timeout)
+  // مؤقت أمان لإنهاء التحميل في كل الحالات
   useEffect(() => {
-    // مؤقت أمان ينهي التحميل إجبارياً بعد 3 ثواني
     const safetyTimer = setTimeout(() => {
       setIsAuthLoading(false);
     }, 3000);
@@ -69,7 +68,7 @@ export default function Home() {
           const p = await getUserProfile(u.uid, u.email || '', u.displayName || '');
           setProfile(p);
         } catch (e) {
-          console.error("Profile error:", e);
+          console.error("Profile fetch error:", e);
         }
       } else {
         setProfile(null);
@@ -84,7 +83,7 @@ export default function Home() {
     };
   }, []);
 
-  // 2. جلب الأقسام مع معالجة الأخطاء
+  // جلب المحتوى
   useEffect(() => {
     const fetchContent = async () => {
       try {
@@ -92,13 +91,13 @@ export default function Home() {
         setSections(data);
         setFilteredSections(data);
       } catch (error) {
-        console.warn("Failed to fetch sections:", error);
+        console.warn("Failed to fetch content, using static:", error);
       }
     };
     fetchContent();
   }, []);
 
-  // 3. البحث
+  // البحث
   useEffect(() => {
     const q = searchQuery.toLowerCase();
     setFilteredSections(sections.filter(s => 
@@ -133,22 +132,13 @@ export default function Home() {
         setOverlayData(data);
       }
     } catch (error) {
-      console.warn("Failed to open overlay:", error);
+      console.warn("Overlay fetch error:", error);
+      setOverlayData([]);
     }
   };
 
-  // عرض واجهة التدريب
   if (activeView === 'practice' && selectedSection) {
-    return (
-      <PracticeSession 
-        section={selectedSection} 
-        onExit={() => { 
-          setActiveView('landing'); 
-          // تحديث الصفحة لضمان استقرار الحالة
-          window.location.reload(); 
-        }} 
-      />
-    );
+    return <PracticeSession section={selectedSection} onExit={() => window.location.reload()} />;
   }
 
   const currentXpProgress = profile ? (profile.xp % 100) : 0;
@@ -174,7 +164,7 @@ export default function Home() {
                 </div>
               ) : (
                 overlayData.map((item, idx) => (
-                  <div key={idx} className="mb-4 p-6 bg-white/5 rounded-3xl border border-white/5 flex justify-between items-center hover:bg-white/10 transition-all">
+                  <div key={idx} className="mb-4 p-6 bg-white/5 rounded-3xl border border-white/5 flex justify-between items-center">
                     <span className="text-2xl font-bold">{item.displayName || item.questionData?.question}</span>
                     <span className="text-primary font-black">{item.xp ? `${item.xp} XP` : 'خطأ مسجل'}</span>
                   </div>
@@ -185,7 +175,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* Auth Gate - يظهر فقط في حالة عدم وجود مستخدم وانتهاء التحميل */}
+      {/* Auth Gate */}
       {!user && !isAuthLoading && (
         <div className="fixed inset-0 z-[300] bg-black flex items-center justify-center p-4">
           <Card className="w-full max-w-xl p-10 md:p-14 glass border-white/5 rounded-[50px] shadow-2xl animate-in fade-in zoom-in duration-500">
@@ -196,25 +186,24 @@ export default function Home() {
             <form onSubmit={handleAuth} className="space-y-6">
               <Input type="email" placeholder="البريد الإلكتروني" value={email} onChange={(e) => setEmail(e.target.value)} className="h-16 rounded-2xl bg-white/5 border-white/10 text-xl" required />
               <Input type="password" placeholder="كلمة المرور" value={password} onChange={(e) => setPassword(e.target.value)} className="h-16 rounded-2xl bg-white/5 border-white/10 text-xl" required />
-              <Button type="submit" className="w-full h-18 rounded-2xl bg-primary text-white font-black text-2xl shadow-[0_0_30px_rgba(var(--primary),0.3)]">
+              <Button type="submit" className="w-full h-18 rounded-2xl bg-primary text-white font-black text-2xl">
                 {authMode === 'login' ? "دخول 🚀" : "انضم الآن ✨"}
               </Button>
             </form>
-            <button onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')} className="mt-8 w-full text-white/40 hover:text-primary transition-colors font-bold text-lg">
+            <button onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')} className="mt-8 w-full text-white/40 font-bold">
               {authMode === 'login' ? "لا تملك حساباً؟ سجل هنا" : "لديك حساب؟ سجل دخولك"}
             </button>
           </Card>
         </div>
       )}
 
-      {/* Main Content Shell - يظهر دائماً لضمان عدم وجود شاشة بيضاء */}
+      {/* Main Content */}
       <div className="container mx-auto px-4 md:px-8 py-20 max-w-7xl relative z-10">
         
-        {/* Profile Stats Floating */}
         {user && profile && (
           <div className="fixed top-8 left-8 z-[100] hidden md:block">
-            <div className="glass p-5 pr-14 rounded-[30px] border-primary/20 flex items-center gap-7 group hover:border-primary/50 transition-all duration-500">
-              <div className="w-20 h-20 rounded-2xl bg-primary text-white flex items-center justify-center font-black text-4xl shadow-xl animate-pulse">
+            <div className="glass p-5 pr-14 rounded-[30px] border-primary/20 flex items-center gap-7">
+              <div className="w-20 h-20 rounded-2xl bg-primary text-white flex items-center justify-center font-black text-4xl shadow-xl">
                 {profile.level || 1}
               </div>
               <div className="space-y-2 flex flex-col min-w-[200px]">
@@ -237,20 +226,20 @@ export default function Home() {
           <p className="text-3xl font-black text-white/50 max-w-4xl mx-auto">أهم شيء الفهم <span className="text-white">وليس الحفظ</span> 💎</p>
 
           <div className="max-w-3xl mx-auto pt-20 px-4 relative group">
-            <Search className="absolute right-12 top-1/2 -translate-y-1/2 w-10 h-10 text-white/20 group-focus-within:text-primary transition-colors" />
+            <Search className="absolute right-12 top-1/2 -translate-y-1/2 w-10 h-10 text-white/20" />
             <Input 
               placeholder="ابحث عن نموذج..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-24 w-full rounded-[45px] bg-white/5 border-2 border-white/5 pr-24 text-3xl font-bold transition-all focus:bg-white/[0.08] focus:border-primary/30"
+              className="h-24 w-full rounded-[45px] bg-white/5 border-2 border-white/5 pr-24 text-3xl font-bold transition-all focus:border-primary/30"
             />
           </div>
 
           <div className="flex flex-wrap justify-center gap-8 pt-10">
-            <Button onClick={() => openOverlay('errors')} className="h-20 px-14 rounded-[40px] glass border-destructive/30 text-destructive font-black text-2xl hover:scale-105 transition-all">
+            <Button onClick={() => openOverlay('errors')} className="h-20 px-14 rounded-[40px] glass border-destructive/30 text-destructive font-black text-2xl">
               <History className="ml-3 w-8 h-8" /> سجل الأخطاء
             </Button>
-            <Button onClick={() => openOverlay('leaderboard')} className="h-20 px-14 rounded-[40px] glass border-white/10 text-white font-black text-2xl hover:scale-105 transition-all">
+            <Button onClick={() => openOverlay('leaderboard')} className="h-20 px-14 rounded-[40px] glass border-white/10 text-white font-black text-2xl">
               <Trophy className="ml-3 w-8 h-8" /> لوحة الشرف
             </Button>
           </div>
@@ -268,7 +257,7 @@ export default function Home() {
             {filteredSections.map((section) => (
               <Card 
                 key={section.firebaseId || section.id} 
-                className="group bg-white/[0.02] border border-white/5 rounded-[60px] p-12 shadow-2xl transition-all hover:border-primary/50 hover:bg-white/[0.04] duration-500 overflow-hidden relative"
+                className="group bg-white/[0.02] border border-white/5 rounded-[60px] p-12 shadow-2xl transition-all hover:border-primary/50"
               >
                 <div className="flex flex-col sm:flex-row justify-between items-center gap-10">
                   <div className="space-y-4 text-right">
@@ -280,7 +269,7 @@ export default function Home() {
                   </div>
                   <Button 
                     onClick={() => { setSelectedSection(section); setActiveView('practice'); }} 
-                    className="w-full sm:w-auto h-32 px-16 rounded-[45px] text-4xl font-black bg-primary text-white shadow-2xl group-hover:scale-110 active:scale-95 transition-all"
+                    className="w-full sm:w-auto h-32 px-16 rounded-[45px] text-4xl font-black bg-primary text-white"
                   >
                     ابدأ <ChevronRight className="mr-2 w-12 h-12" />
                   </Button>
@@ -305,9 +294,8 @@ export default function Home() {
         </footer>
       </div>
 
-      {/* Loading Barrier - يظهر فقط إذا كان التحميل مفعلاً بوضوح */}
       {isAuthLoading && (
-        <div className="fixed inset-0 bg-black flex items-center justify-center z-[500] backdrop-blur-xl transition-opacity duration-500">
+        <div className="fixed inset-0 bg-black flex items-center justify-center z-[500] backdrop-blur-xl">
           <div className="text-center space-y-6">
             <Loader2 className="w-20 h-20 text-primary animate-spin mx-auto" />
             <h2 className="text-3xl font-black text-white animate-pulse">EASY PREP MASTER</h2>
