@@ -17,10 +17,13 @@ import { Section, Question, sections as staticSections } from "./practice-data";
 
 /**
  * جلب النماذج مع حماية قصوى ضد الفشل
+ * يعود دائماً بالبيانات الثابتة كحد أدنى لمنع تعليق الصفحة
  */
 export const getSectionsFromDb = async (): Promise<Section[]> => {
   try {
-    const querySnapshot = await getDocs(collection(db, "sections"));
+    const sectionsRef = collection(db, "sections");
+    const querySnapshot = await getDocs(sectionsRef);
+    
     if (querySnapshot.empty) return [...staticSections];
 
     const dbSections = querySnapshot.docs.map(doc => ({
@@ -37,13 +40,13 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
     
     return combined.sort((a, b) => Number(b.id) - Number(a.id));
   } catch (error) {
-    console.error("Fail-safe: Using static sections", error);
+    console.error("Fail-safe: Using static sections due to error", error);
     return [...staticSections];
   }
 };
 
 /**
- * جلب الملف الشخصي بأسلوب آمن جداً
+ * جلب الملف الشخصي بأسلوب آمن
  */
 export const getUserProfile = async (userId: string, email?: string) => {
   if (!userId) return null;
@@ -75,6 +78,7 @@ export const getUserProfile = async (userId: string, email?: string) => {
       return { id: userId, ...initialProfile };
     }
   } catch (error) {
+    console.error("Profile error:", error);
     return { 
       id: userId, 
       level: 1, 
@@ -91,13 +95,15 @@ export const saveAttemptToDb = async (userId: string | undefined, attempt: any) 
     await setDoc(doc(collection(db, "attempts")), data);
     if (userId) {
       const userRef = doc(db, "userProfiles", userId);
-      updateDoc(userRef, {
+      await updateDoc(userRef, {
         xp: increment(attempt.correctCount * 10),
         totalCorrect: increment(attempt.correctCount),
         lastActive: serverTimestamp()
-      }).catch(e => {});
+      });
     }
-  } catch (error) {}
+  } catch (error) {
+    console.error("Save attempt error:", error);
+  }
 };
 
 export const getLeaderboard = async () => {
@@ -105,7 +111,9 @@ export const getLeaderboard = async () => {
     const q = query(collection(db, "userProfiles"), orderBy("xp", "desc"), limit(5));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  } catch (error) { return []; }
+  } catch (error) { 
+    return []; 
+  }
 };
 
 export const getErrorLogs = async (userId: string) => {
@@ -113,7 +121,9 @@ export const getErrorLogs = async (userId: string) => {
     const q = query(collection(db, "errorLogs"), where("userId", "==", userId));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => doc.data());
-  } catch (error) { return []; }
+  } catch (error) { 
+    return []; 
+  }
 };
 
 export const saveErrorLogToDb = async (userId: string, question: Question, sectionTitle: string) => {
@@ -126,7 +136,9 @@ export const saveErrorLogToDb = async (userId: string, question: Question, secti
       lastOccurred: serverTimestamp(),
       count: increment(1)
     }, { merge: true });
-  } catch (error) {}
+  } catch (error) {
+    console.error("Error logging failed:", error);
+  }
 };
 
 export const toggleFavoriteInDb = async (userId: string, question: Question) => {
@@ -135,7 +147,8 @@ export const toggleFavoriteInDb = async (userId: string, question: Question) => 
     const userSnap = await getDoc(userRef);
     if (!userSnap.exists()) return false;
     
-    const favorites = userSnap.data().favorites || [];
+    const data = userSnap.data();
+    const favorites = data.favorites || [];
     const exists = favorites.find((f: any) => f.id === question.id);
     
     if (exists) {
@@ -147,5 +160,7 @@ export const toggleFavoriteInDb = async (userId: string, question: Question) => 
       await updateDoc(userRef, { favorites: newFavs });
       return true;
     }
-  } catch (error) { return false; }
+  } catch (error) { 
+    return false; 
+  }
 };

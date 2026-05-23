@@ -71,7 +71,7 @@ export default function Home() {
           const p = await getUserProfile(u.uid, u.email || '');
           setProfile(p);
         } catch (e) {
-          setProfile(null);
+          console.error("Auth error:", e);
         }
       } else {
         setProfile(null);
@@ -84,7 +84,11 @@ export default function Home() {
   // جلب المحتوى
   useEffect(() => {
     getSectionsFromDb().then(data => {
-      setSections(data || staticSections);
+      if (data && data.length > 0) {
+        setSections(data);
+      }
+    }).catch(() => {
+      setSections(staticSections);
     });
   }, []);
 
