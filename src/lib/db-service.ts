@@ -1,3 +1,4 @@
+
 import { db } from "./firebase";
 import { 
   collection, 
@@ -25,7 +26,7 @@ const USER_PROFILES = "userProfiles";
 const ERROR_LOGS = "errorLogs";
 
 /**
- * جلب الأقسام من قاعدة البيانات مع معالجة الأخطاء
+ * جلب الأقسام من قاعدة البيانات مع معالجة الأخطاء والترتيب التلقائي
  */
 export const getSectionsFromDb = async (): Promise<Section[]> => {
   try {
@@ -43,10 +44,11 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
       }
     });
     
+    // ترتيب الأقسام تنازلياً حسب المعرف (الأحدث أولاً)
     return combined.sort((a, b) => Number(b.id) - Number(a.id));
   } catch (error) {
     console.error("Error fetching sections from Firestore:", error);
-    return staticSections; // العودة للبيانات الثابتة في حالة الفشل
+    return staticSections.sort((a, b) => Number(b.id) - Number(a.id));
   }
 };
 
@@ -143,7 +145,8 @@ export const getUserProfile = async (userId: string, email?: string, displayName
       xp: 0, 
       displayName: displayName || 'مستكشف EASY',
       status: 'approved',
-      favorites: []
+      favorites: [],
+      theme: 'default'
     };
   }
 };
@@ -238,29 +241,22 @@ export const toggleFavoriteInDb = async (userId: string, question: any) => {
   }
 };
 
-export const saveErrorLogToDb = async (userId: string, question: Question, sectionTitle: string) => {
+export const saveErrorLogToDb = async (userId: string, question: Question, sectionTitle: string, userAnswer: string) => {
   try {
     const errorId = `${userId}_${question.id}`;
     const errorRef = doc(db, ERROR_LOGS, errorId);
     
-    const snap = await getDoc(errorRef);
-    if (!snap.exists()) {
-      await setDoc(errorRef, {
-        userId,
-        questionId: question.id,
-        questionData: {
-          ...question,
-          sectionTitle
-        },
-        count: 1,
-        lastOccurred: serverTimestamp()
-      });
-    } else {
-      await updateDoc(errorRef, {
-        count: increment(1),
-        lastOccurred: serverTimestamp()
-      });
-    }
+    await setDoc(errorRef, {
+      userId,
+      questionId: question.id,
+      questionData: {
+        ...question,
+        sectionTitle,
+        userAnswer // حفظ إجابة المستخدم للمراجعة
+      },
+      lastOccurred: serverTimestamp(),
+      count: increment(1)
+    }, { merge: true });
   } catch (error) {
     console.error("Error saving error log:", error);
   }
@@ -275,7 +271,11 @@ export const getErrorLogs = async (userId: string) => {
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs
       .map(doc => doc.data())
-      .sort((a: any, b: any) => (b.lastOccurred?.seconds || 0) - (a.lastOccurred?.seconds || 0));
+      .sort((a: any, b: any) => {
+        const timeA = a.lastOccurred?.seconds || 0;
+        const timeB = b.lastOccurred?.seconds || 0;
+        return timeB - timeA; // ترتيب زمني برمي لتجنب الحاجة لفهرس مركب
+      });
   } catch (error) {
     console.error("Error fetching logs:", error);
     return [];

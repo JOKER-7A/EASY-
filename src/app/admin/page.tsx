@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -225,29 +226,9 @@ export default function AdminPage() {
             <h1 className="text-3xl font-black text-white">دخول المشرف 🔐</h1>
           </div>
           <form onSubmit={handleLogin} className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-white/60 text-sm font-bold pr-2">البريد الإلكتروني</label>
-              <Input 
-                type="email" 
-                placeholder="admin@easy.com" 
-                value={email} 
-                onChange={(e) => setEmail(e.target.value)}
-                className="h-12 bg-white/5 border-white/10 text-white placeholder:text-white/20"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-white/60 text-sm font-bold pr-2">كلمة المرور</label>
-              <Input 
-                type="password" 
-                placeholder="••••••••" 
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)}
-                className="h-12 bg-white/5 border-white/10 text-white placeholder:text-white/20"
-                required
-              />
-            </div>
-            <Button disabled={isSubmitting} type="submit" className="w-full h-14 bg-primary text-white font-black text-xl rounded-2xl shadow-primary/20 hover:scale-[1.02] transition-all">
+            <Input type="email" placeholder="admin@easy.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <Input type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <Button disabled={isSubmitting} type="submit" className="w-full h-14 bg-primary text-white font-black text-xl">
               {isSubmitting ? <Loader2 className="animate-spin" /> : "دخول 🚀"}
             </Button>
           </form>
@@ -312,173 +293,106 @@ export default function AdminPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div className="space-y-3">
                   <label className="text-white/40 font-bold pr-1 text-sm">رقم النموذج</label>
-                  <Input 
-                    type="number"
-                    placeholder="مثلاً: 101" 
-                    value={newSection.id || ''}
-                    onChange={(e) => setNewSection(prev => ({ ...prev, id: parseInt(e.target.value) }))}
-                    className="bg-black border-white/10 h-16 text-xl rounded-2xl"
-                  />
+                  <Input type="number" placeholder="مثلاً: 101" value={newSection.id || ''} onChange={(e) => setNewSection(prev => ({ ...prev, id: parseInt(e.target.value) }))} className="bg-black border-white/10 h-16 text-xl rounded-2xl" />
                 </div>
                 <div className="space-y-3 md:col-span-2">
                   <label className="text-white/40 font-bold pr-1 text-sm">عنوان النموذج</label>
-                  <Input 
-                    placeholder="اسم النموذج التدريبي" 
-                    value={newSection.title || ''}
-                    onChange={(e) => setNewSection(prev => ({ ...prev, title: e.target.value }))}
-                    className="bg-black border-white/10 h-16 text-xl rounded-2xl"
-                  />
+                  <Input placeholder="اسم النموذج التدريبي" value={newSection.title || ''} onChange={(e) => setNewSection(prev => ({ ...prev, title: e.target.value }))} className="bg-black border-white/10 h-16 text-xl rounded-2xl" />
                 </div>
                 <div className="space-y-3 md:col-span-3">
                   <label className="text-white/40 font-bold pr-1 text-sm">رابط ملف PDF (اختياري)</label>
-                  <Input 
-                    placeholder="https://example.com/file.pdf" 
-                    value={newSection.pdfLink || ''}
-                    onChange={(e) => setNewSection(prev => ({ ...prev, pdfLink: e.target.value }))}
-                    className="bg-black border-white/10 h-16 rounded-2xl"
-                  />
+                  <Input placeholder="https://example.com/file.pdf" value={newSection.pdfLink || ''} onChange={(e) => setNewSection(prev => ({ ...prev, pdfLink: e.target.value }))} className="bg-black border-white/10 h-16 rounded-2xl" />
                 </div>
               </div>
 
               {/* Reading Passages */}
               <div className="space-y-8">
                 <div className="flex justify-between items-center bg-white/5 p-6 rounded-3xl border border-white/5">
-                  <h3 className="text-2xl font-black text-primary flex items-center gap-3">
-                    <BookOpen className="w-6 h-6" /> قطع استيعاب المقروء
-                  </h3>
-                  <Button onClick={addPassageField} variant="secondary" className="font-black bg-primary/20 text-primary hover:bg-primary/30 rounded-xl px-6">
-                    <Plus className="ml-1 w-5 h-5" /> إضافة قطعة
-                  </Button>
+                  <h3 className="text-2xl font-black text-primary flex items-center gap-3"><BookOpen className="w-6 h-6" /> قطع استيعاب المقروء</h3>
+                  <Button onClick={addPassageField} variant="secondary" className="font-black bg-primary/20 text-primary hover:bg-primary/30 rounded-xl px-6"><Plus className="ml-1 w-5 h-5" /> إضافة قطعة</Button>
                 </div>
-                <div className="space-y-6">
-                  {newSection.readingPassages?.map((passage, pIndex) => (
-                    <Card key={pIndex} className="p-8 bg-black/50 border-white/5 rounded-[30px] relative overflow-hidden">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => removePassage(pIndex)} 
-                        className="absolute left-6 top-6 text-destructive hover:bg-destructive/10 rounded-full"
-                      >
-                        <Trash2 className="w-6 h-6" />
-                      </Button>
-                      <div className="grid gap-6 mt-6">
-                        <Input 
-                          placeholder="عنوان القطعة" 
-                          value={passage.title}
-                          onChange={(e) => updatePassage(pIndex, 'title', e.target.value)}
-                          className="bg-black border-white/10 h-14 font-bold rounded-xl"
-                        />
-                        <Textarea 
-                          placeholder="نص القطعة بالكامل..." 
-                          value={passage.text}
-                          onChange={(e) => updatePassage(pIndex, 'text', e.target.value)}
-                          className="bg-black border-white/10 min-h-[200px] leading-relaxed rounded-xl text-lg"
-                        />
-                      </div>
-                    </Card>
-                  ))}
-                </div>
+                {newSection.readingPassages?.map((passage, pIndex) => (
+                  <Card key={pIndex} className="p-8 bg-black/50 border-white/5 rounded-[30px] relative overflow-hidden">
+                    <Button variant="ghost" size="icon" onClick={() => removePassage(pIndex)} className="absolute left-6 top-6 text-destructive hover:bg-destructive/10 rounded-full"><Trash2 className="w-6 h-6" /></Button>
+                    <div className="grid gap-6 mt-6">
+                      <Input placeholder="عنوان القطعة" value={passage.title} onChange={(e) => updatePassage(pIndex, 'title', e.target.value)} className="bg-black border-white/10 h-14 font-bold rounded-xl" />
+                      <Textarea placeholder="نص القطعة بالكامل..." value={passage.text} onChange={(e) => updatePassage(pIndex, 'text', e.target.value)} className="bg-black border-white/10 min-h-[200px] leading-relaxed rounded-xl text-lg" />
+                    </div>
+                  </Card>
+                ))}
               </div>
 
               {/* Questions Section */}
               <div className="space-y-8">
                 <div className="flex justify-between items-center bg-white/5 p-6 rounded-3xl border border-white/5">
-                  <h3 className="text-2xl font-black text-primary flex items-center gap-3">
-                    <HelpCircle className="w-6 h-6" /> أسئلة النموذج
-                  </h3>
-                  <Button onClick={addQuestionField} variant="secondary" className="font-black bg-primary/20 text-primary hover:bg-primary/30 rounded-xl px-6">
-                    <Plus className="ml-1 w-5 h-5" /> إضافة سؤال
-                  </Button>
+                  <h3 className="text-2xl font-black text-primary flex items-center gap-3"><HelpCircle className="w-6 h-6" /> أسئلة النموذج</h3>
+                  <Button onClick={addQuestionField} variant="secondary" className="font-black bg-primary/20 text-primary hover:bg-primary/30 rounded-xl px-6"><Plus className="ml-1 w-5 h-5" /> إضافة سؤال</Button>
                 </div>
-                <div className="space-y-8">
-                  {newSection.questions?.map((q, qIndex) => (
-                    <Card key={qIndex} className="p-8 bg-black/50 border-white/5 rounded-[40px] space-y-6">
-                      <div className="flex flex-wrap items-center justify-between gap-6 border-b border-white/5 pb-6">
-                        <div className="flex items-center gap-6">
-                          <span className="bg-primary text-white px-5 py-2 rounded-xl font-black text-lg">سؤال {qIndex + 1}</span>
-                          <Select 
-                            value={q.type} 
-                            onValueChange={(val) => updateQuestion(qIndex, 'type', val)}
-                          >
-                            <SelectTrigger className="w-48 bg-black border-white/10 h-12 rounded-xl">
-                              <SelectValue placeholder="النمط" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-black border-white/10">
-                              <SelectItem value="analogy">تناظر لفظي</SelectItem>
-                              <SelectItem value="error">خطأ سياقي</SelectItem>
-                              <SelectItem value="context">إكمال جمل</SelectItem>
-                              <SelectItem value="reading">استيعاب مقروء</SelectItem>
-                            </SelectContent>
-                          </Select>
+                {newSection.questions?.map((q, qIndex) => (
+                  <Card key={qIndex} className="p-8 bg-black/50 border-white/5 rounded-[40px] space-y-6">
+                    <div className="flex flex-wrap items-center justify-between gap-6 border-b border-white/5 pb-6">
+                      <div className="flex items-center gap-6">
+                        <span className="bg-primary text-white px-5 py-2 rounded-xl font-black text-lg">سؤال {qIndex + 1}</span>
+                        <Select value={q.type} onValueChange={(val) => updateQuestion(qIndex, 'type', val)}>
+                          <SelectTrigger className="w-48 bg-black border-white/10 h-12 rounded-xl"><SelectValue placeholder="النمط" /></SelectTrigger>
+                          <SelectContent className="bg-black border-white/10">
+                            <SelectItem value="analogy">تناظر لفظي</SelectItem>
+                            <SelectItem value="error">خطأ سياقي</SelectItem>
+                            <SelectItem value="context">إكمال جمل</SelectItem>
+                            <SelectItem value="reading">استيعاب مقروء</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Button variant="ghost" size="icon" onClick={() => removeQuestion(qIndex)} className="text-destructive hover:bg-destructive/10 rounded-full"><Trash2 className="w-6 h-6" /></Button>
+                    </div>
+
+                    <Input placeholder="نص السؤال" value={q.question} onChange={(e) => updateQuestion(qIndex, 'question', e.target.value)} className="bg-black border-white/10 h-16 text-2xl font-black rounded-2xl" />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {q.options.map((opt, oIndex) => (
+                        <div key={oIndex} className="flex gap-4 items-center">
+                          <span className="text-primary font-black w-10 text-2xl">{['أ', 'ب', 'ج', 'د'][oIndex]}</span>
+                          <Input placeholder={`الخيار ${['أ', 'ب', 'ج', 'د'][oIndex]}`} value={opt} onChange={(e) => {
+                            const opts = [...q.options];
+                            opts[oIndex] = e.target.value;
+                            updateQuestion(qIndex, 'options', opts);
+                          }} className="bg-black border-white/10 h-14 rounded-xl" />
                         </div>
-                        <Button variant="ghost" size="icon" onClick={() => removeQuestion(qIndex)} className="text-destructive hover:bg-destructive/10 rounded-full">
-                          <Trash2 className="w-6 h-6" />
-                        </Button>
-                      </div>
+                      ))}
+                    </div>
 
-                      <Input 
-                        placeholder="نص السؤال" 
-                        value={q.question}
-                        onChange={(e) => updateQuestion(qIndex, 'question', e.target.value)}
-                        className="bg-black border-white/10 h-16 text-2xl font-black rounded-2xl"
-                      />
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {q.options.map((opt, oIndex) => (
-                          <div key={oIndex} className="flex gap-4 items-center">
-                            <span className="text-primary font-black w-10 text-2xl">{['أ', 'ب', 'ج', 'د'][oIndex]}</span>
-                            <Input 
-                              placeholder={`الخيار ${['أ', 'ب', 'ج', 'د'][oIndex]}`} 
-                              value={opt}
-                              onChange={(e) => {
-                                const opts = [...q.options];
-                                opts[oIndex] = e.target.value;
-                                updateQuestion(qIndex, 'options', opts);
-                              }}
-                              className="bg-black border-white/10 h-14 rounded-xl"
-                            />
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="bg-green-500/5 p-6 rounded-2xl border border-green-500/20">
-                        <label className="text-green-500 text-xs font-black block mb-3 uppercase tracking-widest">الإجابة الصحيحة</label>
-                        <Input 
-                          placeholder="النص الصحيح" 
-                          value={q.correct}
-                          onChange={(e) => updateQuestion(qIndex, 'correct', e.target.value)}
-                          className="bg-black border-green-500/20 text-green-500 font-black h-14 rounded-xl text-lg"
-                        />
-                      </div>
-                    </Card>
-                  ))}
-                </div>
+                    <div className="bg-green-500/5 p-6 rounded-2xl border border-green-500/20">
+                      <label className="text-green-500 text-xs font-black block mb-3 uppercase tracking-widest">الإجابة الصحيحة</label>
+                      <Select value={q.correct || "none"} onValueChange={(val) => updateQuestion(qIndex, 'correct', val === "none" ? "" : val)}>
+                        <SelectTrigger className="bg-black border-green-500/20 text-green-500 font-black h-14 rounded-xl text-lg">
+                          <SelectValue placeholder="اختر الإجابة الصحيحة من الخيارات أعلاه" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-black border-white/10">
+                          <SelectItem value="none" disabled>اختر الإجابة</SelectItem>
+                          {q.options.map((opt, oIdx) => (
+                            opt.trim() !== "" && <SelectItem key={oIdx} value={opt}>{opt}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </Card>
+                ))}
               </div>
             </Card>
 
             <div className="space-y-8">
-              <h2 className="text-3xl font-black flex items-center gap-4">
-                <FileText className="text-primary" /> النماذج المنشورة ({sections.length})
-              </h2>
+              <h2 className="text-3xl font-black flex items-center gap-4"><FileText className="text-primary" /> النماذج المنشورة ({sections.length})</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {sections.map((section) => (
                   <Card key={section.firebaseId} className="p-8 glass border-white/5 rounded-[40px] flex justify-between items-center group hover:border-primary/50 transition-all shadow-xl">
                     <div className="flex items-center gap-6">
-                      <div className="w-16 h-16 bg-primary text-white rounded-2xl flex items-center justify-center font-black text-2xl shadow-lg">
-                        {section.id}
-                      </div>
+                      <div className="w-16 h-16 bg-primary text-white rounded-2xl flex items-center justify-center font-black text-2xl shadow-lg">{section.id}</div>
                       <div>
                         <h3 className="text-xl font-black line-clamp-1">{section.title}</h3>
                         <p className="text-sm text-white/30">{section.questions.length} سؤال</p>
                       </div>
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      onClick={() => handleDelete(section.firebaseId)}
-                      className="text-destructive hover:bg-destructive/10 rounded-full w-12 h-12"
-                    >
-                      <Trash2 className="w-6 h-6" />
-                    </Button>
+                    <Button variant="ghost" onClick={() => handleDelete(section.firebaseId)} className="text-destructive hover:bg-destructive/10 rounded-full w-12 h-12"><Trash2 className="w-6 h-6" /></Button>
                   </Card>
                 ))}
               </div>
@@ -494,15 +408,9 @@ export default function AdminPage() {
                 </div>
                 <div className="relative w-full md:w-96">
                   <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20 w-6 h-6" />
-                  <Input 
-                    placeholder="ابحث بالاسم أو الإيميل..." 
-                    value={userSearch}
-                    onChange={(e) => setUserSearch(e.target.value)}
-                    className="bg-white/5 border-white/10 h-16 pr-12 rounded-2xl text-lg"
-                  />
+                  <Input placeholder="ابحث بالاسم أو الإيميل..." value={userSearch} onChange={(e) => setUserSearch(e.target.value)} className="bg-white/5 border-white/10 h-16 pr-12 rounded-2xl text-lg" />
                 </div>
               </div>
-
               <div className="overflow-x-auto custom-scrollbar">
                 <table className="w-full text-right border-collapse">
                   <thead>
@@ -519,9 +427,7 @@ export default function AdminPage() {
                       <tr key={u.id} className="hover:bg-white/[0.02] transition-colors group">
                         <td className="py-6 px-4">
                           <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 text-primary">
-                              <UserIcon className="w-6 h-6" />
-                            </div>
+                            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 text-primary"><UserIcon className="w-6 h-6" /></div>
                             <span className="font-black text-xl">{u.displayName || 'بدون اسم'}</span>
                           </div>
                         </td>
@@ -532,22 +438,11 @@ export default function AdminPage() {
                           </div>
                         </td>
                         <td className="py-6 px-4 text-center">
-                          <Badge className="bg-primary/20 text-primary border-primary/30 px-4 py-1 rounded-lg text-lg font-black">
-                            {u.level || 1}
-                          </Badge>
+                          <Badge className="bg-primary/20 text-primary border-primary/30 px-4 py-1 rounded-lg text-lg font-black">{u.level || 1}</Badge>
                         </td>
-                        <td className="py-6 px-4 text-center font-mono text-xl text-white/60">
-                          {Math.round(u.xp || 0)}
-                        </td>
+                        <td className="py-6 px-4 text-center font-mono text-xl text-white/60">{Math.round(u.xp || 0)}</td>
                         <td className="py-6 px-4 text-center">
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            onClick={() => handleUpdateUserName(u.id, u.displayName)}
-                            className="text-primary hover:bg-primary/20 rounded-xl w-12 h-12"
-                          >
-                            <Edit2 className="w-5 h-5" />
-                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleUpdateUserName(u.id, u.displayName)} className="text-primary hover:bg-primary/20 rounded-xl w-12 h-12"><Edit2 className="w-5 h-5" /></Button>
                         </td>
                       </tr>
                     ))}
