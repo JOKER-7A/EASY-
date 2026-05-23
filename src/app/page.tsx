@@ -57,7 +57,6 @@ const THEMES = [
 ];
 
 export default function Home() {
-  const [mounted, setMounted] = useState(false);
   const [activeView, setActiveView] = useState<'landing' | 'practice'>('landing');
   const [allSections, setAllSections] = useState<Section[]>(staticSections);
   const [filteredSections, setFilteredSections] = useState<Section[]>(staticSections);
@@ -78,10 +77,6 @@ export default function Home() {
   const { toast } = useToast();
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       try {
         setUser(u);
@@ -92,12 +87,9 @@ export default function Home() {
           if (p?.theme) {
             document.body.setAttribute('data-theme', p.theme);
           }
-          if (!p?.displayName && mounted) {
+          if (!p?.displayName) {
             setActiveOverlay('welcome-name');
           }
-        } else {
-          setProfile(null);
-          document.body.removeAttribute('data-theme');
         }
       } catch (err) {
         console.error("Auth process error:", err);
@@ -106,7 +98,7 @@ export default function Home() {
       }
     });
     return () => unsubscribe();
-  }, [mounted]);
+  }, []);
 
   useEffect(() => {
     const fetchSections = async () => {
@@ -138,9 +130,7 @@ export default function Home() {
       try {
         const p = await getUserProfile(user.uid);
         setProfile(p);
-      } catch (err) {
-        console.error("Profile refresh error:", err);
-      }
+      } catch (err) {}
     }
   }, [user]);
 
@@ -191,16 +181,12 @@ export default function Home() {
 
   const openOverlay = async (type: OverlayType) => {
     setActiveOverlay(type);
-    try {
-      if (type === 'leaderboard') {
-        const data = await getLeaderboard();
-        setLeaderboardData(data);
-      } else if (type === 'errors' && user) {
-        const data = await getErrorLogs(user.uid);
-        setErrorLogsData(data);
-      }
-    } catch (err) {
-      console.error("Overlay fetch error:", err);
+    if (type === 'leaderboard') {
+      const data = await getLeaderboard();
+      setLeaderboardData(data);
+    } else if (type === 'errors' && user) {
+      const data = await getErrorLogs(user.uid);
+      setErrorLogsData(data);
     }
   };
 
@@ -215,16 +201,15 @@ export default function Home() {
   const currentLevelXp = (profile?.xp || 0) % 100;
 
   return (
-    <main className="min-h-screen relative bg-black text-white flex flex-col theme-transition">
-      {mounted && activeOverlay && (
+    <main className="min-h-screen relative bg-black text-white flex flex-col">
+      {activeOverlay && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/95 backdrop-blur-3xl" onClick={() => activeOverlay !== 'welcome-name' && setActiveOverlay(null)} />
           <Card className="w-full max-w-4xl max-h-[90vh] overflow-hidden glass border-white/5 rounded-[40px] relative z-10 flex flex-col">
             <div className="p-8 border-b border-white/5 flex items-center justify-between">
               <h2 className="text-4xl font-black text-white">
                 {activeOverlay === 'leaderboard' ? "نخبة EASY" : 
-                 activeOverlay === 'errors' ? "مختبر الأخطاء" : 
-                 activeOverlay === 'edit-name' || activeOverlay === 'welcome-name' ? "تعديل الهوية" : "المظهر"}
+                 activeOverlay === 'errors' ? "مختبر الأخطاء" : "تعديل الهوية"}
               </h2>
               {activeOverlay !== 'welcome-name' && <Button variant="ghost" onClick={() => setActiveOverlay(null)}><X className="w-8 h-8" /></Button>}
             </div>
@@ -254,7 +239,7 @@ export default function Home() {
                             <p className="text-green-500 font-black">التصحيح: {log.questionData?.correct}</p>
                           </div>
                           <div className="p-4 bg-red-500/10 rounded-2xl border border-red-500/20">
-                            <p className="text-red-500 font-black">إجابتك: {log.questionData?.userAnswer || 'بدون إجابة'}</p>
+                            <p className="text-red-500 font-black">إجابتك: {log.userAnswer || 'بدون إجابة'}</p>
                           </div>
                         </div>
                       </Card>
@@ -273,16 +258,6 @@ export default function Home() {
                   <Button onClick={handleUpdateName} disabled={isUpdatingName} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl">
                     {isUpdatingName ? <Loader2 className="animate-spin" /> : "تأكيد الهوية ✅"}
                   </Button>
-                </div>
-              )}
-              {activeOverlay === 'themes' && (
-                <div className="grid grid-cols-2 gap-4">
-                  {THEMES.map((t) => (
-                    <button key={t.id} onClick={() => handleThemeChange(t.id)} className="p-6 rounded-2xl border border-white/5 bg-white/[0.02] hover:border-primary transition-all flex items-center gap-4">
-                      <div className={cn("w-8 h-8 rounded-full", t.color)} />
-                      <span className="font-black">{t.name}</span>
-                    </button>
-                  ))}
                 </div>
               )}
             </div>
@@ -317,7 +292,6 @@ export default function Home() {
         </div>
       ) : (
         <div className="relative z-10 container mx-auto px-4 md:px-8 py-20 max-w-7xl">
-          {/* HUD UI */}
           <div className="fixed top-8 left-8 z-[100] hidden md:block">
             <div className="glass p-5 pr-14 rounded-[30px] border-primary/20 flex items-center gap-7 relative group">
               <div className="w-20 h-20 rounded-2xl bg-primary text-white flex items-center justify-center font-black text-3xl shadow-lg">
@@ -333,7 +307,6 @@ export default function Home() {
                 </div>
                 <Progress value={currentLevelXp} className="h-3 bg-white/5 rounded-full" />
               </div>
-              <button onClick={() => openOverlay('themes')} className="absolute left-2 top-2 text-white/20 hover:text-primary"><Palette className="w-5 h-5" /></button>
             </div>
           </div>
 
@@ -372,36 +345,30 @@ export default function Home() {
               </Badge>
             </div>
 
-            {loading && filteredSections.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-40">
-                <Loader2 className="w-24 h-24 text-primary animate-spin" />
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-14">
-                {filteredSections.map((section) => (
-                  <Card 
-                    key={section.firebaseId || section.id} 
-                    className="group bg-white/[0.02] border border-white/5 rounded-[70px] p-14 shadow-2xl transition-all hover:border-primary/50 hover:bg-white/[0.04] duration-700"
-                  >
-                    <div className="flex flex-col sm:flex-row justify-between items-center gap-8">
-                      <div className="space-y-3 text-right">
-                        <span className="bg-primary/20 text-primary px-5 py-2 rounded-xl font-black text-2xl">🔥 القسم {section.id}</span>
-                        <h2 className="text-4xl font-black text-white group-hover:text-primary transition-colors leading-tight line-clamp-1">
-                          {section.title}
-                        </h2>
-                        <p className="text-white/30 font-bold">{section.questions?.length || 0} سؤال</p>
-                      </div>
-                      <Button 
-                        onClick={() => { setSelectedSection(section); setActiveView('practice'); }} 
-                        className="w-full sm:w-auto h-32 px-16 rounded-[50px] text-4xl font-black bg-primary text-white shadow-lg group-hover:scale-110 transition-all"
-                      >
-                        ابدأ <ChevronRight className="mr-2 w-12 h-12" />
-                      </Button>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-14">
+              {filteredSections.map((section) => (
+                <Card 
+                  key={section.firebaseId || section.id} 
+                  className="group bg-white/[0.02] border border-white/5 rounded-[70px] p-14 shadow-2xl transition-all hover:border-primary/50 hover:bg-white/[0.04] duration-700"
+                >
+                  <div className="flex flex-col sm:flex-row justify-between items-center gap-8">
+                    <div className="space-y-3 text-right">
+                      <span className="bg-primary/20 text-primary px-5 py-2 rounded-xl font-black text-2xl">🔥 القسم {section.id}</span>
+                      <h2 className="text-4xl font-black text-white group-hover:text-primary transition-colors leading-tight line-clamp-1">
+                        {section.title}
+                      </h2>
+                      <p className="text-white/30 font-bold">{section.questions?.length || 0} سؤال</p>
                     </div>
-                  </Card>
-                ))}
-              </div>
-            )}
+                    <Button 
+                      onClick={() => { setSelectedSection(section); setActiveView('practice'); }} 
+                      className="w-full sm:w-auto h-32 px-16 rounded-[50px] text-4xl font-black bg-primary text-white shadow-lg group-hover:scale-110 transition-all"
+                    >
+                      ابدأ <ChevronRight className="mr-2 w-12 h-12" />
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
           </section>
 
           <footer className="text-center py-20 border-t border-white/5">

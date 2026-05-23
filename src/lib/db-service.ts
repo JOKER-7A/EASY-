@@ -25,7 +25,7 @@ const USER_PROFILES = "userProfiles";
 const ERROR_LOGS = "errorLogs";
 
 /**
- * جلب الأقسام من قاعدة البيانات مع معالجة الأخطاء والترتيب التلقائي
+ * جلب الأقسام من قاعدة البيانات بشكل آمن مع خيار احتياطي دائم
  */
 export const getSectionsFromDb = async (): Promise<Section[]> => {
   try {
@@ -35,7 +35,6 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
       ...(doc.data() as any)
     } as unknown as Section));
     
-    // دمج البيانات مع البيانات الثابتة لضمان وجود محتوى دائماً
     const combined = [...dbSections];
     staticSections.forEach(s => {
       if (!combined.find(c => Number(c.id) === Number(s.id))) {
@@ -43,90 +42,28 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
       }
     });
     
-    // ترتيب الأقسام تنازلياً حسب المعرف (الأحدث أولاً)
     return combined.sort((a, b) => Number(b.id) - Number(a.id));
   } catch (error) {
     console.error("Error fetching sections from Firestore:", error);
-    return staticSections.sort((a, b) => Number(b.id) - Number(a.id));
+    return [...staticSections].sort((a, b) => Number(b.id) - Number(a.id));
   }
 };
 
-export const addSectionToDb = async (section: any) => {
-  try {
-    const { firebaseId, ...data } = section;
-    const cleanData = {
-      ...data,
-      id: Number(data.id),
-      questions: (data.questions || []).map((q: any) => ({
-        ...q,
-        options: (q.options || []).filter((o: string) => o && o.trim() !== '')
-      })),
-      readingPassages: (data.readingPassages || []).map((p: any) => ({
-        ...p,
-        title: p.title || '',
-        text: p.text || ''
-      }))
-    };
-    return await addDoc(collection(db, SECTIONS_COLLECTION), cleanData);
-  } catch (error) {
-    console.error("Error adding section:", error);
-    throw error;
-  }
-};
-
-export const deleteSectionFromDb = async (firebaseId: string) => {
-  try {
-    const sectionRef = doc(db, SECTIONS_COLLECTION, firebaseId);
-    return await deleteDoc(sectionRef);
-  } catch (error) {
-    console.error("Error deleting section:", error);
-    throw error;
-  }
-};
-
-export const saveAttemptToDb = async (userId: string | undefined, attempt: {
-  sectionId: number | string;
-  mode: string;
-  score: number;
-  correctCount: number;
-  totalQuestions: number;
-  durationSeconds: number;
-  answers: Record<string, string>;
-}) => {
-  try {
-    const data = {
-      ...attempt,
-      userId: userId || 'anonymous',
-      createdAt: serverTimestamp(),
-    };
-    await addDoc(collection(db, ATTEMPTS_COLLECTION), data);
-    
-    if (userId) {
-      await updateUserXP(userId, attempt.correctCount);
-    }
-  } catch (error) {
-    console.error("Error saving attempt:", error);
-  }
-};
-
-/**
- * جلب الملف الشخصي مع ضمان عدم التعليق (Safe Return)
- */
 export const getUserProfile = async (userId: string, email?: string, displayName?: string) => {
+  if (!userId) return null;
   try {
     const userRef = doc(db, USER_PROFILES, userId);
     const userSnap = await getDoc(userRef);
     
     if (userSnap.exists()) {
-      const data = userSnap.data();
-      return { id: userSnap.id, ...data };
+      return { id: userSnap.id, ...userSnap.data() };
     } else {
       const initialProfile = {
         level: 1,
         xp: 0,
         totalCorrect: 0,
         favorites: [],
-        displayName: displayName || '',
+        displayName: displayName || 'مستكشف EASY',
         email: email || '',
         theme: 'default',
         createdAt: serverTimestamp(),
@@ -150,14 +87,19 @@ export const getUserProfile = async (userId: string, email?: string, displayName
   }
 };
 
-export const isDisplayNameTaken = async (name: string, currentUserId: string): Promise<boolean> => {
+export const saveAttemptToDb = async (userId: string | undefined, attempt: any) => {
   try {
-    const q = query(collection(db, USER_PROFILES), where("displayName", "==", name));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.some(doc => doc.id !== currentUserId);
+    const data = {
+      ...attempt,
+      userId: userId || 'anonymous',
+      createdAt: serverTimestamp(),
+    };
+    await addDoc(collection(db, ATTEMPTS_COLLECTION), data);
+    if (userId) {
+      await updateUserXP(userId, attempt.correctCount);
+    }
   } catch (error) {
-    console.error("Error checking display name:", error);
-    return false;
+    console.error("Error saving attempt:", error);
   }
 };
 
@@ -182,61 +124,15 @@ export const updateUserXP = async (userId: string, correct: number) => {
   }
 };
 
-export const getAllUserProfiles = async () => {
+export const getLeaderboard = async () => {
   try {
-    const querySnapshot = await getDocs(collection(db, USER_PROFILES));
-    return querySnapshot.docs.map(doc => ({
+    const snapshot = await getDocs(collection(db, USER_PROFILES));
+    return snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
-    }));
+    })).sort((a: any, b: any) => (b.xp || 0) - (a.xp || 0)).slice(0, 50);
   } catch (error) {
-    console.error("Error fetching all profiles:", error);
     return [];
-  }
-};
-
-export const updateUserProfileName = async (userId: string, newName: string) => {
-  try {
-    const userRef = doc(db, USER_PROFILES, userId);
-    return await updateDoc(userRef, { displayName: newName });
-  } catch (error) {
-    console.error("Error updating name:", error);
-    throw error;
-  }
-};
-
-export const updateUserTheme = async (userId: string, theme: string) => {
-  try {
-    const userRef = doc(db, USER_PROFILES, userId);
-    return await updateDoc(userRef, { theme });
-  } catch (error) {
-    console.error("Error updating theme:", error);
-  }
-};
-
-export const toggleFavoriteInDb = async (userId: string, question: any) => {
-  try {
-    const userRef = doc(db, USER_PROFILES, userId);
-    const userSnap = await getDoc(userRef);
-    if (!userSnap.exists()) return false;
-    
-    const favorites = userSnap.data().favorites || [];
-    const exists = favorites.find((f: any) => f.id === question.id);
-    
-    if (exists) {
-      await updateDoc(userRef, {
-        favorites: arrayRemove(exists)
-      });
-      return false;
-    } else {
-      await updateDoc(userRef, {
-        favorites: arrayUnion(question)
-      });
-      return true;
-    }
-  } catch (error) {
-    console.error("Error toggling favorite:", error);
-    return false;
   }
 };
 
@@ -244,14 +140,10 @@ export const saveErrorLogToDb = async (userId: string, question: Question, secti
   try {
     const errorId = `${userId}_${question.id}`;
     const errorRef = doc(db, ERROR_LOGS, errorId);
-    
     await setDoc(errorRef, {
       userId,
       questionId: question.id,
-      questionData: {
-        ...question,
-        sectionTitle
-      },
+      questionData: { ...question, sectionTitle },
       lastOccurred: serverTimestamp(),
       count: increment(1)
     }, { merge: true });
@@ -262,36 +154,53 @@ export const saveErrorLogToDb = async (userId: string, question: Question, secti
 
 export const getErrorLogs = async (userId: string) => {
   try {
-    const q = query(
-      collection(db, ERROR_LOGS), 
-      where("userId", "==", userId)
-    );
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs
-      .map(doc => doc.data())
-      .sort((a: any, b: any) => {
-        const timeA = a.lastOccurred?.seconds || 0;
-        const timeB = b.lastOccurred?.seconds || 0;
-        return timeB - timeA;
-      });
+    const q = query(collection(db, ERROR_LOGS), where("userId", "==", userId));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => doc.data());
   } catch (error) {
-    console.error("Error fetching logs:", error);
     return [];
   }
 };
 
-export const getLeaderboard = async () => {
+export const toggleFavoriteInDb = async (userId: string, question: any) => {
   try {
-    const snapshot = await getDocs(collection(db, USER_PROFILES));
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })).sort((a: any, b: any) => {
-      if ((b.level || 0) !== (a.level || 0)) return (b.level || 0) - (a.level || 0);
-      return (b.xp || 0) - (a.xp || 0);
-    }).slice(0, 50);
+    const userRef = doc(db, USER_PROFILES, userId);
+    const userSnap = await getDoc(userRef);
+    if (!userSnap.exists()) return false;
+    const favorites = userSnap.data().favorites || [];
+    const exists = favorites.find((f: any) => f.id === question.id);
+    if (exists) {
+      await updateDoc(userRef, { favorites: arrayRemove(exists) });
+      return false;
+    } else {
+      await updateDoc(userRef, { favorites: arrayUnion(question) });
+      return true;
+    }
   } catch (error) {
-    console.error("Error fetching leaderboard:", error);
-    return [];
+    return false;
+  }
+};
+
+export const updateUserTheme = async (userId: string, theme: string) => {
+  try {
+    const userRef = doc(db, USER_PROFILES, userId);
+    await updateDoc(userRef, { theme });
+  } catch (error) {}
+};
+
+export const updateUserProfileName = async (userId: string, newName: string) => {
+  try {
+    const userRef = doc(db, USER_PROFILES, userId);
+    await updateDoc(userRef, { displayName: newName });
+  } catch (error) {}
+};
+
+export const isDisplayNameTaken = async (name: string, currentUserId: string): Promise<boolean> => {
+  try {
+    const q = query(collection(db, USER_PROFILES), where("displayName", "==", name));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.some(doc => doc.id !== currentUserId);
+  } catch (error) {
+    return false;
   }
 };
