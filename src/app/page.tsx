@@ -1,8 +1,16 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { sections as staticSections, Section } from '@/lib/practice-data';
-import { getSectionsFromDb, getUserProfile, getLeaderboard, getErrorLogs, updateUserProfileName, isDisplayNameTaken, updateUserTheme } from '@/lib/db-service';
+import { 
+  getSectionsFromDb, 
+  getUserProfile, 
+  getLeaderboard, 
+  getErrorLogs, 
+  updateUserProfileName, 
+  isDisplayNameTaken, 
+  updateUserTheme 
+} from '@/lib/db-service';
 import PracticeSession from '@/components/PracticeSession';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -52,8 +60,8 @@ const THEMES = [
 export default function Home() {
   const [mounted, setMounted] = useState(false);
   const [activeView, setActiveView] = useState<'landing' | 'practice'>('landing');
-  const [allSections, setAllSections] = useState<Section[]>([]);
-  const [filteredSections, setFilteredSections] = useState<Section[]>([]);
+  const [allSections, setAllSections] = useState<Section[]>(staticSections);
+  const [filteredSections, setFilteredSections] = useState<Section[]>(staticSections);
   const [selectedSection, setSelectedSection] = useState<Section | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -70,8 +78,13 @@ export default function Home() {
   const [errorLogsData, setErrorLogsData] = useState<any[]>([]);
   const { toast } = useToast();
 
+  // التحقق من الحماية (Safe Mounting)
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  // إدارة حالة المستخدم (Safe Auth State)
+  useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       try {
         setUser(u);
@@ -82,7 +95,7 @@ export default function Home() {
           if (p?.theme) {
             document.body.setAttribute('data-theme', p.theme);
           }
-          if (!p?.displayName) {
+          if (!p?.displayName && mounted) {
             setActiveOverlay('welcome-name');
           }
         } else {
@@ -90,36 +103,32 @@ export default function Home() {
           document.body.removeAttribute('data-theme');
         }
       } catch (err) {
-        console.error("Auth state change error:", err);
+        console.error("Auth state handling error:", err);
       } finally {
         setIsAuthLoading(false);
       }
     });
+    return () => unsubscribe();
+  }, [mounted]);
 
+  // جلب البيانات (Safe Data Fetching)
+  useEffect(() => {
     const fetchAllData = async () => {
       try {
+        setLoading(true);
         const dbSections = await getSectionsFromDb();
-        const combined = [...dbSections];
-        staticSections.forEach(s => {
-          if (!combined.find(c => Number(c.id) === Number(s.id))) {
-            combined.push(s);
-          }
-        });
-        combined.sort((a, b) => Number(b.id) - Number(a.id));
-        setAllSections(combined);
-        setFilteredSections(combined);
+        setAllSections(dbSections);
+        setFilteredSections(dbSections);
       } catch (e) {
-        console.error("Fetch data error:", e);
-        setAllSections(staticSections);
-        setFilteredSections(staticSections);
+        console.error("Failed to load data:", e);
       } finally {
         setLoading(false);
       }
     };
     fetchAllData();
-    return () => unsubscribe();
   }, []);
 
+  // تصفية الأقسام
   useEffect(() => {
     const q = searchQuery.toLowerCase();
     const filtered = allSections.filter(s => 
@@ -133,12 +142,12 @@ export default function Home() {
     setFilteredSections(filtered);
   }, [searchQuery, allSections]);
 
-  const refreshProfile = async () => {
+  const refreshProfile = useCallback(async () => {
     if (user) {
       const p = await getUserProfile(user.uid);
       setProfile(p);
     }
-  };
+  }, [user]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -158,25 +167,19 @@ export default function Home() {
 
   const handleUpdateName = async () => {
     if (!user || !newDisplayName.trim()) return;
-    if (newDisplayName.length < 3) {
-      toast({ title: "الاسم قصير جداً (3 أحرف على الأقل)", variant: "destructive" });
-      return;
-    }
-
     setIsUpdatingName(true);
     try {
       const taken = await isDisplayNameTaken(newDisplayName, user.uid);
       if (taken) {
-        toast({ title: "هذا الاسم مستخدم بالفعل، اختر اسماً آخر", variant: "destructive" });
-        setIsUpdatingName(false);
+        toast({ title: "هذا الاسم مستخدم بالفعل", variant: "destructive" });
         return;
       }
       await updateUserProfileName(user.uid, newDisplayName);
       await updateProfile(user, { displayName: newDisplayName });
       await refreshProfile();
       setActiveOverlay(null);
-      toast({ title: "تم الحفظ بنجاح ✅" });
-    } catch (error: any) {
+      toast({ title: "تم تحديث الاسم بنجاح ✅" });
+    } catch (error) {
       toast({ title: "فشل تحديث الاسم", variant: "destructive" });
     } finally {
       setIsUpdatingName(false);
@@ -188,73 +191,58 @@ export default function Home() {
     document.body.setAttribute('data-theme', themeId);
     await updateUserTheme(user.uid, themeId);
     setProfile((prev: any) => ({ ...prev, theme: themeId }));
-    toast({ title: "تم تحديث الثيم بنجاح ✨" });
+    toast({ title: "تم تغيير المظهر ✨" });
   };
 
-  const openLeaderboard = async () => {
-    setLeaderboardData([]);
-    setActiveOverlay('leaderboard');
-    const data = await getLeaderboard();
-    setLeaderboardData(data || []);
+  const openOverlay = async (type: OverlayType) => {
+    setActiveOverlay(type);
+    if (type === 'leaderboard') {
+      const data = await getLeaderboard();
+      setLeaderboardData(data);
+    } else if (type === 'errors' && user) {
+      const data = await getErrorLogs(user.uid);
+      setErrorLogsData(data);
+    }
   };
 
-  const openErrorLogs = async () => {
-    if (!user) return;
-    setErrorLogsData([]);
-    setActiveOverlay('errors');
-    const data = await getErrorLogs(user.uid);
-    setErrorLogsData(data || []);
-  };
-
-  const openFavorites = async () => {
-    if (!user) return;
-    await refreshProfile();
-    setActiveOverlay('favorites');
-  };
-
-  if (!mounted) return null;
-
-  if (isAuthLoading) {
+  // واجهة التحميل الأولية (Safe Global Guard)
+  if (isAuthLoading && !mounted) {
     return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center space-y-4">
-        <Loader2 className="w-16 h-16 text-primary animate-spin" />
-        <p className="text-primary font-black animate-pulse">جاري التحقق من الهوية...</p>
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center">
+        <Loader2 className="w-12 h-12 text-primary animate-spin" />
+        <p className="mt-4 text-primary font-black animate-pulse">EASY PREP Loading...</p>
       </div>
     );
   }
 
-  if (!user) {
+  // واجهة تسجيل الدخول
+  if (!user && !isAuthLoading) {
     return (
-      <main className="min-h-screen bg-black flex items-center justify-center p-4 relative overflow-hidden">
-        <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(168,85,247,0.15),transparent_70%)]" />
-        <Card className="w-full max-w-xl p-8 md:p-14 glass border-white/5 rounded-[40px] md:rounded-[60px] shadow-2xl relative z-10 animate-in fade-in zoom-in duration-700">
-          <div className="text-center mb-10 md:mb-14 group">
-            <h1 className="text-8xl md:text-[10rem] text-easy-premium text-shine mb-4 transition-transform group-hover:scale-105 duration-700">
-              EASY
-            </h1>
-            <p className="text-lg md:text-xl text-primary font-bold tracking-[0.3em] opacity-80 uppercase">The Elite Training Portal</p>
+      <main className="min-h-screen bg-black flex items-center justify-center p-4">
+        <Card className="w-full max-w-xl p-8 md:p-14 glass border-white/5 rounded-[40px] shadow-2xl animate-in fade-in duration-700">
+          <div className="text-center mb-10 group">
+            <h1 className="text-8xl md:text-[10rem] text-easy-premium text-shine mb-4">EASY</h1>
+            <p className="text-lg text-primary font-bold tracking-widest opacity-80 uppercase">The Elite Training Portal</p>
           </div>
           
           <form onSubmit={handleAuth} className="space-y-6">
-            <div className="space-y-4">
-              <Input 
-                type="email" 
-                placeholder="البريد الإلكتروني" 
-                value={email} 
-                onChange={(e) => setEmail(e.target.value)}
-                className="h-14 md:h-16 rounded-2xl bg-white/5 border-white/10 text-white text-lg placeholder:text-white/20 focus:border-primary/50 transition-all pr-6"
-                required
-              />
-              <Input 
-                type="password" 
-                placeholder="كلمة المرور" 
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)}
-                className="h-14 md:h-16 rounded-2xl bg-white/5 border-white/10 text-white text-lg placeholder:text-white/20 focus:border-primary/50 transition-all pr-6"
-                required
-              />
-            </div>
-            <Button type="submit" className="w-full h-16 md:h-20 rounded-2xl md:rounded-[30px] bg-primary text-white font-black text-xl md:text-2xl shadow-[0_0_30px_rgba(168,85,247,0.4)] hover:scale-[1.02] active-press transition-all">
+            <Input 
+              type="email" 
+              placeholder="البريد الإلكتروني" 
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)}
+              className="h-16 rounded-2xl bg-white/5 border-white/10 text-white text-lg focus:border-primary transition-all pr-6"
+              required
+            />
+            <Input 
+              type="password" 
+              placeholder="كلمة المرور" 
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)}
+              className="h-16 rounded-2xl bg-white/5 border-white/10 text-white text-lg focus:border-primary transition-all pr-6"
+              required
+            />
+            <Button type="submit" className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl hover:scale-[1.02] transition-all">
               {authMode === 'login' ? "دخول 🚀" : "بدء الرحلة ✨"}
             </Button>
           </form>
@@ -262,7 +250,7 @@ export default function Home() {
           <div className="mt-8 text-center">
             <button 
               onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
-              className="text-white/40 hover:text-primary font-bold text-base md:text-lg transition-colors underline-offset-8 hover:underline"
+              className="text-white/40 hover:text-primary transition-colors font-bold"
             >
               {authMode === 'login' ? "لا تملك حساباً؟ انضم إلينا" : "لديك حساب؟ سجل دخولك"}
             </button>
@@ -274,173 +262,79 @@ export default function Home() {
 
   const renderOverlay = () => {
     if (!activeOverlay) return null;
-
-    let content = null;
     let title = "";
-    let icon = null;
+    let content = null;
 
     if (activeOverlay === 'leaderboard') {
       title = "نخبة EASY";
-      icon = <Trophy className="w-8 h-8 md:w-12 md:h-12 text-primary" />;
       content = (
-        <div className="space-y-4 md:space-y-6">
-          {leaderboardData.length === 0 ? (
-            <div className="flex justify-center py-20"><Loader2 className="w-12 h-12 animate-spin text-primary" /></div>
-          ) : (
-            leaderboardData.map((p, idx) => (
-              <div key={p.id} className="flex items-center justify-between p-5 md:p-8 bg-white/[0.03] rounded-[30px] border border-white/5 hover:border-primary/30 transition-all group active-press">
-                <div className="flex items-center gap-4 md:gap-8">
-                  <div className={cn(
-                    "w-12 h-12 md:w-16 md:h-16 rounded-2xl flex items-center justify-center font-black text-xl md:text-2xl shadow-xl",
-                    idx === 0 ? "bg-primary text-white" : 
-                    idx === 1 ? "bg-white/20 text-white" :
-                    idx === 2 ? "bg-white/10 text-white" : "bg-white/5 text-white/40"
-                  )}>
-                    {idx + 1}
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20">
-                      <UserIcon className="w-6 h-6 text-primary" />
-                    </div>
-                    <div>
-                      <h4 className="text-xl md:text-2xl font-black text-white group-hover:text-primary transition-colors">{p.displayName || 'مستكشف EASY'}</h4>
-                      <span className="text-[10px] text-primary font-black uppercase">Level {p.level || 1}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-left">
-                  <p className="text-2xl md:text-4xl font-black text-white">{Math.round(p.xp || 0)} <span className="text-sm text-white/30">XP</span></p>
-                </div>
+        <div className="space-y-4">
+          {leaderboardData.map((p, idx) => (
+            <div key={p.id} className="flex items-center justify-between p-6 bg-white/[0.03] rounded-3xl border border-white/5">
+              <div className="flex items-center gap-6">
+                <span className={cn("w-10 h-10 rounded-xl flex items-center justify-center font-black", idx < 3 ? "bg-primary text-white" : "bg-white/10")}>{idx + 1}</span>
+                <span className="text-xl font-black">{p.displayName || 'مستكشف EASY'}</span>
               </div>
-            ))
-          )}
+              <span className="text-2xl font-black text-primary">{Math.round(p.xp || 0)} XP</span>
+            </div>
+          ))}
         </div>
       );
     } else if (activeOverlay === 'errors') {
       title = "مختبر الأخطاء";
-      icon = <History className="w-8 h-8 md:w-12 md:h-12 text-destructive" />;
-      content = (
-        <div className="space-y-6 md:space-y-10">
-          {errorLogsData.length === 0 ? (
-            <div className="text-center py-32 space-y-4">
-              <Sparkles className="w-20 h-20 text-white/5 mx-auto" />
-              <p className="text-white/20 text-2xl font-black">سجلك نظيف تماماً 🚀</p>
-            </div>
-          ) : (
-            errorLogsData.map((log, idx) => (
-              <Card key={idx} className="p-8 md:p-12 glass border-destructive/20 rounded-[40px] space-y-6 hover:border-destructive/40 transition-all">
-                <div className="flex justify-between items-start gap-4">
-                  <div className="space-y-2 flex-1">
-                    <Badge className="bg-white/5 text-white/40 px-4 py-1">{log.questionData?.sectionTitle || 'نموذج عام'}</Badge>
-                    <h4 className="text-xl md:text-3xl font-black leading-tight text-white/90">{log.questionData?.question || 'سؤال غير متوفر'}</h4>
-                  </div>
-                  <div className="bg-destructive/10 text-destructive border border-destructive/20 px-4 py-2 rounded-2xl font-black text-sm shrink-0">
-                    تكرر {log.count || 1}
-                  </div>
-                </div>
-                <div className="p-5 bg-green-500/10 rounded-3xl border border-green-500/20">
-                  <p className="text-xs text-green-500 font-bold mb-2 uppercase tracking-widest">التصحيح النموذجي</p>
-                  <p className="text-xl md:text-2xl font-black text-white">{log.questionData?.correct || 'لا يوجد'}</p>
-                </div>
-              </Card>
-            ))
-          )}
-        </div>
-      );
-    } else if (activeOverlay === 'favorites') {
-      title = "كنوزي المفضلة";
-      icon = <Star className="w-8 h-8 md:w-12 md:h-12 text-accent fill-accent" />;
       content = (
         <div className="space-y-6">
-          {(!profile?.favorites || profile.favorites.length === 0) ? (
-            <div className="text-center py-32 space-y-4">
-              <Star className="w-20 h-20 text-white/5 mx-auto" />
-              <p className="text-white/20 text-2xl font-black">قائمة المفضلة خالية ✨</p>
-            </div>
-          ) : (
-            profile.favorites.map((fav: any, idx: number) => (
-              <Card key={idx} className="p-8 glass border-accent/20 rounded-[40px] space-y-4">
-                <div className="flex justify-between">
-                  <Badge className="bg-accent/10 text-accent">{fav.type || 'سؤال'}</Badge>
-                  <Button variant="ghost" onClick={() => setSelectedSection(allSections.find(s => s.questions.some(q => q.id === fav.id)) || null)} className="text-accent">فتح السؤال</Button>
-                </div>
-                <h4 className="text-2xl font-black">{fav.question}</h4>
-                <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
-                   <p className="text-green-500 font-black">الإجابة: {fav.correct}</p>
+          {errorLogsData.length === 0 ? <p className="text-center py-20 opacity-30">سجلك نظيف تماماً 🚀</p> : 
+            errorLogsData.map((log, idx) => (
+              <Card key={idx} className="p-8 glass border-destructive/20 rounded-3xl space-y-4">
+                <Badge className="bg-destructive/10 text-destructive">{log.questionData?.sectionTitle}</Badge>
+                <h4 className="text-2xl font-black">{log.questionData?.question}</h4>
+                <div className="p-4 bg-green-500/10 rounded-2xl border border-green-500/20">
+                  <p className="text-green-500 font-black">التصحيح: {log.questionData?.correct}</p>
                 </div>
               </Card>
             ))
-          )}
-        </div>
-      );
-    } else if (activeOverlay === 'themes') {
-      title = "تغيير مظهر المنصة";
-      icon = <Palette className="w-8 h-8 md:w-12 md:h-12 text-primary" />;
-      content = (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 py-6">
-          {THEMES.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => handleThemeChange(t.id)}
-              className={cn(
-                "p-8 rounded-[30px] border-2 transition-all active-press flex items-center justify-between group",
-                profile?.theme === t.id ? 'border-primary bg-primary/20' : 'border-white/5 bg-white/[0.02] hover:border-primary/40'
-              )}
-            >
-              <div className="flex items-center gap-4">
-                <div className={cn("w-10 h-10 rounded-full shadow-lg", t.color)} />
-                <span className="text-xl font-black">{t.name}</span>
-              </div>
-              {profile?.theme === t.id && <CheckCircle2 className="w-6 h-6 text-primary" />}
-            </button>
-          ))}
+          }
         </div>
       );
     } else if (activeOverlay === 'edit-name' || activeOverlay === 'welcome-name') {
-      title = activeOverlay === 'welcome-name' ? "مرحباً في عالم EASY" : "تعديل الهوية الرقمية";
-      icon = <Sparkles className="w-8 h-8 md:w-12 md:h-12 text-primary" />;
+      title = "تعديل الهوية الرقمية";
       content = (
-        <div className="space-y-10 py-10">
-          <div className="space-y-6">
-            <label className="text-white/60 font-black text-xl md:text-2xl block text-center">
-              {activeOverlay === 'welcome-name' ? 'أدخل الاسم الذي سيخلد في لوحة الصدارة:' : 'أدخل اسمك الجديد:'}
-            </label>
-            <Input 
-              placeholder="الاسم المستعار..." 
-              value={newDisplayName}
-              onChange={(e) => setNewDisplayName(e.target.value)}
-              className="h-20 rounded-3xl bg-white/5 border-white/10 text-white text-3xl text-center focus:border-primary transition-all gold-glow"
-            />
-          </div>
-          <Button 
-            onClick={handleUpdateName} 
-            disabled={isUpdatingName}
-            className="w-full h-20 rounded-[40px] bg-primary text-white font-black text-2xl shadow-[0_0_40px_rgba(168,85,247,0.3)] hover:scale-105 active-press transition-all"
-          >
-            {isUpdatingName ? <Loader2 className="animate-spin" /> : <><CheckCircle2 className="ml-3 w-8 h-8" /> تأكيد الهوية</>}
+        <div className="space-y-8 py-6">
+          <Input 
+            placeholder="الاسم الجديد..." 
+            value={newDisplayName}
+            onChange={(e) => setNewDisplayName(e.target.value)}
+            className="h-20 rounded-3xl bg-white/5 border-white/10 text-white text-3xl text-center"
+          />
+          <Button onClick={handleUpdateName} disabled={isUpdatingName} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl">
+            {isUpdatingName ? <Loader2 className="animate-spin" /> : "تأكيد الهوية ✅"}
           </Button>
+        </div>
+      );
+    } else if (activeOverlay === 'themes') {
+      title = "المظهر";
+      content = (
+        <div className="grid grid-cols-2 gap-4">
+          {THEMES.map((t) => (
+            <button key={t.id} onClick={() => handleThemeChange(t.id)} className="p-6 rounded-2xl border border-white/5 bg-white/[0.02] hover:border-primary transition-all flex items-center gap-4">
+              <div className={cn("w-8 h-8 rounded-full", t.color)} />
+              <span className="font-black">{t.name}</span>
+            </button>
+          ))}
         </div>
       );
     }
 
     return (
-      <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 md:p-12 animate-in fade-in duration-500">
+      <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-black/95 backdrop-blur-3xl" onClick={() => activeOverlay !== 'welcome-name' && setActiveOverlay(null)} />
-        <Card className="w-full max-w-5xl max-h-[92vh] overflow-hidden glass border-white/5 rounded-[40px] md:rounded-[80px] shadow-[0_0_100px_rgba(0,0,0,1)] relative z-10 flex flex-col animate-in zoom-in-95 duration-500">
-          <div className="p-8 md:p-14 border-b border-white/5 flex items-center justify-between sticky top-0 bg-black/40 backdrop-blur-3xl z-20">
-            <div className="flex items-center gap-6">
-              {icon}
-              <h2 className="text-3xl md:text-6xl font-black text-white tracking-tighter">{title}</h2>
-            </div>
-            {activeOverlay !== 'welcome-name' && (
-              <Button variant="ghost" size="icon" className="w-14 h-14 md:w-20 md:h-20 rounded-full hover:bg-white/10" onClick={() => setActiveOverlay(null)}>
-                <X className="w-8 h-8 md:w-12 md:h-12 text-white/40" />
-              </Button>
-            )}
+        <Card className="w-full max-w-4xl max-h-[90vh] overflow-hidden glass border-white/5 rounded-[40px] relative z-10 flex flex-col">
+          <div className="p-8 border-b border-white/5 flex items-center justify-between">
+            <h2 className="text-4xl font-black text-white">{title}</h2>
+            {activeOverlay !== 'welcome-name' && <Button variant="ghost" onClick={() => setActiveOverlay(null)}><X className="w-8 h-8" /></Button>}
           </div>
-          <div className="flex-1 overflow-y-auto p-8 md:p-14 custom-scrollbar">
-            {content}
-          </div>
+          <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">{content}</div>
         </Card>
       </div>
     );
@@ -448,145 +342,103 @@ export default function Home() {
 
   if (activeView === 'practice' && selectedSection) {
     return (
-      <main className="min-h-screen p-0 bg-black theme-transition">
-        <PracticeSession 
-          section={selectedSection} 
-          onExit={() => {
-            setActiveView('landing');
-            refreshProfile();
-          }} 
-        />
+      <main className="min-h-screen p-0 bg-black">
+        <PracticeSession section={selectedSection} onExit={() => { setActiveView('landing'); refreshProfile(); }} />
       </main>
     );
   }
 
-  const currentXp = profile?.xp || 0;
-  const xpProgress = currentXp % 100;
+  const xpProgress = (profile?.xp || 0) % 100;
 
   return (
-    <main className="min-h-screen overflow-x-hidden relative bg-black text-white flex flex-col theme-transition">
-      {renderOverlay()}
+    <main className="min-h-screen relative bg-black text-white flex flex-col overflow-x-hidden">
+      {mounted && renderOverlay()}
       
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_0%,hsla(var(--primary),0.1),transparent_70%)] pointer-events-none" />
 
-      {/* Premium Level HUD */}
-      <div className="fixed top-6 left-6 md:top-12 md:left-12 z-[100] animate-in slide-in-from-left-10 duration-1000">
-        <div className="glass p-3 pr-6 md:p-5 md:pr-14 rounded-[30px] border-primary/20 flex items-center gap-4 md:gap-7 shadow-[0_0_40px_rgba(0,0,0,0.5)] relative overflow-hidden group">
-          <div className="w-12 h-12 md:w-20 md:h-20 rounded-2xl bg-primary text-white flex items-center justify-center font-black text-xl md:text-3xl shadow-lg z-10 shrink-0">
+      {/* HUD HUD HUD */}
+      <div className="fixed top-8 left-8 z-[100] hidden md:block">
+        <div className="glass p-5 pr-14 rounded-[30px] border-primary/20 flex items-center gap-7 relative group">
+          <div className="w-20 h-20 rounded-2xl bg-primary text-white flex items-center justify-center font-black text-3xl shadow-lg">
             {profile?.level || 1}
           </div>
-          <div className="space-y-1.5 md:space-y-2.5 z-10 flex flex-col min-w-0">
-            <div className="flex justify-between items-end gap-3">
-              <p className="text-[10px] md:text-xs font-black text-primary uppercase tracking-[0.2em] shrink-0">LV PROGRESS</p>
-              <div className="flex items-center gap-3 overflow-hidden">
-                <p className="text-xs md:text-sm font-bold text-white truncate">{profile?.displayName || 'مستكشف EASY'}</p>
-                <button onClick={() => setActiveOverlay('edit-name')} className="text-white/20 hover:text-primary transition-colors shrink-0 active-press">
-                  <Edit2 className="w-3 h-3 md:w-5 md:h-5" />
-                </button>
+          <div className="space-y-2 flex flex-col min-w-[200px]">
+            <div className="flex justify-between items-end">
+              <p className="text-xs font-black text-primary uppercase tracking-widest">PROGRESS</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-bold opacity-60">{profile?.displayName || 'مستكشف EASY'}</p>
+                <button onClick={() => openOverlay('edit-name')} className="text-white/20 hover:text-primary transition-colors"><Edit2 className="w-4 h-4" /></button>
               </div>
             </div>
-            <div className="w-28 md:w-56 h-2 md:h-3 bg-white/5 rounded-full border border-white/5 overflow-hidden">
-              <Progress value={xpProgress} className="h-full bg-gradient-to-r from-primary to-accent transition-all duration-1000" />
+            <div className="w-full h-3 bg-white/5 rounded-full overflow-hidden">
+              <Progress value={xpProgress} className="h-full bg-primary" />
             </div>
-            <p className="text-[9px] md:text-[11px] text-white/30 font-black text-right tracking-widest">{xpProgress} / 100 XP</p>
           </div>
-          <button 
-            onClick={() => setActiveOverlay('themes')}
-            className="absolute left-2 top-2 text-white/40 hover:text-primary transition-all active-press"
-            title="تغيير الثيم"
-          >
-            <Palette className="w-5 h-5" />
-          </button>
+          <button onClick={() => openOverlay('themes')} className="absolute left-2 top-2 text-white/20 hover:text-primary"><Palette className="w-5 h-5" /></button>
         </div>
       </div>
 
-      <div className="relative z-10 container mx-auto px-4 md:px-8 py-10 max-w-7xl flex-1">
-        <header className="text-center mb-20 md:mb-32 space-y-10 pt-24 md:pt-40">
-          <div className="inline-flex items-center gap-3 px-6 py-2 md:px-12 md:py-4 rounded-full glass border-primary/20 text-primary font-black text-xs md:text-lg mb-6 animate-float">
-            <Zap className="w-4 h-4 md:w-6 md:h-6 fill-primary" /> EASY PREP 3.0 OLED
+      <div className="relative z-10 container mx-auto px-4 md:px-8 py-20 max-w-7xl">
+        <header className="text-center mb-32 space-y-12 pt-20">
+          <div className="inline-flex items-center gap-3 px-10 py-4 rounded-full glass border-primary/20 text-primary font-black animate-float">
+            <Zap className="w-6 h-6 fill-primary" /> EASY PREP 3.0
           </div>
-          
-          <div className="relative group">
-            <h1 className="text-8xl md:text-[15rem] text-easy-premium text-shine leading-none mb-6 text-center w-full">
-              EASY
-            </h1>
-          </div>
-          
-          <p className="text-xl md:text-4xl font-black text-white/60 leading-tight max-w-4xl mx-auto px-4">
-            التحدي الحقيقي هو أن تتفوق على <span className="text-white">نفسك</span> كل يوم 💎
-          </p>
+          <h1 className="text-[10rem] md:text-[15rem] text-easy-premium text-shine leading-none text-center">EASY</h1>
+          <p className="text-3xl font-black text-white/60 max-w-4xl mx-auto">التحدي الحقيقي هو أن تتفوق على <span className="text-white">نفسك</span> كل يوم 💎</p>
 
-          <div className="max-w-3xl mx-auto pt-14 md:pt-20 px-4 relative group">
-            <Search className="absolute right-8 top-1/2 -translate-y-1/2 w-6 h-6 md:w-10 md:h-10 text-white/20 group-focus-within:text-primary transition-colors z-10" />
+          <div className="max-w-3xl mx-auto pt-20 px-4 relative group">
+            <Search className="absolute right-12 top-1/2 -translate-y-1/2 w-10 h-10 text-white/20 group-focus-within:text-primary transition-colors" />
             <Input 
-              placeholder="ابحث عن رقم القسم، عنوان، أو سؤال..."
+              placeholder="ابحث عن نموذج..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-16 md:h-24 w-full rounded-3xl md:rounded-[45px] bg-white/5 border-2 border-white/5 pr-16 md:pr-24 text-lg md:text-3xl font-bold focus:border-primary/40 focus:bg-white/[0.08] transition-all shadow-2xl"
+              className="h-24 w-full rounded-[45px] bg-white/5 border-2 border-white/5 pr-24 text-3xl font-bold focus:border-primary/40 transition-all shadow-2xl"
             />
           </div>
 
-          <div className="flex flex-wrap justify-center gap-4 md:gap-8 pt-10">
-            <Button onClick={openFavorites} className="h-14 md:h-20 px-8 md:px-14 rounded-2xl md:rounded-[40px] glass border-accent/30 text-accent font-black text-sm md:text-2xl hover:scale-105 active-press transition-all">
-              <Star className="ml-3 w-5 h-5 md:w-8 md:h-8 fill-accent" /> المفضلة
+          <div className="flex flex-wrap justify-center gap-8 pt-10">
+            <Button onClick={() => openOverlay('errors')} className="h-20 px-14 rounded-[40px] glass border-destructive/30 text-destructive font-black text-2xl hover:scale-105 transition-all">
+              <History className="ml-3 w-8 h-8" /> الأخطاء
             </Button>
-            <Button onClick={openErrorLogs} className="h-14 md:h-20 px-8 md:px-14 rounded-2xl md:rounded-[40px] glass border-destructive/30 text-destructive font-black text-sm md:text-2xl hover:scale-105 active-press transition-all">
-              <History className="ml-3 w-5 h-5 md:w-8 md:h-8" /> الأخطاء
-            </Button>
-            <Button onClick={openLeaderboard} className="h-14 md:h-20 px-8 md:px-14 rounded-2xl md:rounded-[40px] glass border-white/10 text-white font-black text-sm md:text-2xl hover:scale-105 active-press transition-all">
-              <Trophy className="ml-3 w-5 h-5 md:w-8 md:h-8" /> المتصدرين
+            <Button onClick={() => openOverlay('leaderboard')} className="h-20 px-14 rounded-[40px] glass border-white/10 text-white font-black text-2xl hover:scale-105 transition-all">
+              <Trophy className="ml-3 w-8 h-8" /> المتصدرين
             </Button>
           </div>
         </header>
 
-        <section className="space-y-12 md:space-y-20 mb-32 md:mb-48">
+        <section className="space-y-20 mb-48">
           <div className="flex items-center justify-between px-4">
-            <h2 className="text-3xl md:text-6xl font-black text-white tracking-tighter">النماذج المتاحة</h2>
-            <Badge className="bg-primary/10 text-primary text-sm md:text-2xl px-6 md:px-10 py-2 md:py-4 border border-primary/20 rounded-full font-black">
+            <h2 className="text-6xl font-black text-white tracking-tighter">النماذج المتاحة</h2>
+            <Badge className="bg-primary/10 text-primary text-2xl px-10 py-4 border border-primary/20 rounded-full font-black">
               {loading ? <Loader2 className="animate-spin" /> : filteredSections.length}
             </Badge>
           </div>
 
           {loading ? (
             <div className="flex flex-col items-center justify-center py-40">
-              <Loader2 className="w-16 h-16 md:w-24 md:h-24 text-primary animate-spin" />
-              <p className="mt-4 text-white/40">جاري جلب النماذج...</p>
-            </div>
-          ) : filteredSections.length === 0 ? (
-            <div className="text-center py-40 glass rounded-[60px] border-dashed border-white/5">
-              <p className="text-2xl md:text-4xl font-black text-white/10 uppercase tracking-widest">No results found</p>
-              <Button onClick={() => setSearchQuery('')} variant="link" className="text-primary mt-4">عرض الكل</Button>
+              <Loader2 className="w-24 h-24 text-primary animate-spin" />
+              <p className="mt-4 text-white/40">جاري التحميل...</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-14">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-14">
               {filteredSections.map((section) => (
                 <Card 
                   key={section.firebaseId || section.id} 
-                  className="group relative bg-white/[0.02] border border-white/5 rounded-[40px] md:rounded-[70px] p-8 md:p-14 shadow-2xl overflow-hidden transition-all hover:border-primary/50 hover:bg-white/[0.04] duration-700 active-press"
+                  className="group bg-white/[0.02] border border-white/5 rounded-[70px] p-14 shadow-2xl transition-all hover:border-primary/50 hover:bg-white/[0.04] duration-700"
                 >
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-8">
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-4">
-                        <span className="bg-primary/20 text-primary px-5 py-2 rounded-xl font-black text-lg md:text-2xl tracking-widest uppercase">
-                          🔥 القسم {section.id} 🔥
-                        </span>
-                      </div>
-                      <h2 className="text-3xl md:text-4xl font-black text-white group-hover:text-primary transition-colors leading-tight line-clamp-2">
+                  <div className="flex flex-col sm:flex-row justify-between items-center gap-8">
+                    <div className="space-y-3 text-right">
+                      <span className="bg-primary/20 text-primary px-5 py-2 rounded-xl font-black text-2xl">🔥 القسم {section.id}</span>
+                      <h2 className="text-4xl font-black text-white group-hover:text-primary transition-colors leading-tight line-clamp-1">
                         {section.title}
                       </h2>
-                      <div className="flex items-center gap-4 text-white/30 font-bold">
-                        <Zap className="w-4 h-4 text-accent" />
-                        <span>{section.questions?.length || 0} Question</span>
-                      </div>
+                      <p className="text-white/30 font-bold">{section.questions?.length || 0} سؤال</p>
                     </div>
                     <Button 
-                      onClick={() => {
-                        setSelectedSection(section);
-                        setActiveView('practice');
-                      }} 
-                      className="w-full sm:w-auto h-20 md:h-32 px-10 md:px-16 rounded-[30px] md:rounded-[50px] text-2xl md:text-4xl font-black bg-primary text-white shadow-lg group-hover:scale-110 active-press transition-all"
+                      onClick={() => { setSelectedSection(section); setActiveView('practice'); }} 
+                      className="w-full sm:w-auto h-32 px-16 rounded-[50px] text-4xl font-black bg-primary text-white shadow-lg group-hover:scale-110 transition-all"
                     >
-                      ابدأ <ChevronRight className="mr-2 w-8 h-8 md:w-12 md:h-12" />
+                      ابدأ <ChevronRight className="mr-2 w-12 h-12" />
                     </Button>
                   </div>
                 </Card>
@@ -595,35 +447,18 @@ export default function Home() {
           )}
         </section>
 
-        <footer className="text-center py-20 border-t border-white/5 space-y-10">
-          <div className="flex flex-wrap justify-center gap-10 md:gap-20 items-center">
-            {profile?.role === 'admin' || profile?.email === 'admin@easy.com' ? (
-               <Button 
-                variant="ghost" 
-                onClick={() => window.location.href = '/admin'} 
-                className="text-white/20 hover:text-white transition-colors font-black text-lg md:text-2xl"
-              >
-                <LayoutDashboard className="ml-3 w-6 h-6 md:w-8 md:h-8" /> المشرف
+        <footer className="text-center py-20 border-t border-white/5">
+          <div className="flex flex-wrap justify-center gap-20 items-center mb-10">
+            {profile?.role === 'admin' && (
+               <Button onClick={() => window.location.href = '/admin'} variant="ghost" className="text-white/20 hover:text-white font-black text-2xl">
+                <LayoutDashboard className="ml-3 w-8 h-8" /> المشرف
               </Button>
-            ) : (
-               <div className="flex items-center text-white/10 gap-2">
-                 <ShieldAlert className="w-5 h-5" />
-                 <span className="text-sm font-bold uppercase tracking-widest">Student Portal</span>
-               </div>
             )}
-            <Button 
-              variant="ghost" 
-              onClick={() => signOut(auth)}
-              className="text-destructive/30 hover:text-destructive transition-colors font-black text-lg md:text-2xl"
-            >
-              <LogOut className="ml-3 w-6 h-6 md:w-8 md:h-8" /> خروج
+            <Button onClick={() => signOut(auth)} variant="ghost" className="text-destructive/30 hover:text-destructive font-black text-2xl">
+              <LogOut className="ml-3 w-8 h-8" /> خروج
             </Button>
           </div>
-          <div className="pt-10">
-            <p className="signature-text text-2xl md:text-4xl tracking-widest uppercase font-black opacity-50">
-              DR.MAHMOUD ABD EL RAZEK
-            </p>
-          </div>
+          <p className="text-4xl tracking-widest uppercase font-black opacity-50">DR.MAHMOUD ABD EL RAZEK</p>
         </footer>
       </div>
     </main>

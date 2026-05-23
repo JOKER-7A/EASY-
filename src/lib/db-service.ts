@@ -17,24 +17,36 @@ import {
   arrayUnion,
   arrayRemove
 } from "firebase/firestore";
-import { Section, Question } from "./practice-data";
+import { Section, Question, sections as staticSections } from "./practice-data";
 
 const SECTIONS_COLLECTION = "sections";
 const ATTEMPTS_COLLECTION = "attempts";
 const USER_PROFILES = "userProfiles";
 const ERROR_LOGS = "errorLogs";
 
+/**
+ * جلب الأقسام من قاعدة البيانات مع معالجة الأخطاء
+ */
 export const getSectionsFromDb = async (): Promise<Section[]> => {
   try {
     const querySnapshot = await getDocs(collection(db, SECTIONS_COLLECTION));
-    const sections = querySnapshot.docs.map(doc => ({
+    const dbSections = querySnapshot.docs.map(doc => ({
       firebaseId: doc.id,
       ...(doc.data() as any)
     } as unknown as Section));
-    return sections.sort((a, b) => Number(b.id) - Number(a.id));
+    
+    // دمج البيانات مع البيانات الثابتة لضمان وجود محتوى دائماً
+    const combined = [...dbSections];
+    staticSections.forEach(s => {
+      if (!combined.find(c => Number(c.id) === Number(s.id))) {
+        combined.push(s);
+      }
+    });
+    
+    return combined.sort((a, b) => Number(b.id) - Number(a.id));
   } catch (error) {
-    console.error("Error fetching sections from Firestore, falling back to empty array:", error);
-    return [];
+    console.error("Error fetching sections from Firestore:", error);
+    return staticSections; // العودة للبيانات الثابتة في حالة الفشل
   }
 };
 
@@ -96,6 +108,9 @@ export const saveAttemptToDb = async (userId: string | undefined, attempt: {
   }
 };
 
+/**
+ * جلب الملف الشخصي مع ضمان عدم التعليق (Safe Return)
+ */
 export const getUserProfile = async (userId: string, email?: string, displayName?: string) => {
   try {
     const userRef = doc(db, USER_PROFILES, userId);
@@ -103,10 +118,7 @@ export const getUserProfile = async (userId: string, email?: string, displayName
     
     if (userSnap.exists()) {
       const data = userSnap.data();
-      if (email && data.email !== email) {
-        await updateDoc(userRef, { email });
-      }
-      return { id: userSnap.id, ...data, email: email || data.email };
+      return { id: userSnap.id, ...data };
     } else {
       const initialProfile = {
         level: 1,
@@ -118,19 +130,20 @@ export const getUserProfile = async (userId: string, email?: string, displayName
         theme: 'default',
         createdAt: serverTimestamp(),
         lastActive: serverTimestamp(),
-        status: 'approved' // Default status for existing flow
+        status: 'approved'
       };
       await setDoc(userRef, initialProfile);
       return { id: userId, ...initialProfile };
     }
   } catch (error) {
-    console.error("Error in getUserProfile, returning safe default:", error);
+    console.error("Error in getUserProfile:", error);
     return { 
       id: userId, 
       level: 1, 
       xp: 0, 
       displayName: displayName || 'مستكشف EASY',
-      status: 'approved'
+      status: 'approved',
+      favorites: []
     };
   }
 };
@@ -153,7 +166,7 @@ export const updateUserXP = async (userId: string, correct: number) => {
     if (!userSnap.exists()) return;
     
     const data = userSnap.data();
-    const currentTotalXp = (data.xp || 0) + (correct * 10); // 10 XP per correct answer
+    const currentTotalXp = (data.xp || 0) + (correct * 10);
     const newLevel = Math.floor(currentTotalXp / 100) + 1;
     
     await updateDoc(userRef, {
@@ -260,7 +273,6 @@ export const getErrorLogs = async (userId: string) => {
       where("userId", "==", userId)
     );
     const querySnapshot = await getDocs(q);
-    // Sort on client side to avoid index errors
     return querySnapshot.docs
       .map(doc => doc.data())
       .sort((a: any, b: any) => (b.lastOccurred?.seconds || 0) - (a.lastOccurred?.seconds || 0));
