@@ -6,9 +6,7 @@ import {
   getSectionsFromDb, 
   getUserProfile, 
   getLeaderboard, 
-  getErrorLogs, 
-  updateUserProfileName, 
-  isDisplayNameTaken 
+  getErrorLogs
 } from '@/lib/db-service';
 import PracticeSession from '@/components/PracticeSession';
 import { Button } from '@/components/ui/button';
@@ -22,12 +20,9 @@ import {
   Zap,
   Search,
   Trophy,
-  Star,
   History,
   LogOut,
   X,
-  User as UserIcon,
-  Edit2,
   ChevronRight
 } from 'lucide-react';
 import { auth } from '@/lib/firebase';
@@ -62,7 +57,7 @@ export default function Home() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // إيقاف شاشة التحميل فورياً إذا تأخر Firebase
+    // إيقاف شاشة التحميل فورياً إذا تأخر Firebase لضمان ظهور الواجهة
     const timeout = setTimeout(() => setIsAuthLoading(false), 2000);
     
     const unsubscribe = onAuthStateChanged(auth, async (u) => {

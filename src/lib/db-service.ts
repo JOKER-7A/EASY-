@@ -123,7 +123,7 @@ export const getLeaderboard = async () => {
     return snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
-    })).sort((a: any, b: any) => (b.xp || 0) - (a.xp || 0)).slice(0, 50);
+    })).sort((a: any, b: any) => (b.xp || 0) - (a.xp || 0)).slice(0, 5);
   } catch (error) {
     return [];
   }
