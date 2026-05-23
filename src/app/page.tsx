@@ -57,7 +57,6 @@ export default function Home() {
   useEffect(() => {
     setHasMounted(true);
     
-    // صمام أمان (Safety Timeout) - ينهي شاشة التحميل إجبارياً بعد 2.5 ثانية
     const safetyTimer = setTimeout(() => {
       setIsLoading(false);
     }, 2500);
@@ -75,7 +74,6 @@ export default function Home() {
       setIsLoading(false);
     });
 
-    // جلب الأقسام
     getSectionsFromDb().then(data => {
       if (data && data.length > 0) setSections(data);
     }).catch(() => {
@@ -145,7 +143,6 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-black text-white flex flex-col relative overflow-x-hidden pb-20">
-      
       {!user && (
         <div className="fixed inset-0 z-[300] bg-black/95 backdrop-blur-2xl flex items-center justify-center p-4">
           <Card className="w-full max-w-xl p-10 glass border-white/5 rounded-[50px] shadow-2xl">
@@ -168,7 +165,6 @@ export default function Home() {
       )}
 
       <div className="container mx-auto px-4 md:px-8 py-20 max-w-7xl relative z-10">
-        
         {user && profile && (
           <div className="fixed top-8 left-8 z-[100] hidden lg:block">
             <div className="glass p-5 pr-14 rounded-[30px] border-primary/20 flex items-center gap-7">
