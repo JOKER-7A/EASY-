@@ -8,8 +8,7 @@ import {
   getLeaderboard, 
   getErrorLogs, 
   updateUserProfileName, 
-  isDisplayNameTaken, 
-  updateUserTheme 
+  isDisplayNameTaken 
 } from '@/lib/db-service';
 import PracticeSession from '@/components/PracticeSession';
 import { Button } from '@/components/ui/button';
@@ -29,10 +28,7 @@ import {
   X,
   User as UserIcon,
   Edit2,
-  CheckCircle2,
-  Sparkles,
-  ChevronRight,
-  Palette
+  ChevronRight
 } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { 
@@ -40,13 +36,12 @@ import {
   User, 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
-  signOut,
-  updateProfile
+  signOut
 } from 'firebase/auth';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
-type OverlayType = 'favorites' | 'errors' | 'leaderboard' | 'edit-name' | 'welcome-name' | 'themes' | null;
+type OverlayType = 'favorites' | 'errors' | 'leaderboard' | null;
 
 export default function Home() {
   const [activeView, setActiveView] = useState<'landing' | 'practice'>('landing');
@@ -61,26 +56,21 @@ export default function Home() {
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [newDisplayName, setNewDisplayName] = useState('');
-  const [isUpdatingName, setIsUpdatingName] = useState(false);
   const [activeOverlay, setActiveOverlay] = useState<OverlayType>(null);
   const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
   const [errorLogsData, setErrorLogsData] = useState<any[]>([]);
   const { toast } = useToast();
 
-  // تأمين انتهاء حالة التحميل تحت أي ظرف
   useEffect(() => {
+    // إيقاف شاشة التحميل فورياً إذا تأخر Firebase
     const timeout = setTimeout(() => setIsAuthLoading(false), 2000);
+    
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       try {
         setUser(u);
         if (u) {
           const p = await getUserProfile(u.uid, u.email || '', u.displayName || '');
           setProfile(p);
-          setNewDisplayName(p?.displayName || '');
-          if (p?.theme) {
-            document.body.setAttribute('data-theme', p.theme);
-          }
         }
       } catch (err) {
         console.error("Auth process error:", err);
@@ -157,7 +147,6 @@ export default function Home() {
     }
   };
 
-  // إذا كان المستخدم في وضع التمرين
   if (activeView === 'practice' && selectedSection) {
     return (
       <main className="min-h-screen p-0 bg-black">
@@ -178,7 +167,7 @@ export default function Home() {
             <div className="p-8 border-b border-white/5 flex items-center justify-between">
               <h2 className="text-4xl font-black text-white">
                 {activeOverlay === 'leaderboard' ? "نخبة EASY" : 
-                 activeOverlay === 'errors' ? "مختبر الأخطاء" : "تعديل الهوية"}
+                 activeOverlay === 'errors' ? "مختبر الأخطاء" : "المفضلة ⭐"}
               </h2>
               <Button variant="ghost" onClick={() => setActiveOverlay(null)}><X className="w-8 h-8" /></Button>
             </div>
@@ -264,7 +253,7 @@ export default function Home() {
         )}
 
         <header className="text-center mb-32 space-y-12 pt-20">
-          <div className="inline-flex items-center gap-3 px-10 py-4 rounded-full glass border-primary/20 text-primary font-black animate-float">
+          <div className="inline-flex items-center gap-3 px-10 py-4 rounded-full glass border-primary/20 text-primary font-black">
             <Zap className="w-6 h-6 fill-primary" /> EASY PREP 3.0
           </div>
           <h1 className="text-[10rem] md:text-[15rem] text-easy-premium text-shine leading-none text-center">EASY</h1>
@@ -326,7 +315,7 @@ export default function Home() {
 
         <footer className="text-center py-20 border-t border-white/5">
           <div className="flex flex-wrap justify-center gap-20 items-center mb-10">
-            {profile?.role === 'admin' && (
+            {profile?.status === 'admin' && (
               <Button onClick={() => window.location.href = '/admin'} variant="ghost" className="text-white/20 hover:text-white font-black text-2xl">
                 <LayoutDashboard className="ml-3 w-8 h-8" /> المشرف
               </Button>

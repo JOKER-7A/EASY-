@@ -24,9 +24,6 @@ const ATTEMPTS_COLLECTION = "attempts";
 const USER_PROFILES = "userProfiles";
 const ERROR_LOGS = "errorLogs";
 
-/**
- * جلب الأقسام من قاعدة البيانات بشكل آمن مع خيار احتياطي دائم
- */
 export const getSectionsFromDb = async (): Promise<Section[]> => {
   try {
     const querySnapshot = await getDocs(collection(db, SECTIONS_COLLECTION));
@@ -44,7 +41,7 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
     
     return combined.sort((a, b) => Number(b.id) - Number(a.id));
   } catch (error) {
-    console.error("Error fetching sections from Firestore:", error);
+    console.error("Error fetching sections:", error);
     return [...staticSections].sort((a, b) => Number(b.id) - Number(a.id));
   }
 };
@@ -98,9 +95,7 @@ export const saveAttemptToDb = async (userId: string | undefined, attempt: any) 
     if (userId) {
       await updateUserXP(userId, attempt.correctCount);
     }
-  } catch (error) {
-    console.error("Error saving attempt:", error);
-  }
+  } catch (error) {}
 };
 
 export const updateUserXP = async (userId: string, correct: number) => {
@@ -119,9 +114,7 @@ export const updateUserXP = async (userId: string, correct: number) => {
       totalCorrect: increment(correct),
       lastActive: serverTimestamp()
     });
-  } catch (error) {
-    console.error("Error updating XP:", error);
-  }
+  } catch (error) {}
 };
 
 export const getLeaderboard = async () => {
@@ -147,9 +140,7 @@ export const saveErrorLogToDb = async (userId: string, question: Question, secti
       lastOccurred: serverTimestamp(),
       count: increment(1)
     }, { merge: true });
-  } catch (error) {
-    console.error("Error saving error log:", error);
-  }
+  } catch (error) {}
 };
 
 export const getErrorLogs = async (userId: string) => {
