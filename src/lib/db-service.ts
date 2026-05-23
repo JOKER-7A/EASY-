@@ -16,17 +16,19 @@ import {
 import { Section, Question, sections as staticSections } from "./practice-data";
 
 /**
- * جلب النماذج التدريبية مع حماية ضد الفشل
+ * جلب النماذج التدريبية مع حماية قصوى ضد الفشل
  */
 export const getSectionsFromDb = async (): Promise<Section[]> => {
   try {
     const querySnapshot = await getDocs(collection(db, "sections"));
+    if (querySnapshot.empty) return [...staticSections];
+
     const dbSections = querySnapshot.docs.map(doc => ({
       firebaseId: doc.id,
       ...doc.data()
     } as any));
     
-    // دمج البيانات من قاعدة البيانات مع البيانات الثابتة لضمان عدم وجود نقص
+    // دمج البيانات مع البيانات الثابتة لضمان الوفرة
     const combined = [...dbSections];
     staticSections.forEach(s => {
       if (!combined.find(c => Number(c.id) === Number(s.id))) {
@@ -36,13 +38,13 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
     
     return combined.sort((a, b) => Number(b.id) - Number(a.id));
   } catch (error) {
-    console.error("Database Error (Sections):", error);
-    return [...staticSections]; // العودة للبيانات الثابتة في حالة الخطأ
+    console.error("Fail-safe: Using static sections", error);
+    return [...staticSections];
   }
 };
 
 /**
- * جلب الملف الشخصي للمستخدم أو إنشاؤه
+ * جلب الملف الشخصي للمستخدم بأسلوب آمن جداً
  */
 export const getUserProfile = async (userId: string, email?: string) => {
   if (!userId) return null;
@@ -51,7 +53,14 @@ export const getUserProfile = async (userId: string, email?: string) => {
     const userSnap = await getDoc(userRef);
     
     if (userSnap.exists()) {
-      return { id: userSnap.id, ...userSnap.data() };
+      const data = userSnap.data();
+      return { 
+        id: userSnap.id, 
+        ...data,
+        displayName: data.displayName || email?.split('@')[0] || 'مستكشف EASY',
+        level: data.level || 1,
+        xp: data.xp || 0
+      };
     } else {
       const initialProfile = {
         level: 1,
@@ -67,12 +76,12 @@ export const getUserProfile = async (userId: string, email?: string) => {
       return { id: userId, ...initialProfile };
     }
   } catch (error) {
-    console.error("Database Error (Profile):", error);
+    console.error("Fail-safe profile loading", error);
     return { 
       id: userId, 
       level: 1, 
       xp: 0, 
-      displayName: 'مستكشف', 
+      displayName: 'مستكشف EASY', 
       status: 'student' 
     };
   }
@@ -84,14 +93,14 @@ export const saveAttemptToDb = async (userId: string | undefined, attempt: any) 
     await setDoc(doc(collection(db, "attempts")), data);
     if (userId) {
       const userRef = doc(db, "userProfiles", userId);
-      await updateDoc(userRef, {
+      updateDoc(userRef, {
         xp: increment(attempt.correctCount * 10),
         totalCorrect: increment(attempt.correctCount),
         lastActive: serverTimestamp()
-      });
+      }).catch(e => console.error("Update profile error", e));
     }
   } catch (error) {
-    console.error("Database Error (Attempt):", error);
+    console.error("Save attempt error", error);
   }
 };
 
@@ -126,6 +135,6 @@ export const saveErrorLogToDb = async (userId: string, question: Question, secti
       count: increment(1)
     }, { merge: true });
   } catch (error) {
-    console.error("Database Error (ErrorLog):", error);
+    console.error("Log error failure", error);
   }
 };
