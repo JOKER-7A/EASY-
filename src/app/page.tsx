@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { sections as staticSections, Section } from '@/lib/practice-data';
 import { 
   getSectionsFromDb, 
@@ -55,9 +55,9 @@ export default function Home() {
   
   const { toast } = useToast();
 
-  // 1. مراقبة حالة الدخول (Resilient Auth)
+  // 1. مراقبة حالة الدخول مع ضمان عدم التعليق
   useEffect(() => {
-    // Safety timeout: لا تترك الصفحة عالقة أبداً
+    // إيقاف التحميل إجبارياً بعد 3 ثواني كحد أقصى لمنع التعليق
     const safetyTimer = setTimeout(() => setIsAuthLoading(false), 3000);
 
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
@@ -84,12 +84,10 @@ export default function Home() {
 
   // 2. جلب الأقسام
   useEffect(() => {
-    const fetchSections = async () => {
-      const data = await getSectionsFromDb();
+    getSectionsFromDb().then(data => {
       setSections(data);
       setFilteredSections(data);
-    };
-    fetchSections();
+    });
   }, []);
 
   // 3. البحث
@@ -112,7 +110,7 @@ export default function Home() {
         toast({ title: "تم إنشاء الحساب بنجاح ✅" });
       }
     } catch (error: any) {
-      toast({ title: "فشل الدخول", description: "تأكد من البيانات وحاول مرة أخرى", variant: "destructive" });
+      toast({ title: "فشل الدخول", variant: "destructive" });
     }
   };
 
@@ -127,12 +125,9 @@ export default function Home() {
     }
   };
 
+  // عرض الواجهة المطلوبة
   if (activeView === 'practice' && selectedSection) {
-    return (
-      <main className="min-h-screen bg-black">
-        <PracticeSession section={selectedSection} onExit={() => { setActiveView('landing'); window.location.reload(); }} />
-      </main>
-    );
+    return <PracticeSession section={selectedSection} onExit={() => { setActiveView('landing'); window.location.reload(); }} />;
   }
 
   const currentXpProgress = profile ? (profile.xp % 100) : 0;
@@ -152,39 +147,20 @@ export default function Home() {
               <Button variant="ghost" onClick={() => setActiveOverlay(null)}><X className="w-8 h-8" /></Button>
             </div>
             <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-              {activeOverlay === 'leaderboard' ? (
-                <div className="space-y-4">
-                  {overlayData.map((p, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-6 bg-white/5 rounded-3xl border border-white/5">
-                      <div className="flex items-center gap-6">
-                        <span className={cn("w-12 h-12 rounded-xl flex items-center justify-center font-black text-2xl", idx < 3 ? "bg-primary text-white" : "bg-white/10")}>{idx + 1}</span>
-                        <span className="text-2xl font-black">{p.displayName}</span>
-                      </div>
-                      <span className="text-3xl font-black text-primary">{p.xp} XP</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {overlayData.length === 0 ? <p className="text-center py-20 opacity-30">لا توجد أخطاء مسجلة 🚀</p> : 
-                    overlayData.map((log, idx) => (
-                      <Card key={idx} className="p-8 glass border-destructive/20 rounded-3xl space-y-4">
-                        <Badge className="bg-destructive/10 text-destructive">{log.questionData?.sectionTitle}</Badge>
-                        <h4 className="text-2xl font-black">{log.questionData?.question}</h4>
-                        <div className="p-4 bg-green-500/10 rounded-2xl border border-green-500/20">
-                          <p className="text-green-500 font-black">الإجابة الصحيحة: {log.questionData?.correct}</p>
-                        </div>
-                      </Card>
-                    ))
-                  }
-                </div>
-              )}
+              {overlayData.length === 0 ? <p className="text-center py-20 opacity-30">لا توجد بيانات حالياً 🚀</p> : 
+                overlayData.map((item, idx) => (
+                  <div key={idx} className="mb-4 p-6 bg-white/5 rounded-3xl border border-white/5 flex justify-between items-center">
+                    <span className="text-2xl font-bold">{item.displayName || item.questionData?.question}</span>
+                    <span className="text-primary font-black">{item.xp ? `${item.xp} XP` : 'خطأ مسجل'}</span>
+                  </div>
+                ))
+              }
             </div>
           </Card>
         </div>
       )}
 
-      {/* Auth Gate */}
+      {/* Auth Gate - يظهر فقط إذا لم يكن هناك مستخدم والتحميل انتهى */}
       {!user && !isAuthLoading && (
         <div className="fixed inset-0 z-[300] bg-black flex items-center justify-center p-4">
           <Card className="w-full max-w-xl p-10 md:p-14 glass border-white/5 rounded-[50px] shadow-2xl animate-in fade-in zoom-in duration-500">
@@ -206,7 +182,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* Main Content */}
+      {/* Main Content Shell - يظهر دائماً */}
       <div className="container mx-auto px-4 md:px-8 py-20 max-w-7xl relative z-10">
         
         {/* Profile Stats Floating */}
@@ -269,7 +245,6 @@ export default function Home() {
                 key={section.firebaseId || section.id} 
                 className="group bg-white/[0.02] border border-white/5 rounded-[60px] p-12 shadow-2xl transition-all hover:border-primary/50 hover:bg-white/[0.04] duration-500 overflow-hidden relative"
               >
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/30 to-transparent scale-x-0 group-hover:scale-x-100 transition-transform duration-700" />
                 <div className="flex flex-col sm:flex-row justify-between items-center gap-10">
                   <div className="space-y-4 text-right">
                     <span className="bg-primary/20 text-primary px-6 py-2 rounded-xl font-black text-2xl">🔥 قسم {section.id}</span>
@@ -305,11 +280,12 @@ export default function Home() {
         </footer>
       </div>
 
+      {/* Loading Barrier - يظهر فقط في البداية وإذا كان التحميل مفعلاً */}
       {isAuthLoading && (
-        <div className="fixed inset-0 bg-black flex items-center justify-center z-[500] backdrop-blur-xl">
+        <div className="fixed inset-0 bg-black flex items-center justify-center z-[500] backdrop-blur-xl transition-opacity duration-500">
           <div className="text-center space-y-6">
             <Loader2 className="w-20 h-20 text-primary animate-spin mx-auto" />
-            <h2 className="text-3xl font-black text-white animate-pulse">جاري المصادقة...</h2>
+            <h2 className="text-3xl font-black text-white animate-pulse">EASY PREP MASTER</h2>
           </div>
         </div>
       )}
