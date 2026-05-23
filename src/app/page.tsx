@@ -54,7 +54,7 @@ export default function Home() {
   
   const { toast } = useToast();
 
-  // نظام حماية ضد التعليق: ينهي حالة التحميل إجبارياً بعد 3 ثواني مهما كان السبب
+  // نظام حماية ضد التعليق: ينهي حالة التحميل إجبارياً بعد 3 ثواني
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsAuthLoading(false);
@@ -62,7 +62,7 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, []);
 
-  // إدارة جلسة المستخدم واستقرارها
+  // إدارة جلسة المستخدم
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
@@ -71,7 +71,7 @@ export default function Home() {
           const p = await getUserProfile(u.uid, u.email || '');
           setProfile(p);
         } catch (e) {
-          console.error("Auth Effect Error:", e);
+          setProfile(null);
         }
       } else {
         setProfile(null);
@@ -81,22 +81,14 @@ export default function Home() {
     return () => unsubscribe();
   }, []);
 
-  // جلب المحتوى بشكل متزامن وآمن
+  // جلب المحتوى
   useEffect(() => {
-    let isMounted = true;
-    const fetchContent = async () => {
-      try {
-        const data = await getSectionsFromDb();
-        if (isMounted) setSections(data || staticSections);
-      } catch (error) {
-        if (isMounted) setSections(staticSections);
-      }
-    };
-    fetchContent();
-    return () => { isMounted = false; };
+    getSectionsFromDb().then(data => {
+      setSections(data || staticSections);
+    });
   }, []);
 
-  // محرك البحث السريع
+  // محرك البحث
   useEffect(() => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) {
@@ -121,7 +113,7 @@ export default function Home() {
         toast({ title: "تم إنشاء الحساب بنجاح ✅" });
       }
     } catch (error: any) {
-      toast({ title: "فشل الدخول", variant: "destructive", description: error.message });
+      toast({ title: "فشل الدخول", variant: "destructive", description: "تأكد من البيانات" });
     }
   };
 
@@ -148,10 +140,10 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-black text-white flex flex-col relative overflow-x-hidden">
       
-      {/* واجهة الدخول - تظهر كطبقة علوية إذا لم يوجد مستخدم ولم نعد نحمل */}
+      {/* واجهة الدخول */}
       {!user && !isAuthLoading && (
         <div className="fixed inset-0 z-[300] bg-black flex items-center justify-center p-4">
-          <Card className="w-full max-w-xl p-10 glass border-white/5 rounded-[50px] shadow-2xl animate-in zoom-in duration-500">
+          <Card className="w-full max-w-xl p-10 glass border-white/5 rounded-[50px] shadow-2xl">
             <div className="text-center mb-10">
               <h1 className="text-8xl md:text-[10rem] text-easy-premium mb-4">EASY</h1>
               <p className="text-lg text-primary font-bold tracking-widest opacity-80 uppercase">Elite Training Master</p>
@@ -170,7 +162,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* الهيكل الأساسي للصفحة - يظهر دائماً لمنع الوميض الرمادي */}
+      {/* الهيكل الأساسي */}
       <div className="container mx-auto px-4 md:px-8 py-20 max-w-7xl relative z-10">
         
         {user && profile && (
@@ -273,7 +265,7 @@ export default function Home() {
         </footer>
       </div>
 
-      {/* شاشة التحميل الأولية - تظهر كغطاء شفاف فوق المحتوى */}
+      {/* شاشة التحميل */}
       {isAuthLoading && (
         <div className="fixed inset-0 bg-black flex items-center justify-center z-[500] backdrop-blur-xl">
           <div className="text-center space-y-6">

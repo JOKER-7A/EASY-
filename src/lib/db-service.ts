@@ -16,7 +16,7 @@ import {
 import { Section, Question, sections as staticSections } from "./practice-data";
 
 /**
- * جلب النماذج التدريبية مع حماية قصوى ضد الفشل
+ * جلب النماذج مع حماية قصوى ضد الفشل
  */
 export const getSectionsFromDb = async (): Promise<Section[]> => {
   try {
@@ -28,7 +28,6 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
       ...doc.data()
     } as any));
     
-    // دمج البيانات مع البيانات الثابتة لضمان الوفرة
     const combined = [...dbSections];
     staticSections.forEach(s => {
       if (!combined.find(c => Number(c.id) === Number(s.id))) {
@@ -44,7 +43,7 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
 };
 
 /**
- * جلب الملف الشخصي للمستخدم بأسلوب آمن جداً
+ * جلب الملف الشخصي بأسلوب آمن جداً
  */
 export const getUserProfile = async (userId: string, email?: string) => {
   if (!userId) return null;
@@ -76,7 +75,6 @@ export const getUserProfile = async (userId: string, email?: string) => {
       return { id: userId, ...initialProfile };
     }
   } catch (error) {
-    console.error("Fail-safe profile loading", error);
     return { 
       id: userId, 
       level: 1, 
@@ -97,11 +95,9 @@ export const saveAttemptToDb = async (userId: string | undefined, attempt: any) 
         xp: increment(attempt.correctCount * 10),
         totalCorrect: increment(attempt.correctCount),
         lastActive: serverTimestamp()
-      }).catch(e => console.error("Update profile error", e));
+      }).catch(e => {});
     }
-  } catch (error) {
-    console.error("Save attempt error", error);
-  }
+  } catch (error) {}
 };
 
 export const getLeaderboard = async () => {
@@ -109,9 +105,7 @@ export const getLeaderboard = async () => {
     const q = query(collection(db, "userProfiles"), orderBy("xp", "desc"), limit(5));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  } catch (error) { 
-    return []; 
-  }
+  } catch (error) { return []; }
 };
 
 export const getErrorLogs = async (userId: string) => {
@@ -119,9 +113,7 @@ export const getErrorLogs = async (userId: string) => {
     const q = query(collection(db, "errorLogs"), where("userId", "==", userId));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => doc.data());
-  } catch (error) { 
-    return []; 
-  }
+  } catch (error) { return []; }
 };
 
 export const saveErrorLogToDb = async (userId: string, question: Question, sectionTitle: string) => {
@@ -134,7 +126,26 @@ export const saveErrorLogToDb = async (userId: string, question: Question, secti
       lastOccurred: serverTimestamp(),
       count: increment(1)
     }, { merge: true });
-  } catch (error) {
-    console.error("Log error failure", error);
-  }
+  } catch (error) {}
+};
+
+export const toggleFavoriteInDb = async (userId: string, question: Question) => {
+  try {
+    const userRef = doc(db, "userProfiles", userId);
+    const userSnap = await getDoc(userRef);
+    if (!userSnap.exists()) return false;
+    
+    const favorites = userSnap.data().favorites || [];
+    const exists = favorites.find((f: any) => f.id === question.id);
+    
+    if (exists) {
+      const newFavs = favorites.filter((f: any) => f.id !== question.id);
+      await updateDoc(userRef, { favorites: newFavs });
+      return false;
+    } else {
+      const newFavs = [...favorites, question];
+      await updateDoc(userRef, { favorites: newFavs });
+      return true;
+    }
+  } catch (error) { return false; }
 };
