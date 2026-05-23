@@ -33,32 +33,42 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
     } as unknown as Section));
     return sections.sort((a, b) => Number(b.id) - Number(a.id));
   } catch (error) {
-    console.error("Error fetching sections:", error);
+    console.error("Error fetching sections from Firestore, falling back to empty array:", error);
     return [];
   }
 };
 
 export const addSectionToDb = async (section: any) => {
-  const { firebaseId, ...data } = section;
-  const cleanData = {
-    ...data,
-    id: Number(data.id),
-    questions: (data.questions || []).map((q: any) => ({
-      ...q,
-      options: (q.options || []).filter((o: string) => o && o.trim() !== '')
-    })),
-    readingPassages: (data.readingPassages || []).map((p: any) => ({
-      ...p,
-      title: p.title || '',
-      text: p.text || ''
-    }))
-  };
-  return await addDoc(collection(db, SECTIONS_COLLECTION), cleanData);
+  try {
+    const { firebaseId, ...data } = section;
+    const cleanData = {
+      ...data,
+      id: Number(data.id),
+      questions: (data.questions || []).map((q: any) => ({
+        ...q,
+        options: (q.options || []).filter((o: string) => o && o.trim() !== '')
+      })),
+      readingPassages: (data.readingPassages || []).map((p: any) => ({
+        ...p,
+        title: p.title || '',
+        text: p.text || ''
+      }))
+    };
+    return await addDoc(collection(db, SECTIONS_COLLECTION), cleanData);
+  } catch (error) {
+    console.error("Error adding section:", error);
+    throw error;
+  }
 };
 
 export const deleteSectionFromDb = async (firebaseId: string) => {
-  const sectionRef = doc(db, SECTIONS_COLLECTION, firebaseId);
-  return await deleteDoc(sectionRef);
+  try {
+    const sectionRef = doc(db, SECTIONS_COLLECTION, firebaseId);
+    return await deleteDoc(sectionRef);
+  } catch (error) {
+    console.error("Error deleting section:", error);
+    throw error;
+  }
 };
 
 export const saveAttemptToDb = async (userId: string | undefined, attempt: {
@@ -87,54 +97,74 @@ export const saveAttemptToDb = async (userId: string | undefined, attempt: {
 };
 
 export const getUserProfile = async (userId: string, email?: string, displayName?: string) => {
-  const userRef = doc(db, USER_PROFILES, userId);
-  const userSnap = await getDoc(userRef);
-  
-  if (userSnap.exists()) {
-    const data = userSnap.data();
-    // Update email if it's missing or changed (for admin reference)
-    if (email && data.email !== email) {
-      await updateDoc(userRef, { email });
+  try {
+    const userRef = doc(db, USER_PROFILES, userId);
+    const userSnap = await getDoc(userRef);
+    
+    if (userSnap.exists()) {
+      const data = userSnap.data();
+      if (email && data.email !== email) {
+        await updateDoc(userRef, { email });
+      }
+      return { id: userSnap.id, ...data, email: email || data.email };
+    } else {
+      const initialProfile = {
+        level: 1,
+        xp: 0,
+        totalCorrect: 0,
+        favorites: [],
+        displayName: displayName || '',
+        email: email || '',
+        theme: 'default',
+        createdAt: serverTimestamp(),
+        lastActive: serverTimestamp(),
+        status: 'approved' // Default status for existing flow
+      };
+      await setDoc(userRef, initialProfile);
+      return { id: userId, ...initialProfile };
     }
-    return { id: userSnap.id, ...data, email: email || data.email };
-  } else {
-    const initialProfile = {
-      level: 1,
-      xp: 0,
-      totalCorrect: 0,
-      favorites: [],
-      displayName: displayName || '',
-      email: email || '',
-      theme: 'default',
-      createdAt: serverTimestamp(),
-      lastActive: serverTimestamp()
+  } catch (error) {
+    console.error("Error in getUserProfile, returning safe default:", error);
+    return { 
+      id: userId, 
+      level: 1, 
+      xp: 0, 
+      displayName: displayName || 'مستكشف EASY',
+      status: 'approved'
     };
-    await setDoc(userRef, initialProfile);
-    return { id: userId, ...initialProfile };
   }
 };
 
 export const isDisplayNameTaken = async (name: string, currentUserId: string): Promise<boolean> => {
-  const q = query(collection(db, USER_PROFILES), where("displayName", "==", name));
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.some(doc => doc.id !== currentUserId);
+  try {
+    const q = query(collection(db, USER_PROFILES), where("displayName", "==", name));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.some(doc => doc.id !== currentUserId);
+  } catch (error) {
+    console.error("Error checking display name:", error);
+    return false;
+  }
 };
 
 export const updateUserXP = async (userId: string, correct: number) => {
-  const userRef = doc(db, USER_PROFILES, userId);
-  const userSnap = await getDoc(userRef);
-  if (!userSnap.exists()) return;
-  
-  const data = userSnap.data();
-  const currentTotalXp = (data.xp || 0) + correct;
-  const newLevel = Math.floor(currentTotalXp / 100) + 1;
-  
-  await updateDoc(userRef, {
-    xp: currentTotalXp,
-    level: newLevel,
-    totalCorrect: increment(correct),
-    lastActive: serverTimestamp()
-  });
+  try {
+    const userRef = doc(db, USER_PROFILES, userId);
+    const userSnap = await getDoc(userRef);
+    if (!userSnap.exists()) return;
+    
+    const data = userSnap.data();
+    const currentTotalXp = (data.xp || 0) + (correct * 10); // 10 XP per correct answer
+    const newLevel = Math.floor(currentTotalXp / 100) + 1;
+    
+    await updateDoc(userRef, {
+      xp: currentTotalXp,
+      level: newLevel,
+      totalCorrect: increment(correct),
+      lastActive: serverTimestamp()
+    });
+  } catch (error) {
+    console.error("Error updating XP:", error);
+  }
 };
 
 export const getAllUserProfiles = async () => {
@@ -151,57 +181,75 @@ export const getAllUserProfiles = async () => {
 };
 
 export const updateUserProfileName = async (userId: string, newName: string) => {
-  const userRef = doc(db, USER_PROFILES, userId);
-  return await updateDoc(userRef, { displayName: newName });
+  try {
+    const userRef = doc(db, USER_PROFILES, userId);
+    return await updateDoc(userRef, { displayName: newName });
+  } catch (error) {
+    console.error("Error updating name:", error);
+    throw error;
+  }
 };
 
 export const updateUserTheme = async (userId: string, theme: string) => {
-  const userRef = doc(db, USER_PROFILES, userId);
-  return await updateDoc(userRef, { theme });
+  try {
+    const userRef = doc(db, USER_PROFILES, userId);
+    return await updateDoc(userRef, { theme });
+  } catch (error) {
+    console.error("Error updating theme:", error);
+  }
 };
 
 export const toggleFavoriteInDb = async (userId: string, question: any) => {
-  const userRef = doc(db, USER_PROFILES, userId);
-  const userSnap = await getDoc(userRef);
-  if (!userSnap.exists()) return false;
-  
-  const favorites = userSnap.data().favorites || [];
-  const exists = favorites.find((f: any) => f.id === question.id);
-  
-  if (exists) {
-    await updateDoc(userRef, {
-      favorites: arrayRemove(exists)
-    });
+  try {
+    const userRef = doc(db, USER_PROFILES, userId);
+    const userSnap = await getDoc(userRef);
+    if (!userSnap.exists()) return false;
+    
+    const favorites = userSnap.data().favorites || [];
+    const exists = favorites.find((f: any) => f.id === question.id);
+    
+    if (exists) {
+      await updateDoc(userRef, {
+        favorites: arrayRemove(exists)
+      });
+      return false;
+    } else {
+      await updateDoc(userRef, {
+        favorites: arrayUnion(question)
+      });
+      return true;
+    }
+  } catch (error) {
+    console.error("Error toggling favorite:", error);
     return false;
-  } else {
-    await updateDoc(userRef, {
-      favorites: arrayUnion(question)
-    });
-    return true;
   }
 };
 
 export const saveErrorLogToDb = async (userId: string, question: Question, sectionTitle: string) => {
-  const errorId = `${userId}_${question.id}`;
-  const errorRef = doc(db, ERROR_LOGS, errorId);
-  
-  const snap = await getDoc(errorRef);
-  if (!snap.exists()) {
-    await setDoc(errorRef, {
-      userId,
-      questionId: question.id,
-      questionData: {
-        ...question,
-        sectionTitle
-      },
-      count: 1,
-      lastOccurred: serverTimestamp()
-    });
-  } else {
-    await updateDoc(errorRef, {
-      count: increment(1),
-      lastOccurred: serverTimestamp()
-    });
+  try {
+    const errorId = `${userId}_${question.id}`;
+    const errorRef = doc(db, ERROR_LOGS, errorId);
+    
+    const snap = await getDoc(errorRef);
+    if (!snap.exists()) {
+      await setDoc(errorRef, {
+        userId,
+        questionId: question.id,
+        questionData: {
+          ...question,
+          sectionTitle
+        },
+        count: 1,
+        lastOccurred: serverTimestamp()
+      });
+    } else {
+      await updateDoc(errorRef, {
+        count: increment(1),
+        lastOccurred: serverTimestamp()
+      });
+    }
+  } catch (error) {
+    console.error("Error saving error log:", error);
   }
 };
 
@@ -212,7 +260,10 @@ export const getErrorLogs = async (userId: string) => {
       where("userId", "==", userId)
     );
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => doc.data()).sort((a, b) => (b.lastOccurred?.seconds || 0) - (a.lastOccurred?.seconds || 0));
+    // Sort on client side to avoid index errors
+    return querySnapshot.docs
+      .map(doc => doc.data())
+      .sort((a: any, b: any) => (b.lastOccurred?.seconds || 0) - (a.lastOccurred?.seconds || 0));
   } catch (error) {
     console.error("Error fetching logs:", error);
     return [];
@@ -221,20 +272,6 @@ export const getErrorLogs = async (userId: string) => {
 
 export const getLeaderboard = async () => {
   try {
-    const q = query(
-      collection(db, USER_PROFILES), 
-      orderBy("level", "desc"), 
-      orderBy("xp", "desc"),
-      limit(50)
-    );
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-  } catch (error) {
-    console.error("Error fetching leaderboard with index:", error);
-    // Fallback in case of missing index
     const snapshot = await getDocs(collection(db, USER_PROFILES));
     return snapshot.docs.map(doc => ({
       id: doc.id,
@@ -243,5 +280,8 @@ export const getLeaderboard = async () => {
       if ((b.level || 0) !== (a.level || 0)) return (b.level || 0) - (a.level || 0);
       return (b.xp || 0) - (a.xp || 0);
     }).slice(0, 50);
+  } catch (error) {
+    console.error("Error fetching leaderboard:", error);
+    return [];
   }
 };

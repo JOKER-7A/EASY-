@@ -1,17 +1,17 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { sections as staticSections, Section, Question } from '@/lib/practice-data';
+import { sections as staticSections, Section } from '@/lib/practice-data';
 import { getSectionsFromDb, getUserProfile, getLeaderboard, getErrorLogs, updateUserProfileName, isDisplayNameTaken, updateUserTheme } from '@/lib/db-service';
 import PracticeSession from '@/components/PracticeSession';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
 import { 
   LayoutDashboard,
   Loader2,
-  PlayCircle,
   Zap,
   Search,
   Trophy,
@@ -21,12 +21,11 @@ import {
   X,
   User as UserIcon,
   Edit2,
-  Save,
   CheckCircle2,
   Sparkles,
   ChevronRight,
   Palette,
-  Settings as SettingsIcon
+  ShieldAlert
 } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { 
@@ -74,22 +73,27 @@ export default function Home() {
   useEffect(() => {
     setMounted(true);
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
-      setUser(u);
-      if (u) {
-        const p = await getUserProfile(u.uid, u.email || '', u.displayName || '');
-        setProfile(p);
-        setNewDisplayName(p.displayName || '');
-        if (p.theme) {
-          document.body.setAttribute('data-theme', p.theme);
+      try {
+        setUser(u);
+        if (u) {
+          const p = await getUserProfile(u.uid, u.email || '', u.displayName || '');
+          setProfile(p);
+          setNewDisplayName(p?.displayName || '');
+          if (p?.theme) {
+            document.body.setAttribute('data-theme', p.theme);
+          }
+          if (!p?.displayName) {
+            setActiveOverlay('welcome-name');
+          }
+        } else {
+          setProfile(null);
+          document.body.removeAttribute('data-theme');
         }
-        if (!p.displayName) {
-          setActiveOverlay('welcome-name');
-        }
-      } else {
-        setProfile(null);
-        document.body.removeAttribute('data-theme');
+      } catch (err) {
+        console.error("Auth state change error:", err);
+      } finally {
+        setIsAuthLoading(false);
       }
-      setIsAuthLoading(false);
     });
 
     const fetchAllData = async () => {
@@ -105,6 +109,7 @@ export default function Home() {
         setAllSections(combined);
         setFilteredSections(combined);
       } catch (e) {
+        console.error("Fetch data error:", e);
         setAllSections(staticSections);
         setFilteredSections(staticSections);
       } finally {
@@ -120,9 +125,9 @@ export default function Home() {
     const filtered = allSections.filter(s => 
       s.id.toString().includes(q) || 
       s.title.toLowerCase().includes(q) ||
-      s.questions.some(question => 
-        question.question.toLowerCase().includes(q) || 
-        question.correct.toLowerCase().includes(q)
+      s.questions?.some(question => 
+        question.question?.toLowerCase().includes(q) || 
+        question.correct?.toLowerCase().includes(q)
       )
     );
     setFilteredSections(filtered);
@@ -151,7 +156,7 @@ export default function Home() {
     }
   };
 
-  const handleUpdateName = async (isFirstTime = false) => {
+  const handleUpdateName = async () => {
     if (!user || !newDisplayName.trim()) return;
     if (newDisplayName.length < 3) {
       toast({ title: "الاسم قصير جداً (3 أحرف على الأقل)", variant: "destructive" });
@@ -182,7 +187,7 @@ export default function Home() {
     if (!user) return;
     document.body.setAttribute('data-theme', themeId);
     await updateUserTheme(user.uid, themeId);
-    setProfile(prev => ({ ...prev, theme: themeId }));
+    setProfile((prev: any) => ({ ...prev, theme: themeId }));
     toast({ title: "تم تحديث الثيم بنجاح ✨" });
   };
 
@@ -190,7 +195,7 @@ export default function Home() {
     setLeaderboardData([]);
     setActiveOverlay('leaderboard');
     const data = await getLeaderboard();
-    setLeaderboardData(data);
+    setLeaderboardData(data || []);
   };
 
   const openErrorLogs = async () => {
@@ -198,7 +203,7 @@ export default function Home() {
     setErrorLogsData([]);
     setActiveOverlay('errors');
     const data = await getErrorLogs(user.uid);
-    setErrorLogsData(data);
+    setErrorLogsData(data || []);
   };
 
   const openFavorites = async () => {
@@ -207,11 +212,16 @@ export default function Home() {
     setActiveOverlay('favorites');
   };
 
-  if (!mounted || isAuthLoading) return (
-    <div className="min-h-screen bg-black flex items-center justify-center">
-      <Loader2 className="w-12 h-12 text-primary animate-spin" />
-    </div>
-  );
+  if (!mounted) return null;
+
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center space-y-4">
+        <Loader2 className="w-16 h-16 text-primary animate-spin" />
+        <p className="text-primary font-black animate-pulse">جاري التحقق من الهوية...</p>
+      </div>
+    );
+  }
 
   if (!user) {
     return (
@@ -293,13 +303,13 @@ export default function Home() {
                       <UserIcon className="w-6 h-6 text-primary" />
                     </div>
                     <div>
-                      <h4 className="text-xl md:text-2xl font-black text-white group-hover:text-primary transition-colors">{p.displayName || 'مستكشف'}</h4>
-                      <span className="text-[10px] text-primary font-black uppercase">Level {p.level}</span>
+                      <h4 className="text-xl md:text-2xl font-black text-white group-hover:text-primary transition-colors">{p.displayName || 'مستكشف EASY'}</h4>
+                      <span className="text-[10px] text-primary font-black uppercase">Level {p.level || 1}</span>
                     </div>
                   </div>
                 </div>
                 <div className="text-left">
-                  <p className="text-2xl md:text-4xl font-black text-white">{Math.round(p.xp)} <span className="text-sm text-white/30">XP</span></p>
+                  <p className="text-2xl md:text-4xl font-black text-white">{Math.round(p.xp || 0)} <span className="text-sm text-white/30">XP</span></p>
                 </div>
               </div>
             ))
@@ -321,16 +331,42 @@ export default function Home() {
               <Card key={idx} className="p-8 md:p-12 glass border-destructive/20 rounded-[40px] space-y-6 hover:border-destructive/40 transition-all">
                 <div className="flex justify-between items-start gap-4">
                   <div className="space-y-2 flex-1">
-                    <Badge className="bg-white/5 text-white/40 px-4 py-1">{log.questionData.sectionTitle || 'نموذج عام'}</Badge>
-                    <h4 className="text-xl md:text-3xl font-black leading-tight text-white/90">{log.questionData.question}</h4>
+                    <Badge className="bg-white/5 text-white/40 px-4 py-1">{log.questionData?.sectionTitle || 'نموذج عام'}</Badge>
+                    <h4 className="text-xl md:text-3xl font-black leading-tight text-white/90">{log.questionData?.question || 'سؤال غير متوفر'}</h4>
                   </div>
                   <div className="bg-destructive/10 text-destructive border border-destructive/20 px-4 py-2 rounded-2xl font-black text-sm shrink-0">
-                    تكرر {log.count}
+                    تكرر {log.count || 1}
                   </div>
                 </div>
                 <div className="p-5 bg-green-500/10 rounded-3xl border border-green-500/20">
                   <p className="text-xs text-green-500 font-bold mb-2 uppercase tracking-widest">التصحيح النموذجي</p>
-                  <p className="text-xl md:text-2xl font-black text-white">{log.questionData.correct}</p>
+                  <p className="text-xl md:text-2xl font-black text-white">{log.questionData?.correct || 'لا يوجد'}</p>
+                </div>
+              </Card>
+            ))
+          )}
+        </div>
+      );
+    } else if (activeOverlay === 'favorites') {
+      title = "كنوزي المفضلة";
+      icon = <Star className="w-8 h-8 md:w-12 md:h-12 text-accent fill-accent" />;
+      content = (
+        <div className="space-y-6">
+          {(!profile?.favorites || profile.favorites.length === 0) ? (
+            <div className="text-center py-32 space-y-4">
+              <Star className="w-20 h-20 text-white/5 mx-auto" />
+              <p className="text-white/20 text-2xl font-black">قائمة المفضلة خالية ✨</p>
+            </div>
+          ) : (
+            profile.favorites.map((fav: any, idx: number) => (
+              <Card key={idx} className="p-8 glass border-accent/20 rounded-[40px] space-y-4">
+                <div className="flex justify-between">
+                  <Badge className="bg-accent/10 text-accent">{fav.type || 'سؤال'}</Badge>
+                  <Button variant="ghost" onClick={() => setSelectedSection(allSections.find(s => s.questions.some(q => q.id === fav.id)) || null)} className="text-accent">فتح السؤال</Button>
+                </div>
+                <h4 className="text-2xl font-black">{fav.question}</h4>
+                <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
+                   <p className="text-green-500 font-black">الإجابة: {fav.correct}</p>
                 </div>
               </Card>
             ))
@@ -377,7 +413,7 @@ export default function Home() {
             />
           </div>
           <Button 
-            onClick={() => handleUpdateName(activeOverlay === 'welcome-name')} 
+            onClick={handleUpdateName} 
             disabled={isUpdatingName}
             className="w-full h-20 rounded-[40px] bg-primary text-white font-black text-2xl shadow-[0_0_40px_rgba(168,85,247,0.3)] hover:scale-105 active-press transition-all"
           >
@@ -424,7 +460,8 @@ export default function Home() {
     );
   }
 
-  const xpProgress = (profile?.xp || 0) % 100;
+  const currentXp = profile?.xp || 0;
+  const xpProgress = currentXp % 100;
 
   return (
     <main className="min-h-screen overflow-x-hidden relative bg-black text-white flex flex-col theme-transition">
@@ -442,17 +479,14 @@ export default function Home() {
             <div className="flex justify-between items-end gap-3">
               <p className="text-[10px] md:text-xs font-black text-primary uppercase tracking-[0.2em] shrink-0">LV PROGRESS</p>
               <div className="flex items-center gap-3 overflow-hidden">
-                <p className="text-xs md:text-sm font-bold text-white truncate">{profile?.displayName || 'مستكشف'}</p>
+                <p className="text-xs md:text-sm font-bold text-white truncate">{profile?.displayName || 'مستكشف EASY'}</p>
                 <button onClick={() => setActiveOverlay('edit-name')} className="text-white/20 hover:text-primary transition-colors shrink-0 active-press">
                   <Edit2 className="w-3 h-3 md:w-5 md:h-5" />
                 </button>
               </div>
             </div>
             <div className="w-28 md:w-56 h-2 md:h-3 bg-white/5 rounded-full border border-white/5 overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-primary to-accent transition-all duration-1000 gold-glow"
-                style={{ width: `${xpProgress}%` }}
-              />
+              <Progress value={xpProgress} className="h-full bg-gradient-to-r from-primary to-accent transition-all duration-1000" />
             </div>
             <p className="text-[9px] md:text-[11px] text-white/30 font-black text-right tracking-widest">{xpProgress} / 100 XP</p>
           </div>
@@ -502,9 +536,6 @@ export default function Home() {
             <Button onClick={openLeaderboard} className="h-14 md:h-20 px-8 md:px-14 rounded-2xl md:rounded-[40px] glass border-white/10 text-white font-black text-sm md:text-2xl hover:scale-105 active-press transition-all">
               <Trophy className="ml-3 w-5 h-5 md:w-8 md:h-8" /> المتصدرين
             </Button>
-            <Button onClick={() => setActiveOverlay('themes')} className="h-14 md:h-20 px-8 md:px-14 rounded-2xl md:rounded-[40px] glass border-primary/30 text-primary font-black text-sm md:text-2xl hover:scale-105 active-press transition-all">
-              <Palette className="ml-3 w-5 h-5 md:w-8 md:h-8" /> الألوان
-            </Button>
           </div>
         </header>
 
@@ -519,10 +550,12 @@ export default function Home() {
           {loading ? (
             <div className="flex flex-col items-center justify-center py-40">
               <Loader2 className="w-16 h-16 md:w-24 md:h-24 text-primary animate-spin" />
+              <p className="mt-4 text-white/40">جاري جلب النماذج...</p>
             </div>
           ) : filteredSections.length === 0 ? (
             <div className="text-center py-40 glass rounded-[60px] border-dashed border-white/5">
               <p className="text-2xl md:text-4xl font-black text-white/10 uppercase tracking-widest">No results found</p>
+              <Button onClick={() => setSearchQuery('')} variant="link" className="text-primary mt-4">عرض الكل</Button>
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-14">
@@ -543,7 +576,7 @@ export default function Home() {
                       </h2>
                       <div className="flex items-center gap-4 text-white/30 font-bold">
                         <Zap className="w-4 h-4 text-accent" />
-                        <span>{section.questions.length} Question</span>
+                        <span>{section.questions?.length || 0} Question</span>
                       </div>
                     </div>
                     <Button 
@@ -564,13 +597,20 @@ export default function Home() {
 
         <footer className="text-center py-20 border-t border-white/5 space-y-10">
           <div className="flex flex-wrap justify-center gap-10 md:gap-20 items-center">
-            <Button 
-              variant="ghost" 
-              onClick={() => window.location.href = '/admin'} 
-              className="text-white/20 hover:text-white transition-colors font-black text-lg md:text-2xl"
-            >
-              <LayoutDashboard className="ml-3 w-6 h-6 md:w-8 md:h-8" /> المشرف
-            </Button>
+            {profile?.role === 'admin' || profile?.email === 'admin@easy.com' ? (
+               <Button 
+                variant="ghost" 
+                onClick={() => window.location.href = '/admin'} 
+                className="text-white/20 hover:text-white transition-colors font-black text-lg md:text-2xl"
+              >
+                <LayoutDashboard className="ml-3 w-6 h-6 md:w-8 md:h-8" /> المشرف
+              </Button>
+            ) : (
+               <div className="flex items-center text-white/10 gap-2">
+                 <ShieldAlert className="w-5 h-5" />
+                 <span className="text-sm font-bold uppercase tracking-widest">Student Portal</span>
+               </div>
+            )}
             <Button 
               variant="ghost" 
               onClick={() => signOut(auth)}
