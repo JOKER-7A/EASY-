@@ -15,16 +15,18 @@ import {
 } from "firebase/firestore";
 import { Section, Question, sections as staticSections } from "./practice-data";
 
+/**
+ * جلب النماذج التدريبية مع حماية ضد الفشل
+ */
 export const getSectionsFromDb = async (): Promise<Section[]> => {
   try {
     const querySnapshot = await getDocs(collection(db, "sections"));
-    if (querySnapshot.empty) return [...staticSections];
-    
     const dbSections = querySnapshot.docs.map(doc => ({
       firebaseId: doc.id,
       ...doc.data()
     } as any));
     
+    // دمج البيانات من قاعدة البيانات مع البيانات الثابتة لضمان عدم وجود نقص
     const combined = [...dbSections];
     staticSections.forEach(s => {
       if (!combined.find(c => Number(c.id) === Number(s.id))) {
@@ -35,11 +37,14 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
     return combined.sort((a, b) => Number(b.id) - Number(a.id));
   } catch (error) {
     console.error("Database Error (Sections):", error);
-    return [...staticSections];
+    return [...staticSections]; // العودة للبيانات الثابتة في حالة الخطأ
   }
 };
 
-export const getUserProfile = async (userId: string, email?: string, displayName?: string) => {
+/**
+ * جلب الملف الشخصي للمستخدم أو إنشاؤه
+ */
+export const getUserProfile = async (userId: string, email?: string) => {
   if (!userId) return null;
   try {
     const userRef = doc(db, "userProfiles", userId);
@@ -52,7 +57,7 @@ export const getUserProfile = async (userId: string, email?: string, displayName
         level: 1,
         xp: 0,
         totalCorrect: 0,
-        displayName: displayName || email?.split('@')[0] || 'مستكشف EASY',
+        displayName: email?.split('@')[0] || 'مستكشف EASY',
         email: email || '',
         createdAt: serverTimestamp(),
         lastActive: serverTimestamp(),
@@ -67,9 +72,8 @@ export const getUserProfile = async (userId: string, email?: string, displayName
       id: userId, 
       level: 1, 
       xp: 0, 
-      displayName: displayName || 'مستكشف', 
-      status: 'student',
-      isFallback: true 
+      displayName: 'مستكشف', 
+      status: 'student' 
     };
   }
 };

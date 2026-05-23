@@ -56,7 +56,6 @@ export default function AdminPage() {
   const [password, setPassword] = useState('');
   const [sections, setSections] = useState<Section[]>([]);
   const [usersList, setUsersList] = useState<any[]>([]);
-  const [userSearch, setUserSearch] = useState('');
   const { toast } = useToast();
 
   const [newSection, setNewSection] = useState<Partial<Section>>({
@@ -128,19 +127,6 @@ export default function AdminPage() {
       toast({ title: "حدث خطأ أثناء الحفظ", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handleDelete = async (firebaseId: string | undefined) => {
-    if (!firebaseId) return;
-    if (confirm('هل أنت متأكد من الحذف؟')) {
-      try {
-        await deleteDoc(doc(db, "sections", firebaseId));
-        await fetchSections();
-        toast({ title: "تم الحذف بنجاح" });
-      } catch (error) {
-        toast({ title: "فشل الحذف", variant: "destructive" });
-      }
     }
   };
 
@@ -270,11 +256,18 @@ export default function AdminPage() {
                         }} />
                       ))}
                     </div>
-                    <Select value={q.correct || "placeholder"} onValueChange={(val) => updateQuestion(qIndex, 'correct', val)}>
-                      <SelectTrigger className="border-green-500/20 text-green-500"><SelectValue placeholder="اختر الإجابة الصحيحة" /></SelectTrigger>
+                    <Select 
+                      value={q.correct || "placeholder"} 
+                      onValueChange={(val) => updateQuestion(qIndex, 'correct', val)}
+                    >
+                      <SelectTrigger className="border-green-500/20 text-green-500">
+                        <SelectValue placeholder="اختر الإجابة الصحيحة" />
+                      </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="placeholder" disabled>اختر الإجابة</SelectItem>
-                        {q.options.map((opt, idx) => opt && <SelectItem key={idx} value={opt}>{opt}</SelectItem>)}
+                        {q.options.map((opt, idx) => (
+                          opt ? <SelectItem key={idx} value={opt}>{opt}</SelectItem> : null
+                        ))}
                       </SelectContent>
                     </Select>
                   </Card>

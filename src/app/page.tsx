@@ -54,10 +54,16 @@ export default function Home() {
   
   const { toast } = useToast();
 
-  // تأمين إنهاء شاشة التحميل مهما حدث
+  // 1. نظام الحماية ضد التعليق: إنهاء التحميل إجبارياً بعد 3 ثوانٍ
   useEffect(() => {
-    const authTimer = setTimeout(() => setIsAuthLoading(false), 3000);
-    
+    const timer = setTimeout(() => {
+      setIsAuthLoading(false);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // 2. إدارة جلسة المستخدم بشكل مستقر
+  useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
@@ -71,16 +77,11 @@ export default function Home() {
         setProfile(null);
       }
       setIsAuthLoading(false);
-      clearTimeout(authTimer);
     });
-
-    return () => {
-      unsubscribe();
-      clearTimeout(authTimer);
-    };
+    return () => unsubscribe();
   }, []);
 
-  // جلب المحتوى بشكل مستقر
+  // 3. جلب محتوى النماذج
   useEffect(() => {
     const fetchContent = async () => {
       try {
@@ -93,7 +94,7 @@ export default function Home() {
     fetchContent();
   }, []);
 
-  // البحث
+  // 4. نظام البحث
   useEffect(() => {
     const q = searchQuery.toLowerCase();
     setFilteredSections(sections.filter(s => 
@@ -109,7 +110,7 @@ export default function Home() {
         toast({ title: "أهلاً بك مجدداً! 🚀" });
       } else {
         const cred = await createUserWithEmailAndPassword(auth, email, password);
-        await getUserProfile(cred.user.uid, email, '');
+        await getUserProfile(cred.user.uid, email);
         toast({ title: "تم إنشاء الحساب بنجاح ✅" });
       }
     } catch (error: any) {
@@ -132,6 +133,7 @@ export default function Home() {
     }
   };
 
+  // عرض جلسة التدريب
   if (activeView === 'practice' && selectedSection) {
     return <PracticeSession section={selectedSection} onExit={() => window.location.reload()} />;
   }
@@ -139,7 +141,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-black text-white flex flex-col relative overflow-x-hidden">
       
-      {/* Auth Guard UI */}
+      {/* 5. شاشة الدخول (تظهر فقط إذا انتهى التحميل ولم نجد مستخدماً) */}
       {!user && !isAuthLoading && (
         <div className="fixed inset-0 z-[300] bg-black flex items-center justify-center p-4">
           <Card className="w-full max-w-xl p-10 glass border-white/5 rounded-[50px] shadow-2xl animate-in zoom-in duration-500">
@@ -161,7 +163,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* Main App UI */}
+      {/* 6. الواجهة الرئيسية (تظهر دائماً) */}
       <div className="container mx-auto px-4 md:px-8 py-20 max-w-7xl relative z-10">
         
         {user && profile && (
@@ -260,6 +262,7 @@ export default function Home() {
         </footer>
       </div>
 
+      {/* 7. شاشة التحميل الأولية */}
       {isAuthLoading && (
         <div className="fixed inset-0 bg-black flex items-center justify-center z-[500] backdrop-blur-xl">
           <div className="text-center space-y-6">
@@ -270,7 +273,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* Leaderboard/Errors Overlay */}
+      {/* 8. النوافذ المنبثقة */}
       {activeOverlay && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/90 backdrop-blur-3xl" onClick={() => setActiveOverlay(null)} />
