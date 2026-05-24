@@ -1,4 +1,3 @@
-
 import { db } from "./firebase";
 import { 
   collection, 
@@ -66,7 +65,8 @@ export const getUserProfile = async (userId: string, email?: string) => {
         email: email || '',
         createdAt: serverTimestamp(),
         status: 'student',
-        favorites: []
+        favorites: [],
+        isBanned: false
       };
       await setDoc(userRef, initialProfile);
       return { id: userId, ...initialProfile };
@@ -80,12 +80,22 @@ export const saveAttemptToDb = async (userId: string | undefined, attempt: any) 
   try {
     const data = { ...attempt, userId: userId || 'anonymous', createdAt: serverTimestamp() };
     await setDoc(doc(collection(db, "attempts")), data);
+    
+    // Update XP and Level
+    if (userId) {
+      const userRef = doc(db, "userProfiles", userId);
+      const xpGain = attempt.score > 80 ? 100 : 50;
+      await updateDoc(userRef, {
+        xp: increment(xpGain),
+        level: increment(attempt.score === 100 ? 1 : 0)
+      });
+    }
   } catch (e) {}
 };
 
 export const getLeaderboard = async () => {
   try {
-    const q = query(collection(db, "userProfiles"), orderBy("xp", "desc"), limit(10));
+    const q = query(collection(db, "userProfiles"), orderBy("xp", "desc"), limit(20));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (e) { return []; }
