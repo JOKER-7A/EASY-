@@ -33,7 +33,6 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
   const [timeLeft, setTimeLeft] = useState(0); 
   const [startTime, setStartTime] = useState<number | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
-  const [showPassageMobile, setShowPassageMobile] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -47,7 +46,9 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
     const fetchFavs = async () => {
       if (auth.currentUser) {
         const profile = await getUserProfile(auth.currentUser.uid);
-        if (profile?.favorites) setFavorites(profile.favorites.map((f: any) => f.id));
+        if (profile?.favorites) {
+          setFavorites(profile.favorites.map((f: any) => f.id));
+        }
       }
     };
     fetchFavs();
@@ -100,8 +101,13 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
     
     if (auth.currentUser) {
       const isCorrect = opt === q.correct;
+      // تحديث الـ XP فوراً
       updateUserXP(auth.currentUser.uid, isCorrect);
-      if (!isCorrect) saveErrorLogToDb(auth.currentUser.uid, q, section.title, opt);
+      
+      // تسجيل الخطأ فوراً في قاعدة البيانات إذا كانت الإجابة خاطئة
+      if (!isCorrect) {
+        saveErrorLogToDb(auth.currentUser.uid, q, section.title, opt);
+      }
     }
   };
 
@@ -119,17 +125,24 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
   }, [timeLeft, mode, phase, handleNext, finishSession]);
 
   const toggleFavorite = async (question: Question) => {
-    if (!auth.currentUser) return;
+    if (!auth.currentUser) {
+      toast({ title: "يجب تسجيل الدخول أولاً", variant: "destructive" });
+      return;
+    }
+    
     const isAdded = await toggleFavoriteInDb(auth.currentUser.uid, question, section.title);
     setFavorites(prev => isAdded ? [...prev, question.id] : prev.filter(id => id !== question.id));
-    toast({ title: isAdded ? "أضيف للمفضلة ⭐" : "حذف من المفضلة" });
+    toast({ 
+      title: isAdded ? "تمت الإضافة للمفضلة ⭐" : "تم الحذف من المفضلة",
+      description: isAdded ? "ستجد هذا السؤال في مكتبتك دائماً." : "تمت إزالة السؤال من مكتبتك."
+    });
   };
 
   const getMotivation = (score: number) => {
-    if (score === 100) return { text: "أداء أسطوري 👑", color: "text-amber-500", icon: Crown };
-    if (score >= 90) return { text: "أنت رائع ⭐", color: "text-primary", icon: StarIcon };
-    if (score >= 70) return { text: "استمر 🔥", color: "text-emerald-500", icon: Flame };
-    return { text: "شد حيلك 💪", color: "text-rose-500", icon: Zap };
+    if (score === 100) return { text: "أداء أسطوري 👑", color: "text-amber-500", icon: Crown, glow: "shadow-[0_0_50px_rgba(245,158,11,0.3)]" };
+    if (score >= 90) return { text: "أحسنت! أنت رائع ⭐", color: "text-primary", icon: StarIcon, glow: "" };
+    if (score >= 70) return { text: "أداء جيد، استمر 🔥", color: "text-emerald-500", icon: Flame, glow: "" };
+    return { text: "شد حيلك شوية 💪", color: "text-rose-500", icon: Zap, glow: "" };
   };
 
   const q = section.questions[currentQuestionIndex];
@@ -142,24 +155,25 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
 
   if (phase === 'intro') return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background">
-      <h2 className="text-4xl md:text-7xl font-black animate-pulse">أهم شيء الفهم 💡</h2>
+      <h2 className="text-4xl md:text-8xl font-black animate-pulse tracking-tighter italic">أهم شيء الفهم 💡</h2>
     </div>
   );
 
   if (phase === 'mode-selection') return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-background">
-      <div className="max-w-4xl w-full space-y-12">
-        <h1 className="text-4xl md:text-6xl font-black text-center">اختر التحدي</h1>
+    <div className="min-h-screen flex items-center justify-center p-6 bg-background relative overflow-hidden">
+      <div className="absolute inset-0 bg-mesh opacity-10" />
+      <div className="max-w-4xl w-full space-y-12 relative z-10">
+        <h1 className="text-5xl md:text-7xl font-black text-center italic tracking-tighter">اختر مستوى التحدي</h1>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[
             { id: 'exam-night', title: 'ليلة الاختبار', icon: Moon, desc: '3 دقائق إجمالية' },
             { id: 'pressure', title: 'نظام الضغط', icon: Zap, desc: '60 ثانية للسؤال' },
-            { id: 'normal', title: 'التمرين الحر', icon: Play, desc: 'بدون وقت' }
+            { id: 'normal', title: 'التمرين الحر', icon: Play, desc: 'بدون قيود زمنية' }
           ].map((m) => (
-            <Card key={m.id} onClick={() => selectMode(m.id as PracticeMode)} className="p-8 glass-card cursor-pointer hover:border-primary/50 text-center space-y-4 rounded-3xl">
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto"><m.icon className="w-8 h-8 text-primary" /></div>
-              <h3 className="text-xl font-black">{m.title}</h3>
-              <p className="text-xs font-bold opacity-50">{m.desc}</p>
+            <Card key={m.id} onClick={() => selectMode(m.id as PracticeMode)} className="p-10 glass-card cursor-pointer hover:border-primary/50 text-center space-y-6 rounded-[40px] transition-all hover:-translate-y-2 group">
+              <div className="w-20 h-20 rounded-[30px] bg-primary/10 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform"><m.icon className="w-10 h-10 text-primary" /></div>
+              <h3 className="text-2xl font-black italic">{m.title}</h3>
+              <p className="text-xs font-black opacity-30 uppercase tracking-widest">{m.desc}</p>
             </Card>
           ))}
         </div>
@@ -175,32 +189,35 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
 
     return (
       <ScrollArea className="h-screen bg-background" dir="rtl">
-        <div className="max-w-4xl mx-auto py-16 px-6 space-y-12">
-          <div className="text-center space-y-6">
-            <div className={cn("inline-block p-10 rounded-full bg-primary/5 border-2 border-primary/20", score === 100 && "border-amber-500/50 bg-amber-500/5 shadow-2xl")}>
-               <motivation.icon className={cn("w-20 h-20", motivation.color)} />
+        <div className="max-w-4xl mx-auto py-24 px-6 space-y-16">
+          <div className="text-center space-y-8">
+            <div className={cn("inline-block p-14 rounded-[60px] bg-white/[0.02] border border-white/10 relative", motivation.glow)}>
+               {score === 100 && <div className="absolute -inset-4 bg-primary/20 blur-[60px] rounded-full animate-pulse" />}
+               <motivation.icon className={cn("w-24 h-24 relative z-10", motivation.color)} />
             </div>
-            <h1 className="text-5xl font-black">{motivation.text}</h1>
-            <p className="text-3xl font-black opacity-50">{score}%</p>
+            <div className="space-y-2">
+              <h1 className="text-6xl font-black italic">{motivation.text}</h1>
+              <p className="text-8xl font-black text-primary tracking-tighter">{score}%</p>
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {[
-              { label: 'صحيحة', val: correctCount, color: 'text-emerald-500' },
-              { label: 'خاطئة', val: section.questions.length - correctCount, color: 'text-rose-500' },
-              { label: 'الإجمالي', val: section.questions.length, color: 'text-foreground' },
-              { label: 'الزمن', val: Math.floor((Date.now() - (startTime || 0)) / 60000) + 'د', color: 'text-primary' }
+              { label: 'إجابات صحيحة', val: correctCount, color: 'text-emerald-500' },
+              { label: 'إجابات خاطئة', val: section.questions.length - correctCount, color: 'text-rose-500' },
+              { label: 'إجمالي الأسئلة', val: section.questions.length, color: 'text-foreground' },
+              { label: 'زمن الحل', val: Math.floor((Date.now() - (startTime || 0)) / 60000) + 'د', color: 'text-primary' }
             ].map((s, i) => (
-              <Card key={i} className="p-6 text-center glass-card rounded-2xl">
-                <p className="text-[10px] font-black opacity-30 uppercase mb-1">{s.label}</p>
-                <p className={cn("text-2xl font-black", s.color)}>{s.val}</p>
+              <Card key={i} className="p-8 text-center glass-card rounded-[35px] border-white/5">
+                <p className="text-[10px] font-black opacity-30 uppercase tracking-widest mb-2">{s.label}</p>
+                <p className={cn("text-3xl font-black", s.color)}>{s.val}</p>
               </Card>
             ))}
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 pb-12">
-            <Button onClick={() => window.location.reload()} className="flex-1 h-14 text-lg font-black rounded-2xl bg-primary">إعادة</Button>
-            <Button onClick={onExit} variant="outline" className="flex-1 h-14 text-lg font-black rounded-2xl">الخروج</Button>
+          <div className="flex flex-col sm:flex-row gap-4 pb-20">
+            <Button onClick={() => window.location.reload()} className="flex-2 h-16 text-xl font-black rounded-3xl bg-primary shadow-2xl shadow-primary/20">إعادة المحاولة 🔄</Button>
+            <Button onClick={onExit} variant="outline" className="flex-1 h-16 text-xl font-black rounded-3xl border-white/10 hover:bg-white/5">الخروج</Button>
           </div>
         </div>
       </ScrollArea>
@@ -210,87 +227,114 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col" dir="rtl">
       {/* Quiz Header */}
-      <div className="p-4 border-b border-border bg-background/80 backdrop-blur-md flex items-center justify-between sticky top-0 z-50">
-        <Button onClick={onExit} variant="ghost" size="sm" className="font-bold gap-2"><ArrowRight className="w-4 h-4" /> انسحاب</Button>
-        <div className="flex items-center gap-4">
+      <div className="p-5 border-b border-border bg-background/80 backdrop-blur-md flex items-center justify-between sticky top-0 z-50">
+        <Button onClick={onExit} variant="ghost" size="sm" className="font-black gap-2 text-rose-500 hover:bg-rose-500/10 rounded-xl"><ArrowRight className="w-5 h-5" /> انسحاب</Button>
+        <div className="flex items-center gap-6">
           {mode !== 'normal' && (
-            <div className={cn("px-4 py-1 rounded-full border font-mono font-bold", timeLeft < 20 ? "border-rose-500 text-rose-500 animate-pulse" : "border-border")}>
+            <div className={cn("px-6 py-2 rounded-2xl border font-black text-lg shadow-sm transition-all", timeLeft < 20 ? "border-rose-500 text-rose-500 animate-pulse scale-110" : "border-white/10 text-primary")}>
               {Math.floor(timeLeft/60)}:{(timeLeft%60).toString().padStart(2, '0')}
             </div>
           )}
-          <span className="font-black text-primary">{currentQuestionIndex + 1} / {section.questions.length}</span>
+          <div className="bg-primary/10 px-4 py-1.5 rounded-xl border border-primary/20">
+            <span className="font-black text-primary text-sm tracking-widest">{currentQuestionIndex + 1} / {section.questions.length}</span>
+          </div>
         </div>
       </div>
 
-      <Progress value={progress} className="h-1 rounded-none bg-border" />
+      <Progress value={progress} className="h-1.5 rounded-none bg-border" />
 
-      <main className="flex-1 container mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl">
-        {/* Reading Section */}
+      <main className="flex-1 container mx-auto px-4 py-10 grid grid-cols-1 lg:grid-cols-2 gap-10 max-w-7xl">
+        {/* Reading Section (Split View) */}
         {currentPassage && (
-          <Card className="hidden lg:flex flex-col p-6 glass-card rounded-2xl border-primary/10 h-[calc(100vh-200px)] sticky top-24">
-            <h3 className="text-xl font-black mb-4 flex items-center gap-2"><BookText className="w-5 h-5 text-primary" /> {currentPassage.title}</h3>
-            <ScrollArea className="flex-1 pr-4">
-              <p className="text-lg leading-relaxed opacity-80 whitespace-pre-wrap">{currentPassage.text}</p>
+          <Card className="hidden lg:flex flex-col p-8 glass-card rounded-[40px] border-primary/10 h-[calc(100vh-220px)] sticky top-28 shadow-2xl shadow-primary/5">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-black flex items-center gap-3 italic"><BookText className="w-6 h-6 text-primary" /> {currentPassage.title}</h3>
+              <Badge className="bg-primary/10 text-primary border-none">نص قرائي</Badge>
+            </div>
+            <ScrollArea className="flex-1 pr-6">
+              <p className="text-xl leading-loose opacity-80 whitespace-pre-wrap font-medium">{currentPassage.text}</p>
             </ScrollArea>
           </Card>
         )}
 
         {/* Question Area */}
-        <div className={cn("space-y-6", !currentPassage && "lg:col-span-2 max-w-3xl mx-auto w-full")}>
-          <Card className="p-8 glass-card rounded-3xl space-y-8 relative overflow-hidden">
-            <div className="flex justify-between items-start gap-4">
-              <div className="space-y-2">
-                {q.type === 'reading' && (
-                  <Badge variant="secondary" className="bg-primary/10 text-primary border-none">استيعاب مقروء</Badge>
-                )}
-                <h2 className="text-2xl md:text-3xl font-black leading-tight">{q.question}</h2>
+        <div className={cn("space-y-8 animate-in fade-in slide-in-from-bottom-5 duration-500", !currentPassage && "lg:col-span-2 max-w-3xl mx-auto w-full")}>
+          <Card className="p-10 glass-card rounded-[50px] space-y-10 relative overflow-hidden border-white/5 shadow-2xl">
+            <div className="flex justify-between items-start gap-6">
+              <div className="space-y-3">
+                <Badge variant="secondary" className="bg-primary/10 text-primary border-none font-black px-3 rounded-lg uppercase text-[10px] tracking-widest">
+                  {q.type === 'reading' ? 'استيعاب مقروء' : q.type.toUpperCase()}
+                </Badge>
+                <h2 className="text-3xl md:text-4xl font-black leading-[1.4] tracking-tight">{q.question}</h2>
               </div>
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className={cn("rounded-full h-12 w-12 border", favorites.includes(q.id) ? "text-rose-500 border-rose-500/20 bg-rose-500/5" : "opacity-20")}
+                className={cn("rounded-[20px] h-14 w-14 border transition-all active:scale-90", favorites.includes(q.id) ? "text-rose-500 border-rose-500/20 bg-rose-500/5 shadow-[0_0_20px_rgba(244,63,94,0.1)]" : "opacity-20 hover:opacity-100 hover:bg-muted")}
                 onClick={() => toggleFavorite(q)}
               >
-                <Heart fill={favorites.includes(q.id) ? "currentColor" : "none"} />
+                <Heart className="w-6 h-6" fill={favorites.includes(q.id) ? "currentColor" : "none"} />
               </Button>
             </div>
 
             {currentPassage && (
               <Dialog>
                 <DialogTrigger asChild>
-                  <Button variant="outline" className="lg:hidden w-full rounded-xl gap-2"><Eye className="w-4 h-4" /> عرض النص</Button>
+                  <Button variant="outline" className="lg:hidden w-full h-14 rounded-2xl gap-3 font-black border-primary/20 text-primary hover:bg-primary/5">
+                    <Eye className="w-5 h-5" /> عرض النص القرائي
+                  </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-[95vw] sm:max-w-xl h-[80vh] flex flex-col p-6">
-                  <DialogHeader><DialogTitle>{currentPassage.title}</DialogTitle></DialogHeader>
-                  <ScrollArea className="flex-1 mt-4"><p className="text-lg leading-relaxed whitespace-pre-wrap">{currentPassage.text}</p></ScrollArea>
+                <DialogContent className="max-w-[95vw] sm:max-w-2xl h-[85vh] flex flex-col p-8 rounded-[50px] glass-card border-white/10">
+                  <DialogHeader className="mb-6">
+                    <DialogTitle className="text-3xl font-black italic">{currentPassage.title}</DialogTitle>
+                  </DialogHeader>
+                  <ScrollArea className="flex-1 mt-4">
+                    <p className="text-xl leading-loose opacity-80 whitespace-pre-wrap font-medium">{currentPassage.text}</p>
+                  </ScrollArea>
                 </DialogContent>
               </Dialog>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {q.options.map((opt, i) => (
                 <button 
                   key={i} 
                   onClick={() => handleAnswer(opt)}
                   className={cn(
-                    "p-5 text-right font-bold rounded-2xl border-2 transition-all active:scale-[0.98]",
-                    userAnswers[q.id] === opt ? "bg-primary border-primary text-white" : "bg-muted/30 border-transparent hover:border-primary/30"
+                    "p-6 text-right font-black text-lg rounded-[25px] border-2 transition-all active:scale-[0.97] flex items-center justify-between group",
+                    userAnswers[q.id] === opt 
+                      ? "bg-primary border-primary text-white shadow-xl shadow-primary/30" 
+                      : "bg-muted/30 border-transparent hover:border-primary/40 hover:bg-muted/50"
                   )}
                 >
-                  <span className="opacity-30 ml-3">{['أ', 'ب', 'ج', 'د'][i]}.</span> {opt}
+                  <span className="flex items-center gap-4">
+                    <span className={cn("w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black ring-1 ring-inset transition-all", 
+                      userAnswers[q.id] === opt ? "bg-white/20 ring-white/20" : "bg-primary/5 ring-primary/20 group-hover:bg-primary/20"
+                    )}>
+                      {['أ', 'ب', 'ج', 'د'][i]}
+                    </span>
+                    {opt}
+                  </span>
+                  {userAnswers[q.id] === opt && <CheckCircle2 className="w-6 h-6 text-white" />}
                 </button>
               ))}
             </div>
           </Card>
 
-          <div className="flex items-center justify-between pt-4">
-            <Button onClick={handlePrevious} disabled={currentQuestionIndex === 0} variant="ghost" className="rounded-xl font-bold"><ArrowRight className="ml-2 w-4 h-4" /> السابق</Button>
-            <Button onClick={handleNext} className="h-14 px-10 rounded-2xl font-black text-lg bg-primary gap-2">
-              {currentQuestionIndex === section.questions.length - 1 ? "إنهاء" : "التالي"} <ArrowLeft className="w-5 h-5" />
+          <div className="flex items-center justify-between pt-6">
+            <Button onClick={handlePrevious} disabled={currentQuestionIndex === 0} variant="ghost" className="h-14 px-8 rounded-2xl font-black gap-2 hover:bg-white/5"><ArrowRight className="w-5 h-5" /> السابق</Button>
+            <Button onClick={handleNext} className="h-16 px-12 rounded-[25px] font-black text-xl bg-primary gap-3 shadow-2xl shadow-primary/20 transition-all active:scale-95">
+              {currentQuestionIndex === section.questions.length - 1 ? "إنهاء المراجعة" : "السؤال التالي"} <ArrowLeft className="w-6 h-6" />
             </Button>
           </div>
         </div>
       </main>
     </div>
   );
+}
+
+function CheckCircle2(props: any) {
+  return (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+  )
 }
