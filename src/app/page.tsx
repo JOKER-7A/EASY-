@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -105,7 +106,7 @@ export default function Home() {
     root.style.setProperty('--primary', color);
     
     if (t === 'auto') {
-      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const isDark = typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
       isDark ? root.classList.add('dark') : root.classList.remove('dark');
     } else if (t === 'dark') {
       root.classList.add('dark');
@@ -132,7 +133,7 @@ export default function Home() {
             const updatedProfile = { id: docSnap.id, ...data };
             setProfile(updatedProfile);
             
-            // تحديث واجهة المفضلة تلقائياً إذا كانت مفتوحة
+            // تحديث واجهة المفضلة تلقائياً إذا كانت مفتوحة لضمان المزامنة الحية
             if (activeOverlay === 'favorites') {
               setOverlayData(data.favorites || []);
             }
@@ -161,7 +162,7 @@ export default function Home() {
     });
     
     return () => unsubAuth();
-  }, [applyTheme, primaryColor, theme, activeOverlay]);
+  }, [applyTheme, primaryColor, theme]);
 
   const handleThemeChange = (t: 'light' | 'dark' | 'auto') => {
     setTheme(t);
@@ -226,7 +227,7 @@ export default function Home() {
       if (type === 'leaderboard') setOverlayData(await getLeaderboard());
       else if (type === 'errors' && user) setOverlayData(await getErrorLogs(user.uid));
       else if (type === 'favorites' && profile) setOverlayData(profile.favorites || []);
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error("Overlay fetch error:", e); }
   };
 
   const isAdmin = useMemo(() => {
@@ -491,11 +492,9 @@ export default function Home() {
                     <div className="text-center py-32 opacity-10 font-black italic text-4xl">فارغ...</div>
                   ) : (
                     overlayData.map((item, idx) => {
-                      const rawTitle = item.questionData?.question || item.question || item.displayName || 'بدون عنوان';
-                      const questionText = typeof rawTitle === 'string' ? rawTitle : 'عنوان غير صالح';
-                      
-                      const rawType = item.questionData?.type || item.type || 'ITEM';
-                      const typeLabel = typeof rawType === 'string' ? rawType : 'ITEM';
+                      // معالجة آمنة للنص لضمان عدم تمرير كائن
+                      const questionText = String(item.questionData?.question || item.question || item.displayName || 'بدون عنوان');
+                      const typeLabel = String(item.questionData?.type || item.type || 'ITEM').toUpperCase();
 
                       return (
                         <div key={item.id || idx} className="p-6 rounded-[30px] bg-white/[0.02] border border-white/5 group hover:border-primary/20 transition-all">
@@ -513,22 +512,20 @@ export default function Home() {
                           <h4 className="text-lg md:text-xl font-black mb-3 leading-relaxed">
                             {questionText}
                           </h4>
-                          {item.questionData && (
+                          {(item.questionData || item.correct) && (
                             <div className="space-y-3 pt-3 border-t border-white/5">
                                <p className="text-sm font-bold text-emerald-500 flex items-center gap-2">
-                                 <CheckCircle2 className="w-4 h-4" /> الإجابة: {typeof item.questionData.correct === 'string' ? item.questionData.correct : 'غير محددة'}
+                                 <CheckCircle2 className="w-4 h-4" /> الإجابة: {String(item.questionData?.correct || item.correct || 'غير محددة')}
                                </p>
-                               {typeof item.userAnswer === 'string' && (
+                               {item.userAnswer && (
                                  <p className="text-xs font-bold text-rose-500/60 flex items-center gap-2">
-                                   <XCircle className="w-3.5 h-3.5" /> إجابتك: {item.userAnswer}
+                                   <XCircle className="w-3.5 h-3.5" /> إجابتك: {String(item.userAnswer)}
                                  </p>
                                )}
+                               {item.questionData?.sectionTitle && (
+                                  <p className="text-[10px] font-bold text-white/20">القسم: {item.questionData.sectionTitle}</p>
+                               )}
                             </div>
-                          )}
-                          {!item.questionData && item.correct && (
-                            <p className="text-sm font-bold text-emerald-500 flex items-center gap-2 pt-3 border-t border-white/5">
-                              <CheckCircle2 className="w-4 h-4" /> الإجابة: {item.correct}
-                            </p>
                           )}
                           {typeof item.xp === 'number' && <p className="text-lg font-black text-amber-500">{item.xp} <span className="text-xs opacity-40 uppercase">XP</span></p>}
                         </div>

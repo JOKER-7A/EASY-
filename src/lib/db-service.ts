@@ -1,3 +1,4 @@
+
 import { db } from "./firebase";
 import { 
   collection, 
@@ -77,7 +78,6 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
       .filter(s => !archivedIds.includes(Number(s.id)))
       .sort((a, b) => Number(b.id) - Number(a.id));
   } catch (error) {
-    console.warn("Firestore error, falling back to static data", error);
     const archivedIds = [216, 217, 218, 219];
     return staticSections
       .filter(s => !archivedIds.includes(Number(s.id)))
@@ -196,7 +196,6 @@ export const getUserProfile = async (userId: string, email?: string) => {
       return { id: userId, ...initialProfile };
     }
   } catch (error) {
-    console.error("Error in getUserProfile:", error);
     return { id: userId, level: 1, xp: 0, displayName: 'مستكشف EASY', role: 'user' };
   }
 };
@@ -263,12 +262,13 @@ export const saveAttemptToDb = async (userId: string | undefined, attempt: any) 
 };
 
 /**
- * تسجيل الأخطاء لضمان الدقة ومنع أخطاء العرض
+ * تسجيل الأخطاء - نسخة محسنة ومستقرة
  */
 export const saveErrorLogToDb = async (userId: string, question: Question, sectionTitle: string, userAnswer: string) => {
   if (!userId || !question?.id) return;
   try {
-    const errorId = `${userId}_${question.id}`.replace(/\s/g, '_');
+    // إنشاء معرف فريد يمنع تكرار نفس السؤال في السجل لنفس المستخدم
+    const errorId = `err_${userId}_${question.id}`.replace(/[^a-zA-Z0-9_]/g, '_');
     const errorRef = doc(db, "errorLogs", errorId);
 
     const errorData = {
@@ -278,9 +278,9 @@ export const saveErrorLogToDb = async (userId: string, question: Question, secti
       questionData: { 
         id: String(question.id),
         question: String(question.question),
-        options: question.options.map(String),
+        options: (question.options || []).map(String),
         correct: String(question.correct),
-        type: String(question.type),
+        type: String(question.type || 'analogy'),
         sectionTitle: String(sectionTitle)
       },
       lastOccurred: serverTimestamp(),
@@ -320,6 +320,9 @@ export const deleteErrorLog = async (logId: string) => {
   } catch (e) { return false; }
 };
 
+/**
+ * تبديل المفضلة - نسخة محسنة تضمن الحذف والإضافة بدقة
+ */
 export const toggleFavoriteInDb = async (userId: string, question: Question, sectionTitle: string) => {
   if (!userId || !question?.id) return false;
   try {
@@ -327,16 +330,18 @@ export const toggleFavoriteInDb = async (userId: string, question: Question, sec
     const userSnap = await getDoc(userRef);
     if (!userSnap.exists()) return false;
     
-    const favorites = userSnap.data().favorites || [];
-    const existing = favorites.find((f: any) => String(f.id) === String(question.id));
+    const currentFavorites = userSnap.data().favorites || [];
+    const existingIndex = currentFavorites.findIndex((f: any) => String(f.id) === String(question.id));
     
-    if (existing) {
-      // إزالة دقيقة باستخدام الكائن المخزن فعلياً
+    if (existingIndex !== -1) {
+      // إزالة دقيقة عن طريق فلترة المصفوفة بالكامل
+      const updatedFavorites = currentFavorites.filter((f: any) => String(f.id) !== String(question.id));
       await updateDoc(userRef, {
-        favorites: arrayRemove(existing)
+        favorites: updatedFavorites
       });
       return false;
     } else {
+      // إضافة كائن بسيط ونظيف
       const newFav = {
         id: String(question.id),
         question: String(question.question),

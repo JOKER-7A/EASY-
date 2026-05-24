@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -116,8 +117,10 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
     
     if (auth.currentUser) {
       const isCorrect = opt === q.correct;
+      // تحديث الـ XP فوراً
       updateUserXP(auth.currentUser.uid, isCorrect);
       
+      // إذا كانت الإجابة خاطئة، سجل الخطأ فوراً في قاعدة البيانات
       if (!isCorrect) {
         saveErrorLogToDb(auth.currentUser.uid, q, section.title, opt);
       }
@@ -143,8 +146,12 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
       return;
     }
     
+    // استدعاء دالة التبديل في قاعدة البيانات
     const isAdded = await toggleFavoriteInDb(auth.currentUser.uid, question, section.title);
+    
+    // تحديث الحالة المحلية فوراً لضمان استجابة الواجهة
     setFavorites(prev => isAdded ? [...prev, String(question.id)] : prev.filter(id => id !== String(question.id)));
+    
     toast({ 
       title: isAdded ? "تمت الإضافة للمفضلة ⭐" : "تم الحذف من المفضلة",
       description: isAdded ? "ستجد هذا السؤال في مكتبتك دائماً." : "تمت إزالة السؤال من مكتبتك."
