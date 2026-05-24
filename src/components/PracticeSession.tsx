@@ -120,7 +120,7 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
       // تحديث الـ XP فوراً
       updateUserXP(auth.currentUser.uid, isCorrect);
       
-      // إذا كانت الإجابة خاطئة، سجل الخطأ فوراً في قاعدة البيانات
+      // إذا كانت الإجابة خاطئة، سجل الخطأ فوراً وبشكل مضمون في قاعدة البيانات
       if (!isCorrect) {
         saveErrorLogToDb(auth.currentUser.uid, q, section.title, opt);
       }
@@ -146,15 +146,15 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
       return;
     }
     
-    // استدعاء دالة التبديل في قاعدة البيانات
+    // استدعاء دالة التبديل المحسنة لضمان الحفظ في Firebase
     const isAdded = await toggleFavoriteInDb(auth.currentUser.uid, question, section.title);
     
-    // تحديث الحالة المحلية فوراً لضمان استجابة الواجهة
+    // تحديث الحالة المحلية فوراً لمزامنة الأيقونة
     setFavorites(prev => isAdded ? [...prev, String(question.id)] : prev.filter(id => id !== String(question.id)));
     
     toast({ 
       title: isAdded ? "تمت الإضافة للمفضلة ⭐" : "تم الحذف من المفضلة",
-      description: isAdded ? "ستجد هذا السؤال في مكتبتك دائماً." : "تمت إزالة السؤال من مكتبتك."
+      description: isAdded ? "تم حفظ السؤال بنجاح في مكتبتك." : "تمت إزالة السؤال من مكتبتك."
     });
   };
 

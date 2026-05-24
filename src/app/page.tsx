@@ -133,7 +133,7 @@ export default function Home() {
             const updatedProfile = { id: docSnap.id, ...data };
             setProfile(updatedProfile);
             
-            // تحديث واجهة المفضلة تلقائياً إذا كانت مفتوحة لضمان المزامنة الحية
+            // تحديث واجهة المفضلة تلقائياً لضمان المزامنة الفورية
             if (activeOverlay === 'favorites') {
               setOverlayData(data.favorites || []);
             }
@@ -492,9 +492,12 @@ export default function Home() {
                     <div className="text-center py-32 opacity-10 font-black italic text-4xl">فارغ...</div>
                   ) : (
                     overlayData.map((item, idx) => {
-                      // معالجة آمنة للنص لضمان عدم تمرير كائن
-                      const questionText = String(item.questionData?.question || item.question || item.displayName || 'بدون عنوان');
-                      const typeLabel = String(item.questionData?.type || item.type || 'ITEM').toUpperCase();
+                      // معالجة آمنة لضمان عرض النصوص فقط وتجنب الانهيار
+                      const displayTitle = typeof item.question === 'string' 
+                        ? item.question 
+                        : (item.questionData?.question || item.displayName || 'بدون عنوان');
+                      
+                      const typeLabel = (item.questionData?.type || item.type || 'ITEM').toString().toUpperCase();
 
                       return (
                         <div key={item.id || idx} className="p-6 rounded-[30px] bg-white/[0.02] border border-white/5 group hover:border-primary/20 transition-all">
@@ -510,7 +513,7 @@ export default function Home() {
                             )}
                           </div>
                           <h4 className="text-lg md:text-xl font-black mb-3 leading-relaxed">
-                            {questionText}
+                            {displayTitle}
                           </h4>
                           {(item.questionData || item.correct) && (
                             <div className="space-y-3 pt-3 border-t border-white/5">

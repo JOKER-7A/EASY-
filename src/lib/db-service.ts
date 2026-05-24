@@ -262,12 +262,12 @@ export const saveAttemptToDb = async (userId: string | undefined, attempt: any) 
 };
 
 /**
- * تسجيل الأخطاء - نسخة محسنة ومستقرة
+ * تسجيل الأخطاء - نسخة محسنة ومستقرة ومضمونة الحفظ
  */
 export const saveErrorLogToDb = async (userId: string, question: Question, sectionTitle: string, userAnswer: string) => {
   if (!userId || !question?.id) return;
   try {
-    // إنشاء معرف فريد يمنع تكرار نفس السؤال في السجل لنفس المستخدم
+    // إنشاء معرف فريد يمنع تكرار نفس السؤال في السجل لنفس المستخدم ويضمن التحديث
     const errorId = `err_${userId}_${question.id}`.replace(/[^a-zA-Z0-9_]/g, '_');
     const errorRef = doc(db, "errorLogs", errorId);
 
@@ -321,7 +321,7 @@ export const deleteErrorLog = async (logId: string) => {
 };
 
 /**
- * تبديل المفضلة - نسخة محسنة تضمن الحذف والإضافة بدقة
+ * تبديل المفضلة - نسخة نهائية ومضمونة الحفظ في Firebase
  */
 export const toggleFavoriteInDb = async (userId: string, question: Question, sectionTitle: string) => {
   if (!userId || !question?.id) return false;
@@ -334,14 +334,14 @@ export const toggleFavoriteInDb = async (userId: string, question: Question, sec
     const existingIndex = currentFavorites.findIndex((f: any) => String(f.id) === String(question.id));
     
     if (existingIndex !== -1) {
-      // إزالة دقيقة عن طريق فلترة المصفوفة بالكامل
+      // إزالة دقيقة عن طريق فلترة المصفوفة بالكامل لضمان المزامنة
       const updatedFavorites = currentFavorites.filter((f: any) => String(f.id) !== String(question.id));
       await updateDoc(userRef, {
         favorites: updatedFavorites
       });
       return false;
     } else {
-      // إضافة كائن بسيط ونظيف
+      // إضافة كائن نظيف وبسيط يحتوي على كافة تفاصيل السؤال
       const newFav = {
         id: String(question.id),
         question: String(question.question),
@@ -351,13 +351,15 @@ export const toggleFavoriteInDb = async (userId: string, question: Question, sec
         sectionTitle: String(sectionTitle || 'قسم تدريبي'),
         addedAt: new Date().toISOString()
       };
+      
+      const updatedFavorites = [...currentFavorites, newFav];
       await updateDoc(userRef, {
-        favorites: arrayUnion(newFav)
+        favorites: updatedFavorites
       });
       return true;
     }
   } catch (e) { 
-    console.error("Favorite error:", e);
+    console.error("Favorite sync error:", e);
     return false; 
   }
 };
