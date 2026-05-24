@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
-  Timer, Zap, Play, XCircle, Moon, CheckCircle2, Crown, StarIcon, Flame, Heart, BookText, Eye, ArrowLeft, ArrowRight
+  Timer, Zap, Play, XCircle, Moon, CheckCircle2, Crown, StarIcon, Flame, Heart, BookText, Eye, ArrowLeft, ArrowRight, MessageCircle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -24,6 +24,15 @@ interface PracticeSessionProps {
   onExit: () => void;
 }
 
+const MOTIVATIONAL_MESSAGES = [
+  "استمر، أنت تتحسن مع كل سؤال 💪",
+  "ركّز، النجاح قريب منك 🔥",
+  "أداء رائع، كمل بنفس القوة ⭐",
+  "أهم شيء الفهم 💡 لا تستعجل",
+  "كل خطأ هو فرصة للتعلم 📚",
+  "أنت تصنع مستقبلك الآن ✨",
+];
+
 export default function PracticeSession({ section, onExit }: PracticeSessionProps) {
   const [phase, setPhase] = useState<Phase>('intro');
   const [mode, setMode] = useState<PracticeMode>('normal');
@@ -32,6 +41,7 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
   const [timeLeft, setTimeLeft] = useState(0); 
   const [startTime, setStartTime] = useState<number | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [motivationMessage, setMotivationMessage] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -51,6 +61,8 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
       }
     };
     fetchFavs();
+    // تعيين رسالة تحفيزية عشوائية عند البدء
+    setMotivationMessage(MOTIVATIONAL_MESSAGES[Math.floor(Math.random() * MOTIVATIONAL_MESSAGES.length)]);
   }, []);
 
   const selectMode = (selectedMode: PracticeMode) => {
@@ -87,6 +99,10 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
     if (currentQuestionIndex < section.questions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
       if (mode === 'pressure') setTimeLeft(60);
+      // تغيير الرسالة التحفيزية كل 3 أسئلة
+      if ((currentQuestionIndex + 1) % 3 === 0) {
+        setMotivationMessage(MOTIVATIONAL_MESSAGES[Math.floor(Math.random() * MOTIVATIONAL_MESSAGES.length)]);
+      }
     } else finishSession();
   }, [section.questions, currentQuestionIndex, mode, finishSession]);
 
@@ -224,7 +240,7 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col" dir="rtl">
       <div className="p-5 border-b border-border bg-background/80 backdrop-blur-md flex items-center justify-between sticky top-0 z-50">
-        <Button onClick={onExit} variant="ghost" size="sm" className="font-black gap-2 text-rose-500 hover:bg-rose-500/10 rounded-xl"><ArrowRight className="w-5 h-5" /> انسحاب</Button>
+        <Button onClick={onExit} variant="ghost" size="sm" className="font-black gap-2 text-rose-500/60 hover:text-rose-500 hover:bg-rose-500/5 rounded-xl"><XCircle className="w-5 h-5" /> إنهاء الجلسة</Button>
         <div className="flex items-center gap-6">
           {mode !== 'normal' && (
             <div className={cn("px-6 py-2 rounded-2xl border font-black text-lg shadow-sm transition-all", timeLeft < 20 ? "border-rose-500 text-rose-500 animate-pulse scale-110" : "border-white/10 text-primary")}>
@@ -241,7 +257,7 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
 
       <main className="flex-1 container mx-auto px-4 py-10 grid grid-cols-1 lg:grid-cols-2 gap-10 max-w-7xl">
         {currentPassage && (
-          <Card className="hidden lg:flex flex-col p-8 glass-card rounded-[40px] border-primary/10 h-[calc(100vh-220px)] sticky top-28 shadow-2xl shadow-primary/5">
+          <Card className="hidden lg:flex flex-col p-8 glass-card rounded-[40px] border-primary/10 h-[calc(100vh-250px)] sticky top-28 shadow-2xl shadow-primary/5">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-2xl font-black flex items-center gap-3 italic"><BookText className="w-6 h-6 text-primary" /> {currentPassage.title}</h3>
               <Badge className="bg-primary/10 text-primary border-none">نص قرائي</Badge>
@@ -252,19 +268,19 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
           </Card>
         )}
 
-        <div className={cn("space-y-8 animate-in fade-in slide-in-from-bottom-5 duration-500", !currentPassage && "lg:col-span-2 max-w-3xl mx-auto w-full")}>
-          <Card className="p-10 glass-card rounded-[50px] space-y-10 relative overflow-hidden border-white/5 shadow-2xl">
+        <div className={cn("space-y-8 animate-in fade-in slide-in-from-bottom-5 duration-500 flex flex-col", !currentPassage && "lg:col-span-2 max-w-3xl mx-auto w-full")}>
+          <Card className="p-8 md:p-10 glass-card rounded-[50px] space-y-10 relative overflow-hidden border-white/5 shadow-2xl">
             <div className="flex justify-between items-start gap-6">
               <div className="space-y-3">
                 <Badge variant="secondary" className="bg-primary/10 text-primary border-none font-black px-3 rounded-lg uppercase text-[10px] tracking-widest">
                   {q.type === 'reading' ? 'استيعاب مقروء' : q.type.toUpperCase()}
                 </Badge>
-                <h2 className="text-3xl md:text-4xl font-black leading-[1.4] tracking-tight">{q.question}</h2>
+                <h2 className="text-2xl md:text-4xl font-black leading-[1.4] tracking-tight">{q.question}</h2>
               </div>
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className={cn("rounded-[20px] h-14 w-14 border transition-all active:scale-90", favorites.includes(q.id) ? "text-rose-500 border-rose-500/20 bg-rose-500/5 shadow-[0_0_20px_rgba(244,63,94,0.1)]" : "opacity-20 hover:opacity-100 hover:bg-muted")}
+                className={cn("rounded-[20px] h-12 w-12 md:h-14 md:w-14 border transition-all active:scale-90 shrink-0", favorites.includes(q.id) ? "text-rose-500 border-rose-500/20 bg-rose-500/5 shadow-[0_0_20px_rgba(244,63,94,0.1)]" : "opacity-20 hover:opacity-100 hover:bg-muted")}
                 onClick={() => toggleFavorite(q)}
               >
                 <Heart className="w-6 h-6" fill={favorites.includes(q.id) ? "currentColor" : "none"} />
@@ -315,11 +331,19 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
             </div>
           </Card>
 
-          <div className="flex items-center justify-between pt-6">
-            <Button onClick={handlePrevious} disabled={currentQuestionIndex === 0} variant="ghost" className="h-14 px-8 rounded-2xl font-black gap-2 hover:bg-white/5"><ArrowRight className="w-5 h-5" /> السابق</Button>
-            <Button onClick={handleNext} className="h-16 px-12 rounded-[25px] font-black text-xl bg-primary gap-3 shadow-2xl shadow-primary/20 transition-all active:scale-95">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6">
+            <Button onClick={handlePrevious} disabled={currentQuestionIndex === 0} variant="ghost" className="w-full sm:w-auto h-14 px-8 rounded-2xl font-black gap-2 hover:bg-white/5"><ArrowRight className="w-5 h-5" /> السابق</Button>
+            <Button onClick={handleNext} className="w-full sm:w-auto h-16 px-12 rounded-[25px] font-black text-xl bg-primary gap-3 shadow-2xl shadow-primary/20 transition-all active:scale-95">
               {currentQuestionIndex === section.questions.length - 1 ? "إنهاء المراجعة" : "السؤال التالي"} <ArrowLeft className="w-6 h-6" />
             </Button>
+          </div>
+
+          {/* لوحة التحفيز لملء المساحة */}
+          <div className="mt-12 p-8 rounded-[40px] bg-primary/5 border border-primary/10 flex flex-col items-center text-center space-y-4 animate-in fade-in zoom-in duration-700">
+             <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+                <MessageCircle className="w-6 h-6 text-primary" />
+             </div>
+             <p className="text-xl font-bold text-primary/80 italic">{motivationMessage}</p>
           </div>
         </div>
       </main>

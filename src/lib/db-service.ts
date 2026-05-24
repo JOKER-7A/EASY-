@@ -265,7 +265,6 @@ export const saveAttemptToDb = async (userId: string | undefined, attempt: any) 
 export const saveErrorLogToDb = async (userId: string, question: Question, sectionTitle: string, userAnswer: string) => {
   try {
     const errorId = `${userId}_${question.id}`;
-    // نضمن أن السؤال يُخزن كنصوص وليس ككائن كامل لتجنب أخطاء React
     await setDoc(doc(db, "errorLogs", errorId), {
       userId,
       questionId: question.id,
@@ -293,7 +292,6 @@ export const getErrorLogs = async (userId: string) => {
       where("userId", "==", userId)
     );
     const snapshot = await getDocs(q);
-    // Sort in memory to avoid index requirements for simple deployments
     return snapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() }))
       .sort((a: any, b: any) => {
@@ -328,9 +326,8 @@ export const toggleFavoriteInDb = async (userId: string, question: Question, sec
       });
       return false;
     } else {
-      // نضمن أن السؤال يُخزن كنصوص وليس ككائن كامل لتجنب أخطاء React
       const newFav = {
-        id: question.id,
+        id: String(question.id),
         question: String(question.question),
         options: question.options,
         correct: String(question.correct),

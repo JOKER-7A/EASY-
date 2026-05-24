@@ -52,6 +52,16 @@ const RoleBadgeUI = ({ role }: { role: string }) => {
         <span className="text-blue-500 text-sm">🛡️</span>
       </span>
     ),
+    'editor': (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-emerald-500/5 border border-emerald-500/10" title="Editor">
+        <span className="text-emerald-500 text-sm">✏️</span>
+      </span>
+    ),
+    'helper': (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-purple-500/5 border border-purple-500/10" title="Helper">
+        <span className="text-purple-500 text-sm">🧩</span>
+      </span>
+    ),
   };
   return badges[role] ? <span className="mr-1 inline-block select-none">{badges[role]}</span> : null;
 };
@@ -473,39 +483,47 @@ export default function Home() {
                   {overlayData.length === 0 ? (
                     <div className="text-center py-32 opacity-10 font-black italic text-4xl">فارغ...</div>
                   ) : (
-                    overlayData.map((item, idx) => (
-                      <div key={item.id || idx} className="p-6 rounded-[30px] bg-white/[0.02] border border-white/5 group hover:border-primary/20 transition-all">
-                        <div className="flex justify-between items-start mb-4">
-                          <div className="flex items-center gap-3">
-                             <Badge className="bg-primary/20 text-primary border-none rounded-xl font-black">#{idx + 1}</Badge>
-                             <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">
-                                {typeof item.questionData?.type === 'string' ? item.questionData.type : typeof item.type === 'string' ? item.type : 'ITEM'}
-                             </span>
+                    overlayData.map((item, idx) => {
+                      // الحماية من عرض الكائنات كأطفال لـ React
+                      const questionText = typeof item.questionData?.question === 'string' ? item.questionData.question : 
+                                         typeof item.question === 'string' ? item.question : 
+                                         typeof item.displayName === 'string' ? item.displayName : 'بدون عنوان';
+                      
+                      const typeLabel = typeof item.questionData?.type === 'string' ? item.questionData.type : 
+                                      typeof item.type === 'string' ? item.type : 'ITEM';
+
+                      return (
+                        <div key={item.id || idx} className="p-6 rounded-[30px] bg-white/[0.02] border border-white/5 group hover:border-primary/20 transition-all">
+                          <div className="flex justify-between items-start mb-4">
+                            <div className="flex items-center gap-3">
+                               <Badge className="bg-primary/20 text-primary border-none rounded-xl font-black">#{idx + 1}</Badge>
+                               <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">
+                                  {typeLabel}
+                               </span>
+                            </div>
+                            {activeOverlay === 'errors' && (
+                              <Button size="icon" variant="ghost" onClick={() => deleteErrorLog(item.id).then(() => openOverlay('errors'))} className="text-rose-500/30 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl"><Trash2 className="w-4 h-4" /></Button>
+                            )}
                           </div>
-                          {activeOverlay === 'errors' && (
-                            <Button size="icon" variant="ghost" onClick={() => deleteErrorLog(item.id).then(() => openOverlay('errors'))} className="text-rose-500/30 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl"><Trash2 className="w-4 h-4" /></Button>
-                          )}
-                        </div>
-                        <h4 className="text-lg md:text-xl font-black mb-3 leading-relaxed">
-                          {typeof item.questionData?.question === 'string' ? item.questionData.question : 
-                           typeof item.question === 'string' ? item.question : 
-                           typeof item.displayName === 'string' ? item.displayName : 'بدون عنوان'}
-                        </h4>
-                        {item.questionData && (
-                          <div className="space-y-3 pt-3 border-t border-white/5">
-                             <p className="text-sm font-bold text-emerald-500 flex items-center gap-2">
-                               <CheckCircle2 className="w-4 h-4" /> الإجابة: {typeof item.questionData.correct === 'string' ? item.questionData.correct : 'غير محددة'}
-                             </p>
-                             {typeof item.userAnswer === 'string' && (
-                               <p className="text-xs font-bold text-rose-500/60 flex items-center gap-2">
-                                 <XCircle className="w-3.5 h-3.5" /> إجابتك: {item.userAnswer}
+                          <h4 className="text-lg md:text-xl font-black mb-3 leading-relaxed">
+                            {questionText}
+                          </h4>
+                          {item.questionData && (
+                            <div className="space-y-3 pt-3 border-t border-white/5">
+                               <p className="text-sm font-bold text-emerald-500 flex items-center gap-2">
+                                 <CheckCircle2 className="w-4 h-4" /> الإجابة: {typeof item.questionData.correct === 'string' ? item.questionData.correct : 'غير محددة'}
                                </p>
-                             )}
-                          </div>
-                        )}
-                        {typeof item.xp === 'number' && <p className="text-lg font-black text-amber-500">{item.xp} <span className="text-xs opacity-40 uppercase">XP</span></p>}
-                      </div>
-                    ))
+                               {typeof item.userAnswer === 'string' && (
+                                 <p className="text-xs font-bold text-rose-500/60 flex items-center gap-2">
+                                   <XCircle className="w-3.5 h-3.5" /> إجابتك: {item.userAnswer}
+                                 </p>
+                               )}
+                            </div>
+                          )}
+                          {typeof item.xp === 'number' && <p className="text-lg font-black text-amber-500">{item.xp} <span className="text-xs opacity-40 uppercase">XP</span></p>}
+                        </div>
+                      );
+                    })
                   )}
                 </div>
               )}
