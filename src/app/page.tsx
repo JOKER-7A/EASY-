@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -100,11 +101,12 @@ export default function Home() {
   const { toast } = useToast();
 
   const applyTheme = useCallback((t: 'light' | 'dark' | 'auto', color: string) => {
+    if (typeof window === 'undefined') return;
     const root = document.documentElement;
     root.style.setProperty('--primary', color);
     
     if (t === 'auto') {
-      const isDark = typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       isDark ? root.classList.add('dark') : root.classList.remove('dark');
     } else if (t === 'dark') {
       root.classList.add('dark');
@@ -113,6 +115,7 @@ export default function Home() {
     }
   }, []);
 
+  // Effect for mounting and initial static data
   useEffect(() => {
     setHasMounted(true);
     const savedTheme = (localStorage.getItem('theme') as 'light' | 'dark' | 'auto') || 'auto';
@@ -121,6 +124,13 @@ export default function Home() {
     setPrimaryColor(savedColor);
     applyTheme(savedTheme, savedColor);
 
+    getSectionsFromDb().then((data) => {
+      setSections(data);
+    });
+  }, [applyTheme]);
+
+  // Effect for auth and profile syncing
+  useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
@@ -128,17 +138,7 @@ export default function Home() {
         const unsubProfile = onSnapshot(userRef, (docSnap) => {
           if (docSnap.exists()) {
             const data = docSnap.data();
-            const updatedProfile = { id: docSnap.id, ...data };
-            setProfile(updatedProfile);
-            
-            if (activeOverlay === 'favorites') {
-              setOverlayData(data.favorites || []);
-            }
-            
-            if (data.theme && data.theme !== primaryColor) {
-               setPrimaryColor(data.theme);
-               applyTheme(theme, data.theme);
-            }
+            setProfile({ id: docSnap.id, ...data });
           }
         });
         
@@ -149,13 +149,24 @@ export default function Home() {
         setIsLoading(false);
       }
     });
-    
-    getSectionsFromDb().then((data) => {
-      setSections(data);
-    });
-    
+
     return () => unsubAuth();
-  }, [applyTheme, primaryColor, theme]);
+  }, []);
+
+  // Effect for reacting to profile theme changes without causing loops
+  useEffect(() => {
+    if (profile?.theme && profile.theme !== primaryColor) {
+      setPrimaryColor(profile.theme);
+      applyTheme(theme, profile.theme);
+    }
+  }, [profile?.theme, primaryColor, theme, applyTheme]);
+
+  // Effect for favorite data updates
+  useEffect(() => {
+    if (activeOverlay === 'favorites' && profile) {
+      setOverlayData(profile.favorites || []);
+    }
+  }, [activeOverlay, profile]);
 
   const handleThemeChange = (t: 'light' | 'dark' | 'auto') => {
     setTheme(t);
