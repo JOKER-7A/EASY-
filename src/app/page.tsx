@@ -115,7 +115,6 @@ export default function Home() {
     }
   }, []);
 
-  // Effect for mounting and initial static data
   useEffect(() => {
     setHasMounted(true);
     const savedTheme = (localStorage.getItem('theme') as 'light' | 'dark' | 'auto') || 'auto';
@@ -129,7 +128,6 @@ export default function Home() {
     });
   }, [applyTheme]);
 
-  // Effect for auth and profile syncing
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, async (u) => {
       setUser(u);
@@ -153,7 +151,6 @@ export default function Home() {
     return () => unsubAuth();
   }, []);
 
-  // Effect for reacting to profile theme changes without causing loops
   useEffect(() => {
     if (profile?.theme && profile.theme !== primaryColor) {
       setPrimaryColor(profile.theme);
@@ -161,7 +158,6 @@ export default function Home() {
     }
   }, [profile?.theme, primaryColor, theme, applyTheme]);
 
-  // Effect for favorite data updates
   useEffect(() => {
     if (activeOverlay === 'favorites' && profile) {
       setOverlayData(profile.favorites || []);
@@ -296,7 +292,7 @@ export default function Home() {
               <Input placeholder="الاسم كما في الهوية" value={onboardingName} onChange={(e) => setOnboardingName(e.target.value)} className="h-14 rounded-2xl bg-muted/50 border-none" />
             </div>
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-primary uppercase mr-2">رقام الواتساب</label>
+              <label className="text-[10px] font-black text-primary uppercase mr-2">رقم الواتساب</label>
               <Input placeholder="05xxxxxxxx" value={onboardingPhone} onChange={(e) => setOnboardingPhone(e.target.value)} className="h-14 rounded-2xl bg-muted/50 border-none" />
             </div>
             <Button type="submit" disabled={isOnboardingSubmitting} className="w-full h-14 rounded-2xl bg-primary font-black text-lg shadow-xl shadow-primary/20">
@@ -319,7 +315,7 @@ export default function Home() {
           <div className="space-y-4">
             <h2 className="text-3xl font-black italic">طلبك قيد المراجعة...</h2>
             <p className="text-white/40 font-bold leading-relaxed">
-              يا {profile.displayName}، طلبك وصل للدكتور محمود وسيتم تفعيل حسابك قريباً جداً.
+              يا {profile.displayName}، طلبك وصل للإدارة وسيتم تفعيل حسابك قريباً جداً.
             </p>
           </div>
           <div className="pt-6">
@@ -339,10 +335,10 @@ export default function Home() {
           </div>
           <div className="space-y-4">
             <h2 className="text-3xl font-black">عذراً، تم رفض الطلب ⛔</h2>
-            <p className="text-white/40 font-bold">يمكنك التواصل مع الإدارة للاستفسار أو إعادة المحاولة لاحقاً.</p>
+            <p className="text-white/40 font-bold">تم رفض طلب انضمامك من قبل الإدارة.</p>
           </div>
           <div className="flex flex-col gap-3">
-             <Button onClick={() => updateDoc(doc(db, "userProfiles", user.uid), { status: 'onboarding' })} className="h-14 rounded-2xl bg-rose-500 font-black">إعادة التقديم</Button>
+             <Button onClick={() => updateDoc(doc(db, "userProfiles", user.uid), { status: 'onboarding' })} className="h-14 rounded-2xl bg-rose-500 font-black">إعادة تقديم الطلب</Button>
              <Button onClick={() => signOut(auth)} variant="ghost" className="h-14 font-black opacity-50">تسجيل الخروج</Button>
           </div>
         </Card>

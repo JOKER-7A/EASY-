@@ -234,7 +234,7 @@ export default function AdminPage() {
     const userToChange = adminsList.find(a => a.id === userId) || usersList.find(u => u.id === userId);
     
     if (!canManageRole(currentUserRole, userToChange?.role || 'user')) {
-      toast({ title: "لا تملك صلاحية تعديل رتية هذا المستخدم", variant: "destructive" });
+      toast({ title: "لا تملك صلاحية تعديل رتبة هذا المستخدم", variant: "destructive" });
       return;
     }
 
@@ -397,7 +397,7 @@ export default function AdminPage() {
 
   const handleBanUser = async () => {
     if (!banReason.trim()) {
-      toast({ title: "يرجى إدخل سبب الحظر", variant: "destructive" });
+      toast({ title: "يرجى إدخال سبب الحظر", variant: "destructive" });
       return;
     }
     if (selectedUser.role === 'rootOwner') {
@@ -620,9 +620,9 @@ export default function AdminPage() {
                  <div className="w-24 h-24 md:w-32 md:h-32 bg-primary/10 rounded-[40px] flex items-center justify-center mx-auto ring-4 ring-primary/20">
                    <Crown className="w-12 h-12 md:w-16 md:h-16 text-primary" />
                  </div>
-                 <h2 className="text-3xl md:text-6xl font-black text-white flex items-center justify-center gap-4">أهلاً بك يا دكتور محمود <RoleBadgeUI role="rootOwner" /></h2>
+                 <h2 className="text-3xl md:text-6xl font-black text-white flex items-center justify-center gap-4">لوحة تحكم EASY <RoleBadgeUI role={currentUserRole} /></h2>
                  <p className="text-lg md:text-2xl text-white/40 max-w-3xl mx-auto font-bold leading-relaxed">
-                   أنت الآن في قلب نظام EASY كـ {currentUserRole.toUpperCase()}.
+                   أنت الآن في قلب نظام الإدارة بصلاحية {currentUserRole.toUpperCase()}.
                  </p>
                </div>
                
@@ -652,10 +652,10 @@ export default function AdminPage() {
 
           <TabsContent value="requests">
             <Card className="p-6 md:p-10 glass-card rounded-[40px] md:rounded-[50px] space-y-10 border-white/5">
-              <h2 className="text-2xl md:text-3xl font-black flex items-center gap-4">المستخدمين الجدد ⏳</h2>
+              <h2 className="text-2xl md:text-3xl font-black flex items-center gap-4">طلبات الانضمام الجديدة ⏳</h2>
               <div className="grid gap-6">
                 {pendingUsers.length === 0 ? (
-                  <div className="py-20 text-center text-white/20 font-black">لا يوجد طلبات معلقة</div>
+                  <div className="py-20 text-center text-white/20 font-black">لا يوجد طلبات معلقة حالياً</div>
                 ) : (
                   pendingUsers.map((u) => (
                     <div key={u.id} className="flex flex-col md:flex-row justify-between items-center p-6 md:p-8 bg-white/[0.02] border border-white/5 rounded-3xl gap-6">
@@ -681,31 +681,35 @@ export default function AdminPage() {
           <TabsContent value="users">
             <Card className="p-6 md:p-10 glass-card rounded-[40px] md:rounded-[50px] space-y-10 border-white/5">
               <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-                <h2 className="text-2xl md:text-3xl font-black">قاعدة بيانات الطلاب</h2>
+                <h2 className="text-2xl md:text-3xl font-black">قاعدة بيانات الطلاب المعتمدين</h2>
                 <div className="relative w-full md:w-96">
                   <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20 w-5 h-5" />
                   <Input placeholder="بحث عن طالب..." className="h-14 pr-12 rounded-2xl bg-black border-white/10" />
                 </div>
               </div>
               <div className="grid gap-6">
-                {usersList.map((u) => (
-                  <div key={u.id} className="flex flex-col md:flex-row justify-between items-center p-6 md:p-8 bg-white/[0.02] border border-white/5 rounded-3xl gap-6">
-                    <div className="flex items-center gap-6 w-full">
-                      <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-primary/10 flex items-center justify-center font-black text-xl md:text-2xl text-primary shrink-0">{u.displayName?.[0] || 'U'}</div>
-                      <div className="overflow-hidden">
-                        <div className="font-black text-lg md:text-xl flex flex-wrap items-center gap-3">
-                          <span className="truncate max-w-[150px] md:max-w-none">{u.displayName || 'بدون اسم'} <RoleBadgeUI role={u.role || 'user'} /></span>
-                          {u.isBanned && <Badge className="bg-destructive text-white border-none text-[10px]">محظور</Badge>}
+                {usersList.length === 0 ? (
+                  <div className="py-20 text-center text-white/20 font-black">لا يوجد طلاب مسجلين حالياً</div>
+                ) : (
+                  usersList.map((u) => (
+                    <div key={u.id} className="flex flex-col md:flex-row justify-between items-center p-6 md:p-8 bg-white/[0.02] border border-white/5 rounded-3xl gap-6">
+                      <div className="flex items-center gap-6 w-full">
+                        <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-primary/10 flex items-center justify-center font-black text-xl md:text-2xl text-primary shrink-0">{u.displayName?.[0] || 'U'}</div>
+                        <div className="overflow-hidden">
+                          <div className="font-black text-lg md:text-xl flex flex-wrap items-center gap-3">
+                            <span className="truncate max-w-[150px] md:max-w-none">{u.displayName || 'بدون اسم'} <RoleBadgeUI role={u.role || 'user'} /></span>
+                            {u.isBanned && <Badge className="bg-destructive text-white border-none text-[10px]">محظور</Badge>}
+                          </div>
+                          <p className="text-white/30 font-bold text-xs md:text-sm truncate">{u.email} | {u.phoneNumber}</p>
                         </div>
-                        <p className="text-white/30 font-bold text-xs md:text-sm truncate">{u.email} | {u.phoneNumber}</p>
+                      </div>
+                      <div className="flex gap-3 w-full md:w-auto">
+                         <Button onClick={() => { setSelectedUser(u); setNewName(u.displayName || ''); setEditNameModalOpen(true); }} variant="ghost" className="flex-1 md:flex-none h-12 px-4 md:px-6 rounded-xl font-black text-primary hover:bg-primary/10 text-xs md:text-sm"><Edit2 className="w-4 h-4 ml-2" /> تعديل الاسم</Button>
+                         <Button onClick={() => { setSelectedUser(u); setBanModalOpen(true); }} variant="ghost" className="flex-1 md:flex-none h-12 px-4 md:px-6 rounded-xl font-black text-destructive hover:bg-destructive/10 text-xs md:text-sm"><Ban className="w-4 h-4 ml-2" /> حظر</Button>
                       </div>
                     </div>
-                    <div className="flex gap-3 w-full md:w-auto">
-                       <Button onClick={() => { setSelectedUser(u); setNewName(u.displayName || ''); setEditNameModalOpen(true); }} variant="ghost" className="flex-1 md:flex-none h-12 px-4 md:px-6 rounded-xl font-black text-primary hover:bg-primary/10 text-xs md:text-sm"><Edit2 className="w-4 h-4 ml-2" /> تعديل</Button>
-                       <Button onClick={() => { setSelectedUser(u); setBanModalOpen(true); }} variant="ghost" className="flex-1 md:flex-none h-12 px-4 md:px-6 rounded-xl font-black text-destructive hover:bg-destructive/10 text-xs md:text-sm"><Ban className="w-4 h-4 ml-2" /> حظر</Button>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </Card>
           </TabsContent>
@@ -714,10 +718,10 @@ export default function AdminPage() {
             <TabsContent value="admins">
               <Card className="p-6 md:p-10 glass-card rounded-[40px] md:rounded-[50px] space-y-10 border-white/5">
                 <div className="flex flex-col md:flex-row justify-between items-center border-b border-white/5 pb-8 gap-6">
-                  <h2 className="text-2xl md:text-3xl font-black flex items-center gap-4"><Crown className="text-primary" /> إدارة المشرفين</h2>
+                  <h2 className="text-2xl md:text-3xl font-black flex items-center gap-4"><Crown className="text-primary" /> إدارة المشرفين والصلاحيات</h2>
                   <div className="flex gap-4 w-full md:w-auto">
                     <Input 
-                      placeholder="إيميل المستخدم لإضافته..." 
+                      placeholder="إيميل المستخدم للترقية..." 
                       value={adminSearchEmail} 
                       onChange={(e) => setAdminSearchEmail(e.target.value)}
                       className="h-14 rounded-2xl bg-black border-white/10 flex-1 md:w-64" 
@@ -744,7 +748,7 @@ export default function AdminPage() {
                         </div>
                         
                         <div className="flex flex-col items-end gap-2 w-full md:w-auto">
-                          <label className="text-[10px] font-bold text-white/40 uppercase">الصلاحية الحالية</label>
+                          <label className="text-[10px] font-bold text-white/40 uppercase">تعيين رتبة جديدة</label>
                           <Select 
                             disabled={!canEditThisAdmin || isSubmitting}
                             value={admin.role} 
@@ -760,7 +764,7 @@ export default function AdminPage() {
                               <SelectItem value="admin">مشرف محتوى (Admin)</SelectItem>
                               <SelectItem value="editor">محرر (Editor)</SelectItem>
                               <SelectItem value="helper">مساعد (Helper)</SelectItem>
-                              <SelectItem value="user" className="text-rose-500">إزالة الصلاحيات</SelectItem>
+                              <SelectItem value="user" className="text-rose-500">سحب الصلاحية (User)</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -776,8 +780,8 @@ export default function AdminPage() {
              <Tabs defaultValue="editor" className="space-y-6">
                 <TabsList className="bg-white/5 p-1 rounded-2xl flex flex-wrap h-auto w-full justify-start overflow-hidden">
                    <TabsTrigger value="editor" className="px-4 md:px-8 py-2 md:py-3 rounded-xl font-bold text-xs md:text-sm">المحرر (Editor)</TabsTrigger>
-                   <TabsTrigger value="templates" className="px-4 md:px-8 py-2 md:py-3 rounded-xl font-bold text-xs md:text-sm">الأقسام الجاهزة (Templates)</TabsTrigger>
-                   <TabsTrigger value="all" className="px-4 md:px-8 py-2 md:py-3 rounded-xl font-bold text-xs md:text-sm">كل الأقسام الحالية</TabsTrigger>
+                   <TabsTrigger value="templates" className="px-4 md:px-8 py-2 md:py-3 rounded-xl font-bold text-xs md:text-sm">القوالب (Templates)</TabsTrigger>
+                   <TabsTrigger value="all" className="px-4 md:px-8 py-2 md:py-3 rounded-xl font-bold text-xs md:text-sm">الأقسام المنشورة</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="editor">
@@ -787,10 +791,10 @@ export default function AdminPage() {
                           <h2 className="text-2xl md:text-3xl font-black">
                             {editorMode === 'edit-section' ? 'تعديل قسم نشط' : editorMode === 'edit-template' ? 'تعديل قالب جاهز' : 'بناء قسم جديد'}
                           </h2>
-                          {editorMode !== 'create' && <Button onClick={resetEditor} variant="link" className="text-[10px] md:text-xs text-primary p-0">إلغاء التعديل والبدء من جديد</Button>}
+                          {editorMode !== 'create' && <Button onClick={resetEditor} variant="link" className="text-[10px] md:text-xs text-primary p-0">إلغاء وإعادة تعيين المحرر</Button>}
                         </div>
                         <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
-                          <Button variant="outline" onClick={handleSaveAsTemplate} disabled={isSubmitting} className="h-14 px-6 md:px-8 rounded-2xl font-bold border-white/10 text-xs md:text-sm">حفظ كقالب جاهز 💾</Button>
+                          <Button variant="outline" onClick={handleSaveAsTemplate} disabled={isSubmitting} className="h-14 px-6 md:px-8 rounded-2xl font-bold border-white/10 text-xs md:text-sm">حفظ كقالب 💾</Button>
                           <Button onClick={handleSaveSection} disabled={isSubmitting} className="h-14 px-8 md:px-12 bg-primary text-white font-black rounded-2xl flex gap-2 justify-center text-xs md:text-sm">
                              {editorMode === 'create' ? <PlusCircle /> : <Save />}
                              {editorMode === 'create' ? 'نشر القسم 🚀' : 'تحديث البيانات ✅'}
@@ -801,7 +805,7 @@ export default function AdminPage() {
                       <div className="space-y-8">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                           <div className="space-y-3">
-                            <label className="text-[10px] md:text-xs font-bold uppercase text-primary">رقم القسم</label>
+                            <label className="text-[10px] md:text-xs font-bold uppercase text-primary">رقم القسم (ID)</label>
                             <input type="number" value={newSection.id || ''} onChange={(e) => setNewSection(p => ({ ...p, id: parseInt(e.target.value) }))} className="h-14 bg-black border-white/10 rounded-xl px-4 outline-none w-full" />
                           </div>
                           <div className="md:col-span-2 space-y-3">
@@ -812,8 +816,8 @@ export default function AdminPage() {
 
                         <div className="space-y-6">
                           <div className="flex items-center justify-between">
-                            <h3 className="text-xl font-black flex items-center gap-2"><BookOpen className="text-primary w-5 h-5" /> النصوص القرائية (Reading Passages)</h3>
-                            <Button onClick={addPassage} variant="outline" size="sm" className="rounded-xl border-primary/20 text-primary"><FilePlus className="w-4 h-4 ml-2" /> إضافة نص جديد</Button>
+                            <h3 className="text-xl font-black flex items-center gap-2"><BookOpen className="text-primary w-5 h-5" /> النصوص القرائية</h3>
+                            <Button onClick={addPassage} variant="outline" size="sm" className="rounded-xl border-primary/20 text-primary"><FilePlus className="w-4 h-4 ml-2" /> إضافة نص</Button>
                           </div>
                           <div className="grid gap-6">
                             {(newSection.readingPassages || []).map((p, idx) => (
@@ -823,7 +827,7 @@ export default function AdminPage() {
                                   <Button onClick={() => removePassage(idx)} variant="ghost" size="icon" className="text-rose-500"><Trash2 className="w-4 h-4" /></Button>
                                 </div>
                                 <Input placeholder="عنوان النص..." value={p.title} onChange={(e) => updatePassage(idx, { title: e.target.value })} className="h-12 bg-black/40 border-white/10" />
-                                <Textarea placeholder="محتوى النص القرائي..." value={p.text} onChange={(e) => updatePassage(idx, { text: e.target.value })} className="min-h-[150px] bg-black/40 border-white/10" />
+                                <Textarea placeholder="محتوى النص..." value={p.text} onChange={(e) => updatePassage(idx, { text: e.target.value })} className="min-h-[150px] bg-black/40 border-white/10" />
                               </Card>
                             ))}
                           </div>
@@ -831,8 +835,8 @@ export default function AdminPage() {
 
                         <div className="space-y-6">
                           <div className="flex items-center justify-between">
-                            <h3 className="text-xl font-black flex items-center gap-2"><HelpCircle className="text-primary w-5 h-5" /> بنك الأسئلة (Questions)</h3>
-                            <Button onClick={addQuestion} variant="outline" size="sm" className="rounded-xl border-primary/20 text-primary"><PlusCircle className="w-4 h-4 ml-2" /> إضافة سؤال جديد</Button>
+                            <h3 className="text-xl font-black flex items-center gap-2"><HelpCircle className="text-primary w-5 h-5" /> بنك الأسئلة</h3>
+                            <Button onClick={addQuestion} variant="outline" size="sm" className="rounded-xl border-primary/20 text-primary"><PlusCircle className="w-4 h-4 ml-2" /> إضافة سؤال</Button>
                           </div>
                           <div className="grid gap-6">
                             {(newSection.questions || []).map((q, idx) => (
@@ -867,7 +871,7 @@ export default function AdminPage() {
                                         </SelectTrigger>
                                         <SelectContent className="bg-black border-white/10 text-white">
                                           {(newSection.readingPassages || []).map((p, pIdx) => (
-                                            <SelectItem key={pIdx} value={p.title || `passage-${pIdx}`}>{p.title || `نص بدون عنوان #${pIdx+1}`}</SelectItem>
+                                            <SelectItem key={pIdx} value={p.title || `passage-${pIdx}`}>{p.title || `نص #${pIdx+1}`}</SelectItem>
                                           ))}
                                         </SelectContent>
                                       </Select>
@@ -899,11 +903,11 @@ export default function AdminPage() {
                                   <label className="text-[10px] font-black uppercase text-emerald-500">الإجابة الصحيحة</label>
                                   <Select value={q.correct || ''} onValueChange={(val) => updateQuestion(idx, { correct: val })}>
                                     <SelectTrigger className="h-12 bg-black border-emerald-500/20 text-emerald-500">
-                                      <SelectValue placeholder="اختر الإجابة الصحيحة..." />
+                                      <SelectValue placeholder="حدد الإجابة الصحيحة..." />
                                     </SelectTrigger>
                                     <SelectContent className="bg-black border-white/10 text-white">
                                       {q.options.map((opt, optIdx) => (
-                                        <SelectItem key={optIdx} value={opt || `opt-${optIdx}`}>{opt || `خيار ${optIdx+1}`}</SelectItem>
+                                        <SelectItem key={optIdx} value={opt || `opt-${optIdx}`}>{opt || `خيار ${['أ', 'ب', 'ج', 'د'][optIdx]}`}</SelectItem>
                                       ))}
                                     </SelectContent>
                                   </Select>
@@ -943,7 +947,7 @@ export default function AdminPage() {
 
                 <TabsContent value="all">
                     <Card className="p-6 md:p-10 glass-card rounded-[40px] md:rounded-[50px] space-y-6 border-white/5">
-                       <h2 className="text-2xl md:text-3xl font-black">الأقسام النشطة</h2>
+                       <h2 className="text-2xl md:text-3xl font-black">الأقسام المنشورة حالياً</h2>
                        <div className="grid gap-4">
                           {sections.map((s) => (
                             <div key={s.firebaseId || `section-${s.id}`} className="p-4 md:p-6 bg-white/[0.02] border border-white/5 rounded-2xl flex flex-col sm:flex-row justify-between items-center group gap-4">
@@ -959,7 +963,7 @@ export default function AdminPage() {
                                </div>
                                <div className="flex gap-2 w-full sm:w-auto md:opacity-0 md:group-hover:opacity-100 transition-opacity justify-end">
                                   <Button onClick={() => editSection(s)} variant="ghost" size="icon" className="text-emerald-400 hover:bg-emerald-400/10"><Edit2 className="w-4 h-4" /></Button>
-                                  <Button variant="ghost" size="icon" onClick={() => deleteDoc(doc(db, "sections", s.firebaseId || '')).then(() => fetchData())} className="text-white/20 hover:text-destructive"><Trash2 className="w-4 h-4" /></Button>
+                                  <Button variant="ghost" size="icon" onClick={() => { if(confirm("حذف القسم؟")) deleteDoc(doc(db, "sections", s.firebaseId || '')).then(() => fetchData()); }} className="text-white/20 hover:text-destructive"><Trash2 className="w-4 h-4" /></Button>
                                </div>
                             </div>
                           ))}
@@ -971,7 +975,7 @@ export default function AdminPage() {
 
           <TabsContent value="logs">
             <Card className="p-6 md:p-10 glass-card rounded-[40px] md:rounded-[50px] space-y-10 border-white/5">
-              <h2 className="text-2xl md:text-3xl font-black flex items-center gap-4"><History className="text-primary" /> سجل النشاط</h2>
+              <h2 className="text-2xl md:text-3xl font-black flex items-center gap-4"><History className="text-primary" /> سجل نشاط الإدارة</h2>
               <div className="space-y-4">
                 {activityLogs.map((log) => (
                   <div key={log.id} className="p-4 md:p-6 bg-white/[0.02] border border-white/5 rounded-3xl flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -984,7 +988,6 @@ export default function AdminPage() {
                       </Badge>
                       <span className="font-black truncate flex items-center gap-2">
                         {log.userName || log.userId}
-                        {log.userRole && <RoleBadgeUI role={log.userRole} />}
                       </span>
                     </div>
                     <p className="text-[10px] md:text-xs text-white/20 shrink-0 w-full sm:w-auto text-left sm:text-right">{log.timestamp?.toDate()?.toLocaleString('ar-SA')}</p>
@@ -996,11 +999,12 @@ export default function AdminPage() {
         </Tabs>
       </div>
 
+      {/* مودال الحظر */}
       <Dialog open={banModalOpen} onOpenChange={setBanModalOpen}>
         <DialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] glass-card border-rose-500/20 text-white rounded-[35px] max-w-lg w-[90vw] md:w-full p-6 md:p-10 outline-none z-[600]">
           <DialogHeader className="text-center space-y-4">
             <DialogTitle className="text-2xl md:text-3xl font-black">حظر طالب 🚫</DialogTitle>
-            <DialogDescription className="text-white/40 font-bold">حظر: {selectedUser?.displayName}</DialogDescription>
+            <DialogDescription className="text-white/40 font-bold">اسم الطالب: {selectedUser?.displayName}</DialogDescription>
           </DialogHeader>
           <div className="space-y-6 py-6 md:py-8">
             <div className="space-y-2">
@@ -1016,7 +1020,7 @@ export default function AdminPage() {
               </Select>
             </div>
             <textarea 
-              placeholder="سبب الحظر..." 
+              placeholder="اكتب سبب الحظر..." 
               value={banReason} 
               onChange={(e) => setBanReason(e.target.value)} 
               className="min-h-[120px] bg-black/40 border-white/10 rounded-2xl p-4 outline-none w-full" 
@@ -1028,23 +1032,30 @@ export default function AdminPage() {
         </DialogContent>
       </Dialog>
 
+      {/* مودال تعديل الاسم */}
       <Dialog open={editNameModalOpen} onOpenChange={setEditNameModalOpen}>
         <DialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] glass-card border-primary/20 text-white rounded-[35px] max-w-lg w-[90vw] md:w-full p-6 md:p-10 outline-none z-[600]">
           <DialogHeader className="text-center space-y-4">
             <DialogTitle className="text-2xl md:text-3xl font-black">تعديل اسم الطالب ✏️</DialogTitle>
           </DialogHeader>
           <div className="space-y-6 py-6 md:py-8">
-            <input 
-              value={newName} 
-              onChange={(e) => setNewName(e.target.value)} 
-              className="h-14 bg-black/40 border-white/10 rounded-2xl px-4 outline-none w-full" 
-            />
-            <textarea 
-              placeholder="لماذا يتم تغيير الاسم؟" 
-              value={nameChangeReason} 
-              onChange={(e) => setNameChangeReason(e.target.value)} 
-              className="min-h-[100px] bg-black/40 border-white/10 rounded-2xl p-4 outline-none w-full" 
-            />
+            <div className="space-y-2">
+              <label className="text-xs font-black text-primary uppercase mr-2">الاسم الجديد</label>
+              <input 
+                value={newName} 
+                onChange={(e) => setNewName(e.target.value)} 
+                className="h-14 bg-black/40 border-white/10 rounded-2xl px-4 outline-none w-full" 
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-black text-primary uppercase mr-2">سبب التعديل</label>
+              <textarea 
+                placeholder="لماذا يتم تغيير الاسم؟" 
+                value={nameChangeReason} 
+                onChange={(e) => setNameChangeReason(e.target.value)} 
+                className="min-h-[100px] bg-black/40 border-white/10 rounded-2xl p-4 outline-none w-full" 
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button onClick={handleEditName} disabled={isSubmitting} className="w-full h-14 bg-primary text-white font-black rounded-2xl shadow-xl">حفظ التعديلات</Button>

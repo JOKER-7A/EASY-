@@ -46,7 +46,7 @@ export const canManageRole = (currentUserRole: string, targetUserRole: string) =
 };
 
 /**
- * جلب الأقسام مع الترتيب التنازلي التلقائي حسب المعرف (ID)
+ * جلب الأقسام من قاعدة البيانات مع دمجها مع الأقسام الثابتة
  */
 export const getSectionsFromDb = async (): Promise<Section[]> => {
   try {
@@ -173,6 +173,7 @@ export const getUserProfile = async (userId: string, email?: string) => {
 
     if (userSnap.exists()) {
       const userData = userSnap.data();
+      // تأكيد صلاحية الـ Root Owner فوراً عند تسجيل الدخول
       if (isRootOwner && userData.role !== 'rootOwner') {
         await updateDoc(userRef, { role: 'rootOwner', status: 'approved' });
         return { id: userSnap.id, ...userData, role: 'rootOwner', status: 'approved' };
@@ -217,7 +218,9 @@ export const updateOnboardingData = async (userId: string, name: string, phone: 
 export const updateUserStatus = async (userId: string, status: 'approved' | 'rejected' | 'pending' | 'onboarding') => {
   try {
     const userSnap = await getDoc(doc(db, "userProfiles", userId));
+    // لا يمكن تعديل حالة المؤسس
     if (userSnap.exists() && userSnap.data().role === 'rootOwner') return false;
+    
     const userRef = doc(db, "userProfiles", userId);
     await updateDoc(userRef, { status });
     return true;
@@ -230,6 +233,7 @@ export const updateUserRole = async (userId: string, role: string) => {
   try {
     const userSnap = await getDoc(doc(db, "userProfiles", userId));
     if (userSnap.exists() && userSnap.data().role === 'rootOwner') return false;
+    
     const userRef = doc(db, "userProfiles", userId);
     await updateDoc(userRef, { 
       role,
