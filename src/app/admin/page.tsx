@@ -130,15 +130,17 @@ export default function AdminPage() {
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
+      setLoading(true);
       if (user) {
+        // ننتظر تحميل بيانات البروفايل بالكامل لضمان معرفة الرتبة
         const profile = await getUserProfile(user.uid, user.email || '');
         const role = profile?.role || 'user';
         setCurrentUserRole(role);
         
-        // التحقق من الصلاحيات للدخول (owner, superAdmin, admin)
-        if (['owner', 'superAdmin', 'admin'].includes(role)) {
+        // التحقق من الصلاحيات للدخول (owner, superAdmin, admin, editor, helper)
+        if (['owner', 'superAdmin', 'admin', 'editor', 'helper'].includes(role)) {
           setIsAuthorized(true);
-          fetchData();
+          await fetchData();
         } else {
           setIsAuthorized(false);
         }
@@ -261,7 +263,6 @@ export default function AdminPage() {
     setIsSubmitting(true);
     try {
       const templateData = { ...newSection };
-      // تنظيف البيانات لضمان عدم تكرار المعرفات
       delete (templateData as any).firebaseId;
       await saveTemplateToDb(templateData);
       toast({ title: "تم حفظ القالب بنجاح! 💾" });
@@ -407,14 +408,16 @@ export default function AdminPage() {
     }
   };
 
-  // صلاحية إدارة المشرفين تظهر للمالك والمشرف العام فقط
   const isOwnerOrSuper = useMemo(() => {
     return currentUserRole === 'owner' || currentUserRole === 'superAdmin';
   }, [currentUserRole]);
 
   if (loading) return (
     <div className="min-h-screen bg-black flex items-center justify-center">
-      <Loader2 className="animate-spin text-primary w-12 h-12" />
+      <div className="text-center space-y-6">
+        <Loader2 className="animate-spin text-primary w-12 h-12 mx-auto" />
+        <p className="text-white/40 font-black tracking-widest uppercase text-xs animate-pulse">يتم التأكد من الصلاحيات...</p>
+      </div>
     </div>
   );
 
@@ -446,7 +449,7 @@ export default function AdminPage() {
             <div>
               <h1 className="text-2xl md:text-4xl font-black tracking-tight">لوحة القيادة</h1>
               <p className="text-primary font-bold uppercase tracking-widest text-[10px] md:text-xs opacity-60">
-                {currentUserRole === 'owner' ? 'Elite Creator' : currentUserRole === 'superAdmin' ? 'Supreme Admin' : 'Content Admin'}
+                {currentUserRole.toUpperCase()} PANEL
               </p>
             </div>
           </div>
@@ -953,7 +956,7 @@ export default function AdminPage() {
               <Textarea 
                 placeholder="لماذا يتم تغيير الاسم؟" 
                 value={nameChangeReason} 
-                onChange={(e) => setNameChangeReason(e.target.value)} 
+                onChange={(e) => nameChangeReason(e.target.value)} 
                 className="min-h-[100px] bg-black/40 border-white/10 rounded-2xl focus:border-primary/50 resize-none" 
               />
             </div>
