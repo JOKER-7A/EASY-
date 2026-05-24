@@ -177,10 +177,11 @@ export default function Home() {
   const filteredSections = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return sections;
-    return sections.filter(s => 
-      s.title.toLowerCase().includes(q) || 
-      s.id.toString().includes(q)
-    );
+    return sections.filter(s => {
+      const title = s.title || '';
+      const id = s.id ? s.id.toString() : '';
+      return title.toLowerCase().includes(q) || id.includes(q);
+    });
   }, [searchQuery, sections]);
 
   const levelProgress = useMemo(() => {
