@@ -9,7 +9,8 @@ import {
   getErrorLogs,
   deleteErrorLog,
   getUserProfile,
-  updateOnboardingData
+  updateOnboardingData,
+  getGlobalSettings
 } from '@/lib/db-service';
 import PracticeSession from '@/components/PracticeSession';
 import { Button } from '@/components/ui/button';
@@ -19,7 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
-  Zap, Search, Trophy, History, X, Loader2, Palette, LogOut, ArrowRight, Heart, Trash2, ShieldCheck, Settings, Star, Ban, Clock, UserCheck, Phone, User
+  Zap, Search, Trophy, History, X, Loader2, Palette, LogOut, ArrowRight, Heart, Trash2, ShieldCheck, Settings, Star, Ban, Clock, UserCheck, Phone, User, MessageCircle
 } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
 import { 
@@ -54,6 +55,7 @@ export default function Home() {
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [activeOverlay, setActiveOverlay] = useState<'leaderboard' | 'errors' | 'themes' | 'favorites' | null>(null);
   const [overlayData, setOverlayData] = useState<any[]>([]);
+  const [whatsappLink, setWhatsappLink] = useState('');
   
   const [onboardingName, setOnboardingName] = useState('');
   const [onboardingPhone, setOnboardingPhone] = useState('');
@@ -79,6 +81,11 @@ export default function Home() {
             }
           }
         });
+        
+        getGlobalSettings().then(settings => {
+          if (settings.whatsappLink) setWhatsappLink(settings.whatsappLink);
+        });
+
         setIsLoading(false);
         return () => unsubProfile();
       } else {
@@ -162,6 +169,10 @@ export default function Home() {
     if (!profile) return false;
     return ['owner', 'superAdmin', 'admin'].includes(profile.role);
   }, [profile]);
+
+  const isApproved = useMemo(() => {
+    return profile?.status === 'approved' || isAdmin;
+  }, [profile, isAdmin]);
 
   const isBanned = useMemo(() => {
     if (!profile?.isBanned) return false;
@@ -345,6 +356,18 @@ export default function Home() {
           EASY
         </h1>
         <p className="text-lg md:text-2xl font-black text-white/40 tracking-wide animate-pulse">تغلّب على نفسك <span className="text-white glow-text italic">كل يوم</span> 💎</p>
+        
+        {isApproved && whatsappLink && (
+          <div className="pt-4 animate-in fade-in zoom-in duration-700">
+            <Button 
+              onClick={() => window.open(whatsappLink, '_blank')}
+              className="h-16 px-8 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xl flex gap-3 mx-auto shadow-[0_0_30px_rgba(16,185,129,0.4)]"
+            >
+              <MessageCircle className="w-6 h-6" /> انضم لمجموعة الواتساب الرسمية
+            </Button>
+          </div>
+        )}
+
         <div className="max-w-2xl mx-auto pt-6 relative group px-4">
           <Search className="absolute right-10 top-1/2 -translate-y-1/2 text-white/20 w-5 h-5" />
           <Input placeholder="ابحث عن نموذج تدريبي..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="h-14 w-full rounded-2xl bg-white/[0.02] border-white/10 pr-14 text-lg font-bold transition-all focus:border-primary/40" />

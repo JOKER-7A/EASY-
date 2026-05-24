@@ -20,7 +20,7 @@ import {
 import { Section, Question, sections as staticSections } from "./practice-data";
 
 /**
- * جلب الأقسام مع دمج البيانات واستبعاد الأقسام المؤرشفة (216-219)
+ * جلب الأقسام مع دمج البيانات واستبعاد الأقسام المؤرشفة
  */
 export const getSectionsFromDb = async (): Promise<Section[]> => {
   try {
@@ -36,12 +36,10 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
       } as any));
     }
     
-    // IDs المطلوب أرشفتها وإخفاؤها من القائمة الأساسية
     const archivedIds = [216, 217, 218, 219];
     
     const combined = [...dbSections];
     staticSections.forEach(s => {
-      // لا تضف القسم إذا كان موجوداً في DB أو إذا كان من ضمن الـ IDs المطلوب إخفاؤها
       if (!combined.find(c => Number(c.id) === Number(s.id)) && !archivedIds.includes(Number(s.id))) {
         combined.push({
           ...s,
@@ -50,7 +48,6 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
       }
     });
     
-    // تصفية نهائية للأقسام الحية فقط
     return combined
       .filter(s => !archivedIds.includes(Number(s.id)))
       .sort((a, b) => Number(b.id) - Number(a.id));
@@ -63,9 +60,6 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
   }
 };
 
-/**
- * تحديث قسم نشط في قاعدة البيانات
- */
 export const updateSectionInDb = async (firebaseId: string, sectionData: any) => {
   try {
     const sectionRef = doc(db, "sections", firebaseId);
@@ -75,21 +69,16 @@ export const updateSectionInDb = async (firebaseId: string, sectionData: any) =>
     });
     return true;
   } catch (e) {
-    console.error("Error updating section:", e);
     throw e;
   }
 };
 
-/**
- * نظام الأقسام الجاهزة (Templates)
- */
 export const getTemplatesFromDb = async () => {
   try {
     const templatesRef = collection(db, "sectionTemplates");
     const snapshot = await getDocs(query(templatesRef, orderBy("createdAt", "desc")));
     return snapshot.docs.map(doc => ({ firebaseId: doc.id, ...doc.data() }));
   } catch (e) {
-    console.error("Error fetching templates:", e);
     return [];
   }
 };
@@ -105,14 +94,10 @@ export const saveTemplateToDb = async (template: any) => {
     const docRef = await addDoc(templatesRef, data);
     return docRef.id;
   } catch (e) {
-    console.error("Error saving template:", e);
     throw e;
   }
 };
 
-/**
- * تحديث قالب جاهز
- */
 export const updateTemplateInDb = async (firebaseId: string, templateData: any) => {
   try {
     const templateRef = doc(db, "sectionTemplates", firebaseId);
@@ -122,7 +107,6 @@ export const updateTemplateInDb = async (firebaseId: string, templateData: any) 
     });
     return true;
   } catch (e) {
-    console.error("Error updating template:", e);
     throw e;
   }
 };
@@ -130,14 +114,9 @@ export const updateTemplateInDb = async (firebaseId: string, templateData: any) 
 export const deleteTemplateFromDb = async (templateId: string) => {
   try {
     await deleteDoc(doc(db, "sectionTemplates", templateId));
-  } catch (e) {
-    console.error("Error deleting template:", e);
-  }
+  } catch (e) {}
 };
 
-/**
- * تحديث XP المستخدم فوراً عند الإجابة
- */
 export const updateUserXP = async (userId: string, isCorrect: boolean) => {
   try {
     const userRef = doc(db, "userProfiles", userId);
@@ -154,14 +133,9 @@ export const updateUserXP = async (userId: string, isCorrect: boolean) => {
       });
       return { xp: currentXp, level: newLevel };
     }
-  } catch (e) {
-    console.error("Error updating XP:", e);
-  }
+  } catch (e) {}
 };
 
-/**
- * إدارة ملف المستخدم
- */
 export const getUserProfile = async (userId: string, email?: string) => {
   if (!userId) return null;
   try {
@@ -192,9 +166,6 @@ export const getUserProfile = async (userId: string, email?: string) => {
   }
 };
 
-/**
- * تحديث بيانات المستخدم (Onboarding)
- */
 export const updateOnboardingData = async (userId: string, name: string, phone: string) => {
   try {
     const userRef = doc(db, "userProfiles", userId);
@@ -205,28 +176,20 @@ export const updateOnboardingData = async (userId: string, name: string, phone: 
     });
     return true;
   } catch (e) {
-    console.error("Error updating onboarding data:", e);
     return false;
   }
 };
 
-/**
- * تحديث حالة الموافقة للمستخدم
- */
 export const updateUserStatus = async (userId: string, status: 'approved' | 'rejected' | 'pending') => {
   try {
     const userRef = doc(db, "userProfiles", userId);
     await updateDoc(userRef, { status });
     return true;
   } catch (e) {
-    console.error("Error updating user status:", e);
     return false;
   }
 };
 
-/**
- * تحديث دور المستخدم (Role)
- */
 export const updateUserRole = async (userId: string, role: string) => {
   try {
     const userRef = doc(db, "userProfiles", userId);
@@ -236,40 +199,27 @@ export const updateUserRole = async (userId: string, role: string) => {
     });
     return true;
   } catch (e) {
-    console.error("Error updating user role:", e);
     return false;
   }
 };
 
-/**
- * جلب قائمة المشرفين
- */
 export const getAdminsFromDb = async () => {
   try {
     const q = query(collection(db, "userProfiles"), where("role", "in", ["owner", "superAdmin", "admin"]));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (e) {
-    console.error("Error fetching admins:", e);
     return [];
   }
 };
 
-/**
- * تسجيل المحاولات
- */
 export const saveAttemptToDb = async (userId: string | undefined, attempt: any) => {
   try {
     const data = { ...attempt, userId: userId || 'anonymous', createdAt: serverTimestamp() };
     await setDoc(doc(collection(db, "attempts")), data);
-  } catch (e) {
-    console.error("Error saving attempt:", e);
-  }
+  } catch (e) {}
 };
 
-/**
- * نظام سجل الأخطاء الدائم
- */
 export const saveErrorLogToDb = async (userId: string, question: Question, sectionTitle: string, userAnswer: string) => {
   try {
     const errorId = `${userId}_${question.id}`;
@@ -288,9 +238,7 @@ export const saveErrorLogToDb = async (userId: string, question: Question, secti
       lastOccurred: serverTimestamp(),
       count: increment(1)
     }, { merge: true });
-  } catch (e) {
-    console.error("Error saving error log:", e);
-  }
+  } catch (e) {}
 };
 
 export const getErrorLogs = async (userId: string) => {
@@ -303,7 +251,6 @@ export const getErrorLogs = async (userId: string) => {
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (e) { 
-    console.error("Error fetching error logs:", e);
     return []; 
   }
 };
@@ -315,9 +262,6 @@ export const deleteErrorLog = async (logId: string) => {
   } catch (e) { return false; }
 };
 
-/**
- * نظام المفضلة (Favorites)
- */
 export const toggleFavoriteInDb = async (userId: string, question: Question, sectionTitle: string) => {
   try {
     const userRef = doc(db, "userProfiles", userId);
@@ -346,7 +290,6 @@ export const toggleFavoriteInDb = async (userId: string, question: Question, sec
       return true;
     }
   } catch (e) { 
-    console.error("Error toggling favorite:", e);
     return false; 
   }
 };
@@ -357,4 +300,23 @@ export const getLeaderboard = async () => {
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (e) { return []; }
+};
+
+/**
+ * نظام الإعدادات العامة (مثل رابط الواتساب)
+ */
+export const updateGlobalSetting = async (key: string, value: any) => {
+  try {
+    const settingsRef = doc(db, "appSettings", "global");
+    await setDoc(settingsRef, { [key]: value }, { merge: true });
+    return true;
+  } catch (e) { return false; }
+};
+
+export const getGlobalSettings = async () => {
+  try {
+    const settingsRef = doc(db, "appSettings", "global");
+    const snap = await getDoc(settingsRef);
+    return snap.exists() ? snap.data() : {};
+  } catch (e) { return {}; }
 };

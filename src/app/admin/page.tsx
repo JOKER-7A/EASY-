@@ -14,7 +14,9 @@ import {
   updateTemplateInDb,
   getAdminsFromDb,
   updateUserRole,
-  getUserProfile
+  getUserProfile,
+  updateGlobalSetting,
+  getGlobalSettings
 } from '@/lib/db-service';
 import { 
   collection, getDocs, addDoc, doc, deleteDoc, updateDoc, serverTimestamp, query, orderBy, limit, where 
@@ -56,6 +58,7 @@ export default function AdminPage() {
   const [activityLogs, setActivityLogs] = useState<any[]>([]);
   const [currentUserRole, setCurrentUserRole] = useState<string>('student');
   const [adminSearchEmail, setAdminSearchEmail] = useState('');
+  const [whatsappLink, setWhatsappLink] = useState('');
   
   const [stats, setStats] = useState({
     students: 0,
@@ -69,7 +72,6 @@ export default function AdminPage() {
   
   const { toast } = useToast();
 
-  // --- Editor State ---
   const [editorMode, setEditorMode] = useState<EditorMode>('create');
   const [activeFirebaseId, setActiveFirebaseId] = useState<string | null>(null);
   const [newSection, setNewSection] = useState<Partial<Section>>({
@@ -81,7 +83,6 @@ export default function AdminPage() {
     duration: 13
   });
 
-  // --- Modals State ---
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [banModalOpen, setBanModalOpen] = useState(false);
   const [banDuration, setBanDuration] = useState('1h');
@@ -101,7 +102,9 @@ export default function AdminPage() {
       
       const usersSnap = await getDocs(collection(db, "userProfiles"));
       const allUsers = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setUsersList(allUsers.filter((u: any) => u.status !== 'pending' && u.role === 'student'));
+      
+      // الطلاب: أي شخص رتبته طالب أو لم تحدد رتبته بعد ولم يتم حظره
+      setUsersList(allUsers.filter((u: any) => u.status === 'approved' && (u.role === 'student' || !u.role)));
       setPendingUsers(allUsers.filter((u: any) => u.status === 'pending'));
 
       const adminsData = await getAdminsFromDb();
@@ -113,13 +116,16 @@ export default function AdminPage() {
       const logsSnap = await getDocs(query(collection(db, "userActivityLogs"), orderBy("timestamp", "desc"), limit(50)));
       setActivityLogs(logsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       
+      const settings = await getGlobalSettings();
+      if (settings.whatsappLink) setWhatsappLink(settings.whatsappLink);
+
       if (auth.currentUser) {
         const profile = await getUserProfile(auth.currentUser.uid);
         setCurrentUserRole(profile?.role || 'student');
       }
 
       setStats({
-        students: allUsers.filter((u: any) => u.role === 'student' && u.status === 'approved').length,
+        students: allUsers.filter((u: any) => (u.role === 'student' || !u.role) && u.status === 'approved').length,
         sections: sectionsData.length,
         questions: sectionsData.reduce((acc, s) => acc + (s.questions?.length || 0), 0),
         errors: errorsData.length,
@@ -143,7 +149,7 @@ export default function AdminPage() {
       if (user) {
         const profile = await getUserProfile(user.uid);
         setCurrentUserRole(profile?.role || 'student');
-        if (profile?.role === 'student') {
+        if (profile?.role === 'student' && !isAuthorized) {
           setIsAuthorized(false);
           localStorage.removeItem(AUTH_KEY);
         }
@@ -154,7 +160,7 @@ export default function AdminPage() {
 
     setLoading(false);
     return () => unsub();
-  }, [fetchData]);
+  }, [fetchData, isAuthorized]);
 
   const handleAdminLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -275,21 +281,15 @@ export default function AdminPage() {
     }
   };
 
-  const handleSaveAsTemplate = async () => {
-    if (!newSection.title) {
-      toast({ title: "يرجى كتابة عنوان للقالب", variant: "destructive" });
-      return;
-    }
+  const handleUpdateWhatsapp = async () => {
     setIsSubmitting(true);
-    try {
-      await saveTemplateToDb(newSection);
-      fetchData();
-      toast({ title: "تم حفظ القالب بنجاح! 💾" });
-    } catch (error) {
-      toast({ title: "حدث خطأ", variant: "destructive" });
-    } finally {
-      setIsSubmitting(false);
+    const success = await updateGlobalSetting('whatsappLink', whatsappLink);
+    if (success) {
+      toast({ title: "تم تحديث رابط الواتساب بنجاح ✅" });
+    } else {
+      toast({ title: "فشل تحديث الرابط", variant: "destructive" });
     }
+    setIsSubmitting(false);
   };
 
   const resetEditor = () => {
@@ -520,20 +520,31 @@ export default function AdminPage() {
                  </div>
                  <h2 className="text-3xl md:text-6xl font-black text-white">أهلاً بك يا دكتور محمود 👋</h2>
                  <p className="text-lg md:text-2xl text-white/40 max-w-3xl mx-auto font-bold leading-relaxed">
-                   أنت الآن في قلب نظام EASY. من هنا يمكنك التحكم في كل ذرة في المنصة، من قبول الطلاب إلى بناء أصعب التحديات اللفظية. أهم شيء هو الفهم، ونحن هنا لتسهيله.
+                   أنت الآن في قلب نظام EASY. من هنا يمكنك التحكم في كل ذرة في المنصة، من قبول الطلاب إلى بناء أصعب التحديات اللفظية.
                  </p>
                </div>
                
                <div className="pt-10 border-t border-white/5">
-                 <div className="glass-card p-8 md:p-12 rounded-[40px] border-emerald-500/20 max-w-2xl mx-auto space-y-6">
-                   <div className="w-16 h-16 bg-emerald-500/10 rounded-3xl flex items-center justify-center mx-auto">
+                 <div className="glass-card p-8 md:p-12 rounded-[40px] border-emerald-500/20 max-w-2xl mx-auto space-y-6 text-right">
+                   <div className="w-16 h-16 bg-emerald-500/10 rounded-3xl flex items-center justify-center mx-auto mb-4">
                      <MessageCircle className="w-8 h-8 text-emerald-500" />
                    </div>
-                   <h3 className="text-xl md:text-3xl font-black">غرفة تواصل EASY 💬</h3>
-                   <p className="text-white/40 font-bold text-sm md:text-base">تواصل مباشرة مع الطلاب والمشرفين عبر المجموعة الرسمية على واتساب.</p>
-                   <Button onClick={() => window.open('https://chat.whatsapp.com/your-group-link', '_blank')} className="h-16 md:h-20 w-full rounded-3xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xl md:text-2xl flex gap-3 shadow-[0_0_30px_rgba(16,185,129,0.3)]">
-                     <MessageCircle className="w-6 h-6 md:w-8 md:h-8" /> انضم لمجموعة الواتساب
-                   </Button>
+                   <h3 className="text-xl md:text-3xl font-black text-center mb-6">إعدادات التواصل 💬</h3>
+                   
+                   <div className="space-y-3">
+                     <label className="text-xs font-black text-emerald-500 uppercase mr-2">رابط مجموعة الواتساب</label>
+                     <div className="flex gap-3">
+                       <Input 
+                        placeholder="https://chat.whatsapp.com/..." 
+                        value={whatsappLink}
+                        onChange={(e) => setWhatsappLink(e.target.value)}
+                        className="h-14 bg-black border-white/10 rounded-xl"
+                       />
+                       <Button onClick={handleUpdateWhatsapp} disabled={isSubmitting} className="h-14 bg-emerald-500 px-6 rounded-xl font-black">حفظ ✅</Button>
+                     </div>
+                   </div>
+
+                   <p className="text-white/40 font-bold text-sm text-center mt-6">هذا الرابط سيظهر للطلاب المقبولين فقط في الصفحة الرئيسية.</p>
                  </div>
                </div>
             </Card>
@@ -630,10 +641,6 @@ export default function AdminPage() {
                              {admin.role === 'owner' && <Badge className="bg-amber-500/20 text-amber-500 border-none text-[10px]">المالك</Badge>}
                           </div>
                           <p className="text-white/30 font-bold text-xs md:text-sm truncate">{admin.email}</p>
-                          <div className="flex items-center gap-2 mt-1 text-white/20 text-[10px] font-bold">
-                            <Calendar className="w-3 h-3" />
-                            <span>تاريخ التعيين: {admin.createdAt?.toDate ? admin.createdAt.toDate().toLocaleDateString('ar-SA') : 'غير معروف'}</span>
-                          </div>
                         </div>
                       </div>
                       
@@ -740,7 +747,7 @@ export default function AdminPage() {
                         </div>
                         <div className="grid gap-6">
                           {newSection.questions?.map((q, i) => (
-                            <Card key={`q-edit-${i}`} className="p-6 md:p-8 bg-black/50 border-white/5 rounded-[30px] space-y-6 relative group">
+                            <Card key={q.id || `q-edit-${i}`} className="p-6 md:p-8 bg-black/50 border-white/5 rounded-[30px] space-y-6 relative group">
                               <Button onClick={() => {
                                  const qs = [...(newSection.questions || [])];
                                  qs.splice(i, 1);
@@ -828,7 +835,7 @@ export default function AdminPage() {
                       <h2 className="text-2xl md:text-3xl font-black flex items-center gap-4"><Layers className="text-primary" /> قوالب الأقسام الجاهزة</h2>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                         {templates.map((t) => (
-                          <Card key={`tpl-${t.firebaseId}`} className="p-6 bg-white/[0.02] border-white/5 rounded-3xl space-y-4 hover:border-primary/40 transition-all">
+                          <Card key={t.firebaseId} className="p-6 bg-white/[0.02] border-white/5 rounded-3xl space-y-4 hover:border-primary/40 transition-all">
                              <div className="flex justify-between items-start">
                                <Badge className="bg-primary/20 text-primary border-none text-[10px]">Template</Badge>
                                <div className="flex gap-2">
@@ -856,7 +863,7 @@ export default function AdminPage() {
                        <h2 className="text-2xl md:text-3xl font-black">الأقسام النشطة</h2>
                        <div className="grid gap-4">
                           {sections.map((s) => (
-                            <div key={`live-sec-${s.firebaseId || s.id}`} className="p-4 md:p-6 bg-white/[0.02] border border-white/5 rounded-2xl flex flex-col sm:flex-row justify-between items-center group gap-4">
+                            <div key={s.firebaseId || s.id} className="p-4 md:p-6 bg-white/[0.02] border border-white/5 rounded-2xl flex flex-col sm:flex-row justify-between items-center group gap-4">
                                <div className="flex items-center gap-4 w-full">
                                   <Badge className="bg-primary/20 text-primary shrink-0">{s.id}</Badge>
                                   <div className="flex flex-col overflow-hidden">
@@ -880,8 +887,8 @@ export default function AdminPage() {
             <Card className="p-6 md:p-10 glass-card rounded-[40px] md:rounded-[50px] space-y-10 border-white/5">
               <h2 className="text-2xl md:text-3xl font-black flex items-center gap-4"><History className="text-primary" /> سجل النشاط</h2>
               <div className="space-y-4">
-                {activityLogs.map((log, i) => (
-                  <div key={`log-item-${log.id || i}`} className="p-4 md:p-6 bg-white/[0.02] border border-white/5 rounded-3xl flex flex-col sm:flex-row justify-between items-center gap-4">
+                {activityLogs.map((log) => (
+                  <div key={log.id} className="p-4 md:p-6 bg-white/[0.02] border border-white/5 rounded-3xl flex flex-col sm:flex-row justify-between items-center gap-4">
                     <div className="flex items-center gap-3 w-full">
                       <Badge className={cn("text-white text-[10px]", 
                         log.action === 'BAN' ? "bg-rose-500" : 
@@ -904,7 +911,6 @@ export default function AdminPage() {
         </Tabs>
       </div>
 
-      {/* --- Ban Modal --- */}
       <Dialog open={banModalOpen} onOpenChange={setBanModalOpen}>
         <DialogContent 
           onOpenAutoFocus={(e) => e.preventDefault()}
@@ -945,7 +951,6 @@ export default function AdminPage() {
         </DialogContent>
       </Dialog>
 
-      {/* --- Edit Name Modal --- */}
       <Dialog open={editNameModalOpen} onOpenChange={setEditNameModalOpen}>
         <DialogContent 
           onOpenAutoFocus={(e) => e.preventDefault()}
