@@ -18,7 +18,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
-  Zap, Search, Trophy, History, X, Loader2, Palette, LogOut, ArrowRight, Heart, Trash2, ShieldCheck, Ban, Clock, UserCheck, Moon, Sun, Monitor, Check, CheckCircle2, XCircle
+  Zap, Search, Trophy, History, X, Loader2, Palette, LogOut, ArrowRight, Heart, Trash2, ShieldCheck, Ban, Clock, UserCheck, Moon, Sun, Monitor, Check, CheckCircle2, XCircle, MessageCircle
 } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
 import { 
@@ -484,13 +484,12 @@ export default function Home() {
                     <div className="text-center py-32 opacity-10 font-black italic text-4xl">فارغ...</div>
                   ) : (
                     overlayData.map((item, idx) => {
-                      // الحماية من عرض الكائنات كأطفال لـ React
-                      const questionText = typeof item.questionData?.question === 'string' ? item.questionData.question : 
-                                         typeof item.question === 'string' ? item.question : 
-                                         typeof item.displayName === 'string' ? item.displayName : 'بدون عنوان';
+                      // الحماية من عرض الكائنات كأطفال لـ React عبر تحويلها لنصوص آمنة
+                      const rawTitle = item.questionData?.question || item.question || item.displayName || 'بدون عنوان';
+                      const questionText = typeof rawTitle === 'string' ? rawTitle : 'عنوان غير صالح';
                       
-                      const typeLabel = typeof item.questionData?.type === 'string' ? item.questionData.type : 
-                                      typeof item.type === 'string' ? item.type : 'ITEM';
+                      const rawType = item.questionData?.type || item.type || 'ITEM';
+                      const typeLabel = typeof rawType === 'string' ? rawType : 'ITEM';
 
                       return (
                         <div key={item.id || idx} className="p-6 rounded-[30px] bg-white/[0.02] border border-white/5 group hover:border-primary/20 transition-all">

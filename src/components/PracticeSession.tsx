@@ -56,12 +56,11 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
       if (auth.currentUser) {
         const profile = await getUserProfile(auth.currentUser.uid);
         if (profile?.favorites) {
-          setFavorites(profile.favorites.map((f: any) => f.id));
+          setFavorites(profile.favorites.map((f: any) => String(f.id)));
         }
       }
     };
     fetchFavs();
-    // تعيين رسالة تحفيزية عشوائية عند البدء
     setMotivationMessage(MOTIVATIONAL_MESSAGES[Math.floor(Math.random() * MOTIVATIONAL_MESSAGES.length)]);
   }, []);
 
@@ -99,7 +98,6 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
     if (currentQuestionIndex < section.questions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
       if (mode === 'pressure') setTimeLeft(60);
-      // تغيير الرسالة التحفيزية كل 3 أسئلة
       if ((currentQuestionIndex + 1) % 3 === 0) {
         setMotivationMessage(MOTIVATIONAL_MESSAGES[Math.floor(Math.random() * MOTIVATIONAL_MESSAGES.length)]);
       }
@@ -119,6 +117,7 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
       updateUserXP(auth.currentUser.uid, isCorrect);
       
       if (!isCorrect) {
+        // تسجيل الخطأ فورياً في قاعدة البيانات مع كامل التفاصيل
         saveErrorLogToDb(auth.currentUser.uid, q, section.title, opt);
       }
     }
@@ -144,7 +143,7 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
     }
     
     const isAdded = await toggleFavoriteInDb(auth.currentUser.uid, question, section.title);
-    setFavorites(prev => isAdded ? [...prev, question.id] : prev.filter(id => id !== question.id));
+    setFavorites(prev => isAdded ? [...prev, String(question.id)] : prev.filter(id => id !== String(question.id)));
     toast({ 
       title: isAdded ? "تمت الإضافة للمفضلة ⭐" : "تم الحذف من المفضلة",
       description: isAdded ? "ستجد هذا السؤال في مكتبتك دائماً." : "تمت إزالة السؤال من مكتبتك."
@@ -152,7 +151,7 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
   };
 
   const getMotivation = (score: number) => {
-    if (score === 100) return { text: "أداء أسطوري 👑", color: "text-amber-500", icon: Crown, glow: "shadow-[0_0_50px_rgba(245,158,11,0.3)]" };
+    if (score === 100) return { text: "ممتاز جداً! أداء أسطوري 👑", color: "text-amber-500", icon: Crown, glow: "shadow-[0_0_50px_rgba(245,158,11,0.3)]" };
     if (score >= 90) return { text: "أحسنت! أنت رائع ⭐", color: "text-primary", icon: StarIcon, glow: "" };
     if (score >= 70) return { text: "أداء جيد، استمر 🔥", color: "text-emerald-500", icon: Flame, glow: "" };
     return { text: "شد حيلك شوية 💪", color: "text-rose-500", icon: Zap, glow: "" };
@@ -280,10 +279,10 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className={cn("rounded-[20px] h-12 w-12 md:h-14 md:w-14 border transition-all active:scale-90 shrink-0", favorites.includes(q.id) ? "text-rose-500 border-rose-500/20 bg-rose-500/5 shadow-[0_0_20px_rgba(244,63,94,0.1)]" : "opacity-20 hover:opacity-100 hover:bg-muted")}
+                className={cn("rounded-[20px] h-12 w-12 md:h-14 md:w-14 border transition-all active:scale-90 shrink-0", favorites.includes(String(q.id)) ? "text-rose-500 border-rose-500/20 bg-rose-500/5 shadow-[0_0_20px_rgba(244,63,94,0.1)]" : "opacity-20 hover:opacity-100 hover:bg-muted")}
                 onClick={() => toggleFavorite(q)}
               >
-                <Heart className="w-6 h-6" fill={favorites.includes(q.id) ? "currentColor" : "none"} />
+                <Heart className="w-6 h-6" fill={favorites.includes(String(q.id)) ? "currentColor" : "none"} />
               </Button>
             </div>
 
@@ -338,7 +337,6 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
             </Button>
           </div>
 
-          {/* لوحة التحفيز لملء المساحة */}
           <div className="mt-12 p-8 rounded-[40px] bg-primary/5 border border-primary/10 flex flex-col items-center text-center space-y-4 animate-in fade-in zoom-in duration-700">
              <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
                 <MessageCircle className="w-6 h-6 text-primary" />

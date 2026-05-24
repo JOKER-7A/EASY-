@@ -262,15 +262,21 @@ export const saveAttemptToDb = async (userId: string | undefined, attempt: any) 
   } catch (e) {}
 };
 
+/**
+ * إعادة بناء نظام تسجيل الأخطاء لضمان الدقة ومنع أخطاء العرض
+ */
 export const saveErrorLogToDb = async (userId: string, question: Question, sectionTitle: string, userAnswer: string) => {
   try {
-    const errorId = `${userId}_${question.id}`;
-    await setDoc(doc(db, "errorLogs", errorId), {
+    // معرف فريد يجمع بين المستخدم والسؤال لضمان التحديث وليس التكرار العشوائي
+    const errorId = `${userId}_${question.id}`.replace(/\s/g, '_');
+    const errorRef = doc(db, "errorLogs", errorId);
+
+    const errorData = {
       userId,
-      questionId: question.id,
+      questionId: String(question.id),
       userAnswer: String(userAnswer),
       questionData: { 
-        id: question.id,
+        id: String(question.id),
         question: String(question.question),
         options: question.options,
         correct: String(question.correct),
@@ -279,9 +285,11 @@ export const saveErrorLogToDb = async (userId: string, question: Question, secti
       },
       lastOccurred: serverTimestamp(),
       count: increment(1)
-    }, { merge: true });
+    };
+
+    await setDoc(errorRef, errorData, { merge: true });
   } catch (e) {
-    console.error("Error saving log:", e);
+    console.error("Critical error saving error log:", e);
   }
 };
 
@@ -318,7 +326,7 @@ export const toggleFavoriteInDb = async (userId: string, question: Question, sec
     if (!userSnap.exists()) return false;
     
     const favorites = userSnap.data().favorites || [];
-    const existing = favorites.find((f: any) => f.id === question.id);
+    const existing = favorites.find((f: any) => f.id === String(question.id));
     
     if (existing) {
       await updateDoc(userRef, {
@@ -329,7 +337,7 @@ export const toggleFavoriteInDb = async (userId: string, question: Question, sec
       const newFav = {
         id: String(question.id),
         question: String(question.question),
-        options: question.options,
+        options: question.options.map(String),
         correct: String(question.correct),
         type: String(question.type),
         sectionTitle: String(sectionTitle),
