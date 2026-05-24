@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -77,8 +78,7 @@ export default function Home() {
 
   useEffect(() => {
     setHasMounted(true);
-    // صمام أمان لضمان انتهاء شاشة التحميل
-    const safetyTimer = setTimeout(() => setIsLoading(false), 2500);
+    const safetyTimer = setTimeout(() => setIsLoading(false), 3000);
 
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
@@ -159,6 +159,29 @@ export default function Home() {
     }
   };
 
+  // وظيفة لاستخراج النص بأمان ومنع خطأ Objects are not valid as React child
+  const renderItemTitle = (item: any) => {
+    if (activeOverlay === 'leaderboard') return String(item.displayName || 'مستكشف EASY');
+    
+    // للتعامل مع سجل الأخطاء
+    if (item.questionData) {
+      return typeof item.questionData.question === 'string' 
+        ? item.questionData.question 
+        : 'سؤال محفوظ';
+    }
+
+    // للمفضلة أو النسخ القديمة
+    if (typeof item.question === 'string') return item.question;
+    
+    return 'سؤال محفوظ';
+  };
+
+  const renderItemSubtitle = (item: any) => {
+    if (activeOverlay === 'leaderboard') return `@${item.email?.split('@')[0] || 'easy_user'}`;
+    if (item.questionData?.sectionTitle) return String(item.questionData.sectionTitle);
+    return 'قسم غير محدد';
+  };
+
   if (!hasMounted) return null;
 
   if (isLoading) {
@@ -180,7 +203,6 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-background text-white flex flex-col relative overflow-x-hidden bg-mesh">
       
-      {/* Auth Screen Overlay */}
       {!user && (
         <div className="fixed inset-0 z-[400] bg-black/95 backdrop-blur-2xl flex items-center justify-center p-4">
           <Card className="w-full max-w-lg p-10 glass-card rounded-[40px] relative overflow-hidden border-primary/20">
@@ -218,7 +240,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* Main Navigation Header */}
       {user && (
         <nav className="fixed top-0 left-0 w-full z-[100] px-4 md:px-8 py-4">
           <div className="max-w-7xl mx-auto flex items-center justify-between p-3 glass-card rounded-full">
@@ -273,7 +294,6 @@ export default function Home() {
         </nav>
       )}
 
-      {/* Hero Section */}
       <div className="container mx-auto px-4 pt-32 md:pt-48 pb-20 max-w-7xl relative z-10 text-center space-y-8 md:space-y-12">
         <div className="inline-flex items-center gap-2 px-6 py-2 rounded-full glass-card border-primary/20 text-primary font-black text-sm md:text-base animate-float-soft">
           <Zap className="w-4 h-4 fill-primary" /> EASY PREP ELITE
@@ -301,7 +321,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Sections Grid Responsive */}
       <section className="container mx-auto px-4 md:px-8 pb-32 grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-10">
         {filteredSections.map((section) => (
           <Card key={section.firebaseId || section.id} className="group glass-card rounded-[40px] p-8 md:p-10 relative overflow-hidden border-white/5 hover:border-primary/30">
@@ -330,15 +349,8 @@ export default function Home() {
             </div>
           </Card>
         ))}
-        {filteredSections.length === 0 && (
-          <div className="col-span-full text-center py-20 glass-card rounded-[40px] border-dashed">
-            <Search className="w-16 h-16 text-white/10 mx-auto mb-4" />
-            <p className="text-2xl font-black text-white/20">لم نجد أي نموذج مطابق للبحث</p>
-          </div>
-        )}
       </section>
 
-      {/* Dynamic Overlays System */}
       {activeOverlay && (
         <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={() => setActiveOverlay(null)} />
@@ -389,10 +401,10 @@ export default function Home() {
                           )}
                           <div>
                             <p className="font-black text-xl text-white group-hover:text-primary transition-colors">
-                              {activeOverlay === 'leaderboard' ? item.displayName : (item.questionData?.question || item.question || 'سؤال')}
+                              {renderItemTitle(item)}
                             </p>
                             <p className="text-white/30 font-bold text-sm mt-1">
-                              {activeOverlay === 'leaderboard' ? `@${item.email?.split('@')[0]}` : (item.questionData?.sectionTitle || 'سؤال محفوظ')}
+                              {renderItemSubtitle(item)}
                             </p>
                           </div>
                         </div>
@@ -412,7 +424,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* Footer Signature Clean */}
       <footer className="text-center py-20 border-t border-white/5 mt-20 space-y-4 bg-black/40 backdrop-blur-3xl">
         <p className="text-3xl md:text-4xl tracking-[0.4em] uppercase font-black opacity-10 hover:opacity-100 transition-all duration-700 cursor-default">
           DR.MAHMOUD ABD EL RAZEK

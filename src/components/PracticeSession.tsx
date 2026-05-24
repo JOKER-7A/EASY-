@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -175,9 +176,8 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
       color: "text-goldenrod"
     };
     if (percentage >= 80) {
-      const phrases = ["أداء ممتاز 🔥", "مستواك يتطور بسرعة 🚀", "استمر يا بطل 💪"];
       return {
-        title: phrases[Math.floor(Math.random() * phrases.length)],
+        title: "أداء ممتاز 🔥",
         phrase: "مستوى رائع جداً، استمر في التقدم",
         icon: <Trophy className="w-24 h-24 md:w-40 md:h-40 text-goldenrod" />,
         color: "text-white"
@@ -252,9 +252,6 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
       else errors.push(q);
     });
     const percentage = Math.round((correct / section.questions.length) * 100);
-    const durationInSeconds = Math.floor((Date.now() - (startTime || 0)) / 1000);
-    const mins = Math.floor(durationInSeconds / 60);
-    const secs = durationInSeconds % 60;
     const celebration = getCelebrationContent(percentage);
 
     return (
@@ -274,7 +271,7 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
             { label: 'النسبة', val: percentage + '%', color: 'border-goldenrod', text: 'text-goldenrod' },
             { label: 'صحيحة', val: correct, color: 'border-green-500', text: 'text-green-500' },
             { label: 'خاطئة', val: errors.length, color: 'border-vermillion', text: 'text-vermillion' },
-            { label: 'الوقت', val: `${mins}:${secs.toString().padStart(2, '0')}`, color: 'border-white/10', text: 'text-white' }
+            { label: 'الأسئلة', val: section.questions.length, color: 'border-white/10', text: 'text-white' }
           ].map((stat, i) => (
             <Card key={i} className={cn("p-6 md:p-10 text-center glass rounded-3xl md:rounded-[50px] border-2", stat.color)}>
               <p className="text-muted-foreground mb-2 md:mb-4 font-black text-lg md:text-2xl">{stat.label}</p>
@@ -294,13 +291,19 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
                   <div className="flex justify-between gap-4">
                     <div className="space-y-2 flex-1">
                       <Badge className="bg-white/5 text-white/40 mb-2">سؤال {idx + 1}</Badge>
-                      <h3 className="text-2xl md:text-4xl font-black leading-tight">{q.question}</h3>
+                      <h3 className="text-2xl md:text-4xl font-black leading-tight">
+                        {typeof q.question === 'string' ? q.question : 'سؤال'}
+                      </h3>
                     </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                    <div className="p-6 bg-red-500/10 rounded-2xl md:rounded-[35px] border border-red-500/20">
+                      <p className="text-xs text-muted-foreground font-bold mb-1">إجابتك:</p>
+                      <p className="text-xl md:text-3xl font-black text-red-500">{userAnswers[q.id] || 'بدون إجابة'}</p>
+                    </div>
                     <div className="p-6 bg-green-500/10 rounded-2xl md:rounded-[35px] border border-green-500/20">
                       <p className="text-xs text-muted-foreground font-bold mb-1">الصحيح:</p>
-                      <p className="text-xl md:text-3xl font-black text-green-500">{q.correct}</p>
+                      <p className="text-xl md:text-3xl font-black text-green-500">{String(q.correct)}</p>
                     </div>
                   </div>
                 </Card>
@@ -317,10 +320,6 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
             الخروج
           </button>
         </div>
-        
-        <footer className="text-center py-10 opacity-30">
-          <p className="signature-text text-xl">DR.MAHMOUD ABD EL RAZEK ❤️</p>
-        </footer>
       </div>
     );
   }
@@ -375,7 +374,7 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
         {currentGroup.map((q) => (
           <Card key={q.id} className="p-8 md:p-16 glass rounded-3xl md:rounded-[90px] border border-white/5 relative overflow-hidden">
             <div className="flex flex-col md:flex-row justify-between items-start mb-10 md:mb-16 gap-6 md:gap-10">
-              <h2 className="text-3xl md:text-6xl font-black leading-tight text-white flex-1">{q.question}</h2>
+              <h2 className="text-3xl md:text-6xl font-black leading-tight text-white flex-1">{String(q.question)}</h2>
               <Button 
                 variant="ghost" 
                 size="icon" 
@@ -403,7 +402,7 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
                         : 'bg-white/5 text-white border-white/5 hover:border-goldenrod/40 hover:bg-white/10'
                     )}
                   >
-                    <span className="opacity-30 ml-3 md:ml-6 text-lg md:text-2xl">{['أ', 'ب', 'ج', 'د'][i]}.</span> {option}
+                    <span className="opacity-30 ml-3 md:ml-6 text-lg md:text-2xl">{['أ', 'ب', 'ج', 'د'][i]}.</span> {String(option)}
                   </button>
                 );
               })}
