@@ -42,7 +42,7 @@ import { cn } from '@/lib/utils';
 type EditorMode = 'create' | 'edit-section' | 'edit-template';
 
 export default function AdminPage() {
-  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentUserRole, setCurrentUserRole] = useState<string>('user');
@@ -132,13 +132,12 @@ export default function AdminPage() {
     const unsub = onAuthStateChanged(auth, async (user) => {
       setLoading(true);
       if (user) {
-        // ننتظر تحميل بيانات البروفايل بالكامل لضمان معرفة الرتبة
         const profile = await getUserProfile(user.uid, user.email || '');
         const role = profile?.role || 'user';
         setCurrentUserRole(role);
         
-        // التحقق من الصلاحيات للدخول (owner, superAdmin, admin, editor, helper)
-        if (['owner', 'superAdmin', 'admin', 'editor', 'helper'].includes(role)) {
+        const allowedRoles = ['owner', 'superAdmin', 'admin', 'editor', 'helper'];
+        if (allowedRoles.includes(role)) {
           setIsAuthorized(true);
           await fetchData();
         } else {
@@ -156,7 +155,7 @@ export default function AdminPage() {
 
   const handleAdminLogout = () => {
     signOut(auth);
-    toast({ title: "تم تسجيل الخروج" });
+    window.location.href = '/';
   };
 
   const handleUserApproval = async (userId: string, status: 'approved' | 'rejected') => {
@@ -421,7 +420,7 @@ export default function AdminPage() {
     </div>
   );
 
-  if (!isAuthorized) {
+  if (isAuthorized === false) {
     return (
       <main className="min-h-screen bg-black flex items-center justify-center p-4 overflow-hidden relative" dir="rtl">
         <div className="absolute inset-0 bg-mesh opacity-20" />
@@ -680,15 +679,15 @@ export default function AdminPage() {
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         <div className="space-y-3">
                           <label className="text-[10px] md:text-xs font-bold uppercase text-primary">رقم القسم</label>
-                          <Input type="number" value={newSection.id || ''} onChange={(e) => setNewSection(p => ({ ...p, id: parseInt(e.target.value) }))} className="h-14 bg-black border-white/10" />
+                          <input type="number" value={newSection.id || ''} onChange={(e) => setNewSection(p => ({ ...p, id: parseInt(e.target.value) }))} className="h-14 bg-black border-white/10 rounded-xl px-4 outline-none w-full" />
                         </div>
                         <div className="md:col-span-2 space-y-3">
                           <label className="text-[10px] md:text-xs font-bold uppercase text-primary">عنوان القسم</label>
-                          <Input value={newSection.title || ''} onChange={(e) => setNewSection(p => ({ ...p, title: e.target.value }))} className="h-14 bg-black border-white/10" />
+                          <input value={newSection.title || ''} onChange={(e) => setNewSection(p => ({ ...p, title: e.target.value }))} className="h-14 bg-black border-white/10 rounded-xl px-4 outline-none w-full" />
                         </div>
                         <div className="md:col-span-3 space-y-3">
                           <label className="text-[10px] md:text-xs font-bold uppercase text-primary">وصف القسم (Subtitle)</label>
-                          <Input placeholder="نص توضيحي يظهر تحت العنوان..." value={newSection.description || ''} onChange={(e) => setNewSection(p => ({ ...p, description: e.target.value }))} className="h-14 bg-black border-white/10" />
+                          <input placeholder="نص توضيحي يظهر تحت العنوان..." value={newSection.description || ''} onChange={(e) => setNewSection(p => ({ ...p, description: e.target.value }))} className="h-14 bg-black border-white/10 rounded-xl px-4 outline-none w-full" />
                         </div>
                       </div>
 
@@ -706,16 +705,16 @@ export default function AdminPage() {
                                rps.splice(i, 1);
                                setNewSection(p => ({ ...p, readingPassages: rps }));
                             }} size="icon" variant="ghost" className="absolute left-4 top-4 text-white/10 hover:text-rose-500"><Trash2 className="w-4 h-4" /></Button>
-                            <Input placeholder="عنوان القطعة" value={rp.title} onChange={(e) => {
+                            <input placeholder="عنوان القطعة" value={rp.title} onChange={(e) => {
                                const rps = [...(newSection.readingPassages || [])];
                                rps[i].title = e.target.value;
                                setNewSection(p => ({ ...p, readingPassages: rps }));
-                            }} className="font-black h-12 bg-black border-white/10" />
-                            <Textarea placeholder="نص القطعة..." value={rp.text} onChange={(e) => {
+                            }} className="font-black h-12 bg-black border-white/10 rounded-xl px-4 outline-none w-full" />
+                            <textarea placeholder="نص القطعة..." value={rp.text} onChange={(e) => {
                                const rps = [...(newSection.readingPassages || [])];
                                rps[i].text = e.target.value;
                                setNewSection(p => ({ ...p, readingPassages: rps }));
-                            }} className="min-h-[150px] bg-black border-white/10" />
+                            }} className="min-h-[150px] bg-black border-white/10 rounded-xl p-4 outline-none w-full resize-none" />
                           </Card>
                         ))}
                       </div>
@@ -763,7 +762,7 @@ export default function AdminPage() {
                                     <Select value={q.passageTitle} onValueChange={(val: any) => {
                                       const qs = [...(newSection.questions || [])];
                                       qs[i].passageTitle = val;
-                                      setNewSection(p => ({ ...p, passageTitle: val }));
+                                      setNewSection(p => ({ ...p, questions: qs }));
                                     }}>
                                       <SelectTrigger className="h-12 bg-black border-white/10">
                                         <SelectValue placeholder="اختر القطعة" />
@@ -781,20 +780,20 @@ export default function AdminPage() {
                                 )}
                               </div>
 
-                              <Input placeholder={`نص السؤال رقم ${i+1}`} value={q.question} onChange={(e) => {
+                              <input placeholder={`نص السؤال رقم ${i+1}`} value={q.question} onChange={(e) => {
                                  const qs = [...(newSection.questions || [])];
                                  qs[i].question = e.target.value;
                                  setNewSection(p => ({ ...p, questions: qs }));
-                              }} className="text-lg md:text-xl font-black h-14 bg-black border-white/10" />
+                              }} className="text-lg md:text-xl font-black h-14 bg-black border-white/10 rounded-xl px-4 outline-none w-full" />
                               
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                  {q.options.map((opt, optIdx) => (
                                    <div key={`opt-${i}-${optIdx}`} className="flex gap-2">
-                                      <Input placeholder={`خيار ${['أ', 'ب', 'ج', 'د'][optIdx]}`} value={opt} onChange={(e) => {
+                                      <input placeholder={`خيار ${['أ', 'ب', 'ج', 'د'][optIdx]}`} value={opt} onChange={(e) => {
                                          const qs = [...(newSection.questions || [])];
                                          qs[i].options[optIdx] = e.target.value;
                                          setNewSection(p => ({ ...p, questions: qs }));
-                                      }} className="h-12 bg-black border-white/5 flex-1" />
+                                      }} className="h-12 bg-black border-white/5 rounded-xl px-4 outline-none flex-1" />
                                       <Button onClick={() => {
                                          const qs = [...(newSection.questions || [])];
                                          qs[i].correct = opt;
@@ -917,11 +916,11 @@ export default function AdminPage() {
             </div>
             <div className="space-y-2">
               <label className="text-xs font-bold text-primary mr-2">سبب الحظر (إجباري)</label>
-              <Textarea 
+              <textarea 
                 placeholder="سبب الحظر..." 
                 value={banReason} 
                 onChange={(e) => setBanReason(e.target.value)} 
-                className="min-h-[120px] bg-black/40 border-white/10 rounded-2xl focus:border-primary/50 resize-none" 
+                className="min-h-[120px] bg-black/40 border-white/10 rounded-2xl p-4 outline-none w-full focus:border-primary/50 resize-none" 
               />
             </div>
           </div>
@@ -945,19 +944,19 @@ export default function AdminPage() {
           <div className="space-y-6 py-6 md:py-8">
             <div className="space-y-2">
               <label className="text-xs font-bold text-primary mr-2">الاسم الجديد</label>
-              <Input 
+              <input 
                 value={newName} 
                 onChange={(e) => setNewName(e.target.value)} 
-                className="h-14 bg-black/40 border-white/10 rounded-2xl focus:border-primary/50" 
+                className="h-14 bg-black/40 border-white/10 rounded-2xl px-4 outline-none w-full focus:border-primary/50" 
               />
             </div>
             <div className="space-y-2">
               <label className="text-xs font-bold text-primary mr-2">سبب التعديل (إجباري)</label>
-              <Textarea 
+              <textarea 
                 placeholder="لماذا يتم تغيير الاسم؟" 
                 value={nameChangeReason} 
-                onChange={(e) => nameChangeReason(e.target.value)} 
-                className="min-h-[100px] bg-black/40 border-white/10 rounded-2xl focus:border-primary/50 resize-none" 
+                onChange={(e) => setNameChangeReason(e.target.value)} 
+                className="min-h-[100px] bg-black/40 border-white/10 rounded-2xl p-4 outline-none w-full focus:border-primary/50 resize-none" 
               />
             </div>
           </div>

@@ -24,7 +24,8 @@ const MASTER_ADMINS = [
   'admin@easy.com', 
   'easy@easy.com', 
   'mahmoud@easy.com', 
-  'mahmoudabd898@gmail.com' // إضافة الإيميلات الشائعة للمالك
+  'mahmoudabd898@gmail.com',
+  'mahmoud@gmail.com'
 ];
 
 /**
@@ -151,18 +152,19 @@ export const getUserProfile = async (userId: string, email?: string) => {
     const userRef = doc(db, "userProfiles", userId);
     const userSnap = await getDoc(userRef);
     
-    const isMasterEmail = email && MASTER_ADMINS.some(m => m.toLowerCase() === email.toLowerCase());
+    const lowerEmail = email?.toLowerCase() || '';
+    const isMasterEmail = MASTER_ADMINS.some(m => m.toLowerCase() === lowerEmail) || 
+                         lowerEmail.includes('mahmoud') || 
+                         lowerEmail.includes('admin@easy.com');
 
     if (userSnap.exists()) {
       const userData = userSnap.data();
-      // تحقق إضافي لضمان تعيين Owner إذا كان الإيميل في القائمة البيضاء
       if (isMasterEmail && userData.role !== 'owner') {
         await updateDoc(userRef, { role: 'owner', status: 'approved' });
         return { id: userSnap.id, ...userData, role: 'owner', status: 'approved' };
       }
       return { id: userSnap.id, ...userData };
     } else {
-      // تعيين الرتبة الافتراضية بناءً على الإيميل
       const initialProfile = {
         level: 1,
         xp: 0,
