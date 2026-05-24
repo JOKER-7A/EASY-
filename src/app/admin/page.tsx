@@ -821,7 +821,7 @@ export default function AdminPage() {
                        <h2 className="text-2xl md:text-3xl font-black">الأقسام النشطة</h2>
                        <div className="grid gap-4">
                           {sections.map((s) => (
-                            <div key={`live-sec-${s.firebaseId || s.id}`} className="p-4 md:p-6 bg-white/[0.02] border border-white/5 rounded-2xl flex flex-col sm:flex-row justify-between items-center group gap-4">
+                            <div key={s.firebaseId || s.id} className="p-4 md:p-6 bg-white/[0.02] border border-white/5 rounded-2xl flex flex-col sm:flex-row justify-between items-center group gap-4">
                                <div className="flex items-center gap-4 w-full">
                                   <Badge className="bg-primary/20 text-primary shrink-0">{s.id}</Badge>
                                   <div className="flex flex-col overflow-hidden">
