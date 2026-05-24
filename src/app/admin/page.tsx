@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { auth, db } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
 import { getSectionsFromDb, getTemplatesFromDb, saveTemplateToDb, deleteTemplateFromDb } from '@/lib/db-service';
@@ -23,7 +23,7 @@ import {
 import { 
   Trash2, Settings, FileText, HelpCircle, Loader2, Users, 
   Search, ShieldCheck, Database, Ban, AlertCircle, TrendingUp,
-  XCircle, Lock, Edit2, History, Copy, Layers
+  XCircle, Lock, Edit2, History, Copy, Layers, CheckCircle2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -52,7 +52,7 @@ export default function AdminPage() {
   
   const { toast } = useToast();
 
-  // Modals State
+  // --- Modals State ---
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [banModalOpen, setBanModalOpen] = useState(false);
   const [banDuration, setBanDuration] = useState('1h');
@@ -70,16 +70,7 @@ export default function AdminPage() {
     duration: 13
   });
 
-  useEffect(() => {
-    const authStatus = localStorage.getItem(AUTH_KEY);
-    if (authStatus === 'true') {
-      setIsAuthorized(true);
-      fetchData();
-    }
-    setLoading(false);
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const sectionsData = await getSectionsFromDb();
       setSections(sectionsData);
@@ -109,7 +100,16 @@ export default function AdminPage() {
     } catch (error) {
       console.error("Error fetching data:", error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const authStatus = localStorage.getItem(AUTH_KEY);
+    if (authStatus === 'true') {
+      setIsAuthorized(true);
+      fetchData();
+    }
+    setLoading(false);
+  }, [fetchData]);
 
   const handleAdminLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -196,11 +196,13 @@ export default function AdminPage() {
       toast({ title: "يرجى إدخال سبب الحظر", variant: "destructive" });
       return;
     }
+    setIsSubmitting(true);
     let expiresAt: Date | null = null;
     const now = new Date();
     if (banDuration === '1h') expiresAt = new Date(now.getTime() + 60 * 60 * 1000);
     else if (banDuration === '1d') expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
     else if (banDuration === '7d') expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    
     try {
       await updateDoc(doc(db, "userProfiles", selectedUser.id), {
         isBanned: true,
@@ -218,8 +220,43 @@ export default function AdminPage() {
       });
       toast({ title: `تم حظر الطالب بنجاح` });
       setBanModalOpen(false);
+      setBanReason('');
       fetchData();
-    } catch (e) { toast({ title: "فشلت العملية", variant: "destructive" }); }
+    } catch (e) { 
+      toast({ title: "فشلت العملية", variant: "destructive" }); 
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEditName = async () => {
+    if (!newName.trim() || !nameChangeReason.trim()) {
+      toast({ title: "يرجى إكمال الحقول الإجبارية", variant: "destructive" });
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await updateDoc(doc(db, "userProfiles", selectedUser.id), {
+        displayName: newName,
+        lastUpdated: serverTimestamp()
+      });
+      await addDoc(collection(db, "userActivityLogs"), {
+        userId: selectedUser.id,
+        userName: selectedUser.displayName,
+        action: 'NAME_CHANGE',
+        reason: nameChangeReason,
+        oldName: selectedUser.displayName,
+        newName: newName,
+        timestamp: serverTimestamp()
+      });
+      toast({ title: "تم تغيير الاسم بنجاح" });
+      setEditNameModalOpen(false);
+      fetchData();
+    } catch (e) {
+      toast({ title: "حدث خطأ", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (loading) return (
@@ -323,11 +360,16 @@ export default function AdminPage() {
                           {u.isBanned && <Badge className="bg-destructive text-white border-none">محظور</Badge>}
                         </p>
                         <p className="text-white/30 font-bold text-sm">{u.email}</p>
+                        <div className="flex gap-4 mt-2">
+                           <span className="text-xs text-primary font-bold">LVL {u.level || 1}</span>
+                           <span className="text-xs text-white/40">{u.xp || 0} XP</span>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex gap-2">
-                       <Button onClick={() => { setSelectedUser(u); setBanModalOpen(true); }} variant="ghost" className="h-12 px-6 rounded-xl font-black text-destructive"><Ban className="w-4 h-4 ml-2" /> حظر</Button>
-                       <Button variant="ghost" size="icon" onClick={() => deleteDoc(doc(db, "userProfiles", u.id))} className="text-white/20 hover:text-destructive"><Trash2 className="w-5 h-5" /></Button>
+                    <div className="flex gap-3">
+                       <Button onClick={() => { setSelectedUser(u); setNewName(u.displayName || ''); setEditNameModalOpen(true); }} variant="ghost" className="h-12 px-6 rounded-xl font-black text-primary hover:bg-primary/10"><Edit2 className="w-4 h-4 ml-2" /> تعديل</Button>
+                       <Button onClick={() => { setSelectedUser(u); setBanModalOpen(true); }} variant="ghost" className="h-12 px-6 rounded-xl font-black text-destructive hover:bg-destructive/10"><Ban className="w-4 h-4 ml-2" /> حظر</Button>
+                       <Button variant="ghost" size="icon" onClick={() => { if(confirm("هل تريد حذف حساب الطالب نهائياً؟")) deleteDoc(doc(db, "userProfiles", u.id)).then(() => fetchData()) }} className="text-white/20 hover:text-destructive"><Trash2 className="w-5 h-5" /></Button>
                     </div>
                   </div>
                 ))}
@@ -414,7 +456,7 @@ export default function AdminPage() {
                                   <span className="font-black text-lg">{s.title}</span>
                                </div>
                                <div className="flex gap-2">
-                                  <Button variant="ghost" size="icon" className="text-white/20 hover:text-destructive"><Trash2 className="w-4 h-4" /></Button>
+                                  <Button variant="ghost" size="icon" onClick={() => deleteDoc(doc(db, "sections", s.firebaseId || '')).then(() => fetchData())} className="text-white/20 hover:text-destructive"><Trash2 className="w-4 h-4" /></Button>
                                </div>
                             </div>
                           ))}
@@ -431,7 +473,7 @@ export default function AdminPage() {
                 {activityLogs.map((log, i) => (
                   <div key={i} className="p-6 bg-white/[0.02] border border-white/5 rounded-3xl flex justify-between items-center">
                     <div className="flex items-center gap-3">
-                      <Badge className={cn("text-white", log.action === 'BAN' ? "bg-rose-500" : "bg-blue-500")}>{log.action}</Badge>
+                      <Badge className={cn("text-white", log.action === 'BAN' ? "bg-rose-500" : log.action === 'NAME_CHANGE' ? "bg-emerald-500" : "bg-blue-500")}>{log.action}</Badge>
                       <span className="font-black">{log.userName}</span>
                       <span className="text-white/40"> - {log.reason}</span>
                     </div>
@@ -444,24 +486,75 @@ export default function AdminPage() {
         </Tabs>
       </div>
 
+      {/* --- Ban Modal --- */}
       <Dialog open={banModalOpen} onOpenChange={setBanModalOpen}>
-        <DialogContent className="glass-card border-rose-500/20 text-white rounded-[35px] max-w-lg p-10">
+        <DialogContent className="glass-card border-rose-500/20 text-white rounded-[35px] max-w-lg p-10 outline-none">
           <DialogHeader className="text-center space-y-4">
             <DialogTitle className="text-3xl font-black">حظر طالب 🚫</DialogTitle>
             <DialogDescription className="text-white/40 font-bold">حظر: {selectedUser?.displayName}</DialogDescription>
           </DialogHeader>
           <div className="space-y-6 py-8">
-            <Select value={banDuration} onValueChange={setBanDuration}>
-              <SelectTrigger className="h-14 bg-black/40 border-white/10 rounded-2xl"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1h">1 ساعة</SelectItem>
-                <SelectItem value="1d">1 يوم</SelectItem>
-                <SelectItem value="perm">نهائي</SelectItem>
-              </SelectContent>
-            </Select>
-            <Textarea placeholder="سبب الحظر..." value={banReason} onChange={(e) => setBanReason(e.target.value)} className="min-h-[120px] bg-black/40 border-white/10 rounded-2xl" />
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-primary mr-2">مدة الحظر</label>
+              <Select value={banDuration} onValueChange={setBanDuration}>
+                <SelectTrigger className="h-14 bg-black/40 border-white/10 rounded-2xl"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1h">1 ساعة</SelectItem>
+                  <SelectItem value="1d">1 يوم</SelectItem>
+                  <SelectItem value="7d">7 أيام</SelectItem>
+                  <SelectItem value="perm">نهائي</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-primary mr-2">سبب الحظر (إجباري)</label>
+              <Textarea 
+                placeholder="سبب الحظر..." 
+                value={banReason} 
+                onChange={(e) => setBanReason(e.target.value)} 
+                className="min-h-[120px] bg-black/40 border-white/10 rounded-2xl focus:border-primary/50" 
+              />
+            </div>
           </div>
-          <DialogFooter><Button onClick={handleBanUser} className="w-full h-14 bg-rose-500 text-white font-black rounded-2xl">تأكيد الحظر</Button></DialogFooter>
+          <DialogFooter>
+            <Button onClick={handleBanUser} disabled={isSubmitting} className="w-full h-14 bg-rose-500 text-white font-black rounded-2xl shadow-xl hover:bg-rose-600 transition-all">
+              {isSubmitting ? <Loader2 className="animate-spin" /> : "تأكيد الحظر"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* --- Edit Name Modal --- */}
+      <Dialog open={editNameModalOpen} onOpenChange={setEditNameModalOpen}>
+        <DialogContent className="glass-card border-primary/20 text-white rounded-[35px] max-w-lg p-10 outline-none">
+          <DialogHeader className="text-center space-y-4">
+            <DialogTitle className="text-3xl font-black">تعديل اسم الطالب ✏️</DialogTitle>
+            <DialogDescription className="text-white/40 font-bold">تعديل: {selectedUser?.displayName}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6 py-8">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-primary mr-2">الاسم الجديد</label>
+              <Input 
+                value={newName} 
+                onChange={(e) => setNewName(e.target.value)} 
+                className="h-14 bg-black/40 border-white/10 rounded-2xl focus:border-primary/50" 
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-primary mr-2">سبب التعديل (إجباري)</label>
+              <Textarea 
+                placeholder="لماذا يتم تغيير الاسم؟" 
+                value={nameChangeReason} 
+                onChange={(e) => setNameChangeReason(e.target.value)} 
+                className="min-h-[100px] bg-black/40 border-white/10 rounded-2xl focus:border-primary/50" 
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleEditName} disabled={isSubmitting} className="w-full h-14 bg-primary text-white font-black rounded-2xl shadow-xl hover:scale-[1.02] transition-all">
+              {isSubmitting ? <Loader2 className="animate-spin" /> : "حفظ التعديلات"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </main>
