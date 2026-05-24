@@ -5,11 +5,12 @@ import { auth, db } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
 import { getSectionsFromDb } from '@/lib/db-service';
 import { 
-  collection, getDocs, addDoc, doc, deleteDoc, updateDoc, getDoc 
+  collection, getDocs, addDoc, doc, deleteDoc, updateDoc, getDoc, serverTimestamp, query, orderBy, limit 
 } from 'firebase/firestore';
 import { Section } from '@/lib/practice-data';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -17,9 +18,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription 
+} from "@/components/ui/dialog";
+import { 
   Trash2, Settings, FileText, HelpCircle, Loader2, Users, 
   Search, ShieldCheck, Database, Ban, AlertCircle, TrendingUp,
-  XCircle, Lock
+  XCircle, Lock, Edit2, History
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -35,6 +39,7 @@ export default function AdminPage() {
   const [sections, setSections] = useState<Section[]>([]);
   const [usersList, setUsersList] = useState<any[]>([]);
   const [errorLogs, setErrorLogs] = useState<any[]>([]);
+  const [activityLogs, setActivityLogs] = useState<any[]>([]);
   const [stats, setStats] = useState({
     students: 0,
     sections: 0,
@@ -46,6 +51,16 @@ export default function AdminPage() {
   
   const { toast } = useToast();
 
+  // Modals State
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [banModalOpen, setBanModalOpen] = useState(false);
+  const [banDuration, setBanDuration] = useState('1h');
+  const [banReason, setBanReason] = useState('');
+  
+  const [editNameModalOpen, setEditNameModalOpen] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [nameChangeReason, setNameChangeReason] = useState('');
+
   const [newSection, setNewSection] = useState<Partial<Section>>({
     id: 0,
     title: '',
@@ -55,7 +70,6 @@ export default function AdminPage() {
   });
 
   useEffect(() => {
-    // التحقق من حالة الدخول المخزنة محلياً
     const authStatus = localStorage.getItem(AUTH_KEY);
     if (authStatus === 'true') {
       setIsAuthorized(true);
@@ -76,6 +90,9 @@ export default function AdminPage() {
       const errorsSnap = await getDocs(collection(db, "errorLogs"));
       const errorsData = errorsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setErrorLogs(errorsData);
+
+      const logsSnap = await getDocs(query(collection(db, "userActivityLogs"), orderBy("timestamp", "desc"), limit(50)));
+      setActivityLogs(logsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       
       setStats({
         students: usersData.length,
@@ -113,12 +130,102 @@ export default function AdminPage() {
     toast({ title: "تم تسجيل الخروج" });
   };
 
-  const handleToggleBan = async (userId: string, currentStatus: boolean) => {
+  // --- Ban Logic ---
+  const handleBanUser = async () => {
+    if (!banReason.trim()) {
+      toast({ title: "يرجى إدخال سبب الحظر", variant: "destructive" });
+      return;
+    }
+
+    let expiresAt: Date | null = null;
+    const now = new Date();
+    if (banDuration === '1h') expiresAt = new Date(now.getTime() + 60 * 60 * 1000);
+    else if (banDuration === '1d') expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    else if (banDuration === '7d') expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    
     try {
-      await updateDoc(doc(db, "userProfiles", userId), { isBanned: !currentStatus });
-      toast({ title: currentStatus ? "تم فك الحظر ✅" : "تم الحظر 🚫" });
+      const updateData = {
+        isBanned: true,
+        banReason,
+        banDuration,
+        bannedAt: serverTimestamp(),
+        banExpiresAt: expiresAt ? expiresAt : null
+      };
+
+      await updateDoc(doc(db, "userProfiles", selectedUser.id), updateData);
+      
+      // Log Activity
+      await addDoc(collection(db, "userActivityLogs"), {
+        userId: selectedUser.id,
+        userName: selectedUser.displayName,
+        action: 'BAN',
+        reason: banReason,
+        duration: banDuration,
+        timestamp: serverTimestamp()
+      });
+
+      toast({ title: `تم حظر الطالب بنجاح (${banDuration})` });
+      setBanModalOpen(false);
+      setBanReason('');
       fetchData();
-    } catch (e) { toast({ title: "فشلت العملية", variant: "destructive" }); }
+    } catch (e) {
+      toast({ title: "فشلت العملية", variant: "destructive" });
+    }
+  };
+
+  const handleUnbanUser = async (user: any) => {
+    try {
+      await updateDoc(doc(db, "userProfiles", user.id), {
+        isBanned: false,
+        banReason: null,
+        banExpiresAt: null
+      });
+
+      await addDoc(collection(db, "userActivityLogs"), {
+        userId: user.id,
+        userName: user.displayName,
+        action: 'UNBAN',
+        reason: 'إلغاء الحظر اليدوي',
+        timestamp: serverTimestamp()
+      });
+
+      toast({ title: "تم فك الحظر بنجاح ✅" });
+      fetchData();
+    } catch (e) {
+      toast({ title: "فشلت العملية", variant: "destructive" });
+    }
+  };
+
+  // --- Name Change Logic ---
+  const handleEditName = async () => {
+    if (!newName.trim() || !nameChangeReason.trim()) {
+      toast({ title: "يرجى إدخال الاسم الجديد والسبب", variant: "destructive" });
+      return;
+    }
+
+    try {
+      await updateDoc(doc(db, "userProfiles", selectedUser.id), {
+        displayName: newName
+      });
+
+      await addDoc(collection(db, "userActivityLogs"), {
+        userId: selectedUser.id,
+        userName: selectedUser.displayName,
+        action: 'NAME_CHANGE',
+        reason: nameChangeReason,
+        oldName: selectedUser.displayName,
+        newName: newName,
+        timestamp: serverTimestamp()
+      });
+
+      toast({ title: "تم تغيير الاسم بنجاح ✅" });
+      setEditNameModalOpen(false);
+      setNewName('');
+      setNameChangeReason('');
+      fetchData();
+    } catch (e) {
+      toast({ title: "فشلت العملية", variant: "destructive" });
+    }
   };
 
   const handleDeleteUser = async (userId: string) => {
@@ -157,7 +264,6 @@ export default function AdminPage() {
     </div>
   );
 
-  // واجهة الدخول بالكود السري فقط
   if (!isAuthorized) {
     return (
       <main className="min-h-screen bg-black flex items-center justify-center p-4 bg-mesh overflow-hidden">
@@ -193,7 +299,6 @@ export default function AdminPage() {
     );
   }
 
-  // لوحة الإدارة الكاملة بعد الدخول بالكود
   return (
     <main className="min-h-screen bg-black p-4 md:p-12 text-white bg-mesh" dir="rtl">
       <div className="max-w-7xl mx-auto space-y-12">
@@ -235,8 +340,8 @@ export default function AdminPage() {
           <TabsList className="bg-white/5 border border-white/5 p-2 h-20 rounded-[30px] w-full md:w-auto">
             <TabsTrigger value="users" className="px-12 font-black rounded-[20px] h-full text-lg">الطلاب</TabsTrigger>
             <TabsTrigger value="content" className="px-12 font-black rounded-[20px] h-full text-lg">المحتوى</TabsTrigger>
+            <TabsTrigger value="logs" className="px-12 font-black rounded-[20px] h-full text-lg">النشاط</TabsTrigger>
             <TabsTrigger value="errors" className="px-12 font-black rounded-[20px] h-full text-lg">الأخطاء</TabsTrigger>
-            <TabsTrigger value="settings" className="px-12 font-black rounded-[20px] h-full text-lg">الإعدادات</TabsTrigger>
           </TabsList>
 
           <TabsContent value="users">
@@ -275,7 +380,18 @@ export default function AdminPage() {
                         <p className="text-[10px] text-white/20 font-bold uppercase tracking-widest">XP</p>
                       </div>
                       <div className="flex gap-2">
-                        <Button onClick={() => handleToggleBan(u.id, !!u.isBanned)} variant="ghost" className={cn("h-12 px-6 rounded-xl font-black", u.isBanned ? "text-green-500" : "text-destructive")}>
+                        <Button onClick={() => { setSelectedUser(u); setEditNameModalOpen(true); setNewName(u.displayName); }} variant="ghost" className="h-12 px-4 rounded-xl font-black text-blue-400">
+                          <Edit2 className="w-4 h-4 ml-2" /> تعديل
+                        </Button>
+                        <Button 
+                          onClick={() => { 
+                            if(u.isBanned) handleUnbanUser(u);
+                            else { setSelectedUser(u); setBanModalOpen(true); }
+                          }} 
+                          variant="ghost" 
+                          className={cn("h-12 px-6 rounded-xl font-black", u.isBanned ? "text-green-500" : "text-destructive")}
+                        >
+                          <Ban className="w-4 h-4 ml-2" />
                           {u.isBanned ? "فك الحظر" : "حظر"}
                         </Button>
                         <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(u.id)} className="text-white/20 hover:text-destructive"><Trash2 className="w-5 h-5" /></Button>
@@ -287,6 +403,35 @@ export default function AdminPage() {
             </Card>
           </TabsContent>
 
+          <TabsContent value="logs">
+            <Card className="p-10 glass-card rounded-[50px] space-y-10 border-white/5">
+              <h2 className="text-3xl font-black flex items-center gap-4">
+                <History className="text-primary" /> سجل نشاط الأدمن
+              </h2>
+              <div className="space-y-4">
+                {activityLogs.map((log, i) => (
+                  <div key={i} className="p-6 bg-white/[0.02] border border-white/5 rounded-3xl flex justify-between items-center">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-3">
+                        <Badge className={cn("border-none text-white", 
+                          log.action === 'BAN' ? "bg-rose-500" : 
+                          log.action === 'UNBAN' ? "bg-green-500" : "bg-blue-500"
+                        )}>
+                          {log.action === 'BAN' ? "حظر" : log.action === 'UNBAN' ? "فك حظر" : "تغيير اسم"}
+                        </Badge>
+                        <span className="font-black text-lg">{log.userName}</span>
+                      </div>
+                      <p className="text-sm text-white/40">السبب: {log.reason}</p>
+                      {log.duration && <p className="text-[10px] text-primary font-bold">المدة: {log.duration}</p>}
+                    </div>
+                    <p className="text-xs text-white/20">{log.timestamp?.toDate()?.toLocaleString()}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </TabsContent>
+
+          {/* ... بقية محتويات التابات (Content, Errors) كما هي ... */}
           <TabsContent value="content" className="space-y-10">
              <Card className="p-10 glass-card rounded-[50px] space-y-10 border-white/5">
                 <div className="flex justify-between items-center border-b border-white/5 pb-8">
@@ -359,25 +504,91 @@ export default function AdminPage() {
                </div>
             </Card>
           </TabsContent>
-
-          <TabsContent value="settings">
-            <Card className="p-10 glass-card rounded-[50px] space-y-10 border-white/5">
-              <h2 className="text-3xl font-black">إعدادات المنصة</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                 <div className="space-y-4">
-                    <label className="text-xs font-bold uppercase text-primary">رابط الواتساب</label>
-                    <Input placeholder="https://wa.me/..." className="h-14 bg-black border-white/10" />
-                 </div>
-                 <div className="space-y-4">
-                    <label className="text-xs font-bold uppercase text-primary">رسالة الترحيب</label>
-                    <Input placeholder="أهلاً بك في EASY..." className="h-14 bg-black border-white/10" />
-                 </div>
-              </div>
-              <Button className="h-16 px-12 bg-primary font-black rounded-2xl">حفظ التغييرات</Button>
-            </Card>
-          </TabsContent>
         </Tabs>
       </div>
+
+      {/* --- Ban Modal --- */}
+      <Dialog open={banModalOpen} onOpenChange={setBanModalOpen}>
+        <DialogContent className="glass-card border-rose-500/20 text-white rounded-[35px] max-w-lg p-10">
+          <DialogHeader className="text-center space-y-4">
+            <div className="w-20 h-20 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto ring-4 ring-rose-500/20">
+              <Ban className="w-10 h-10 text-rose-500" />
+            </div>
+            <DialogTitle className="text-3xl font-black">حظر طالب 🚫</DialogTitle>
+            <DialogDescription className="text-white/40 font-bold">
+              أنت على وشك حظر الطالب: <span className="text-white">{selectedUser?.displayName}</span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6 py-8">
+            <div className="space-y-3">
+              <label className="text-xs font-black uppercase text-rose-500 tracking-widest">مدة الحظر</label>
+              <Select value={banDuration} onValueChange={setBanDuration}>
+                <SelectTrigger className="h-14 bg-black/40 border-white/10 rounded-2xl">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1h">1 ساعة</SelectItem>
+                  <SelectItem value="1d">1 يوم</SelectItem>
+                  <SelectItem value="7d">7 أيام</SelectItem>
+                  <SelectItem value="perm">حظر نهائي ♾️</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-3">
+              <label className="text-xs font-black uppercase text-rose-500 tracking-widest">سبب الحظر (إجباري)</label>
+              <Textarea 
+                placeholder="اكتب سبب الحظر هنا..." 
+                value={banReason} 
+                onChange={(e) => setBanReason(e.target.value)}
+                className="min-h-[120px] bg-black/40 border-white/10 rounded-2xl p-4 text-lg"
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-4">
+            <Button onClick={handleBanUser} className="w-full h-14 bg-rose-500 hover:bg-rose-600 text-white font-black text-lg rounded-2xl">
+              تأكيد الحظر 🛡️
+            </Button>
+            <Button onClick={() => setBanModalOpen(false)} variant="ghost" className="w-full h-14 text-white/40 font-black">إلغاء</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* --- Edit Name Modal --- */}
+      <Dialog open={editNameModalOpen} onOpenChange={setEditNameModalOpen}>
+        <DialogContent className="glass-card border-blue-500/20 text-white rounded-[35px] max-w-lg p-10">
+          <DialogHeader className="text-center space-y-4">
+            <div className="w-20 h-20 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto ring-4 ring-blue-500/20">
+              <Edit2 className="w-10 h-10 text-blue-500" />
+            </div>
+            <DialogTitle className="text-3xl font-black">تعديل اسم الطالب ✏️</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6 py-8">
+            <div className="space-y-3">
+              <label className="text-xs font-black uppercase text-blue-500 tracking-widest">الاسم الجديد</label>
+              <Input 
+                value={newName} 
+                onChange={(e) => setNewName(e.target.value)}
+                className="h-14 bg-black/40 border-white/10 rounded-2xl"
+              />
+            </div>
+            <div className="space-y-3">
+              <label className="text-xs font-black uppercase text-blue-500 tracking-widest">سبب التعديل (إجباري)</label>
+              <Textarea 
+                placeholder="لماذا يتم تغيير الاسم؟" 
+                value={nameChangeReason} 
+                onChange={(e) => setNameChangeReason(e.target.value)}
+                className="min-h-[100px] bg-black/40 border-white/10 rounded-2xl"
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-4">
+            <Button onClick={handleEditName} className="w-full h-14 bg-blue-500 hover:bg-blue-600 text-white font-black text-lg rounded-2xl">
+              حفظ التغييرات ✅
+            </Button>
+            <Button onClick={() => setEditNameModalOpen(false)} variant="ghost" className="w-full h-14 text-white/40 font-black">إلغاء</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

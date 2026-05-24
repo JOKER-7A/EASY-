@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -17,13 +16,13 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
-  Zap, Search, Trophy, History, X, Loader2, Palette, LogOut, ArrowRight, Heart, Trash2, ShieldCheck, Settings, Star
+  Zap, Search, Trophy, History, X, Loader2, Palette, LogOut, ArrowRight, Heart, Trash2, ShieldCheck, Settings, Star, Ban, Clock
 } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
 import { 
   onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut 
 } from 'firebase/auth';
-import { doc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { doc, updateDoc, onSnapshot, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -136,7 +135,42 @@ export default function Home() {
     );
   }, [profile, user]);
 
+  // Check Ban Status
+  const isBanned = useMemo(() => {
+    if (!profile?.isBanned) return false;
+    if (!profile.banExpiresAt) return true; // Permanent
+    const expiresAt = profile.banExpiresAt.toDate();
+    return expiresAt > new Date();
+  }, [profile]);
+
   if (!hasMounted) return null;
+
+  if (isBanned) {
+    return (
+      <main className="min-h-screen bg-black flex items-center justify-center p-6 text-center" dir="rtl">
+        <Card className="max-w-xl w-full p-12 glass-card border-rose-500/30 rounded-[50px] space-y-8 animate-in fade-in zoom-in">
+          <div className="w-24 h-24 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto ring-4 ring-rose-500/20">
+            <Ban className="w-12 h-12 text-rose-500" />
+          </div>
+          <h1 className="text-4xl font-black text-white">لقد تم حظرك 🚫</h1>
+          <div className="space-y-4">
+            <p className="text-xl text-white/60 leading-relaxed">{profile.banReason}</p>
+            {profile.banExpiresAt && (
+              <div className="flex items-center justify-center gap-2 text-primary font-bold">
+                <Clock className="w-5 h-5" />
+                <span>ينتهي الحظر في: {profile.banExpiresAt.toDate().toLocaleString()}</span>
+              </div>
+            )}
+          </div>
+          <div className="pt-6">
+            <Button onClick={() => signOut(auth)} variant="outline" className="h-14 px-10 rounded-2xl border-white/10 text-white font-black">
+              تسجيل الخروج
+            </Button>
+          </div>
+        </Card>
+      </main>
+    );
+  }
 
   if (activeView === 'practice' && selectedSection) {
     return <PracticeSession section={selectedSection} onExit={() => setActiveView('landing')} />;
@@ -309,7 +343,6 @@ export default function Home() {
           <p className="text-dr-mahmoud">DR. MAHMOUD ABD EL RAZEK</p>
           <div className="h-0.5 w-20 bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
           
-          {/* أيقونة دخول سريعة للأدمن */}
           <button 
             onClick={() => window.location.href = '/admin'}
             className="mt-4 p-2 rounded-full hover:bg-white/5 transition-all group focus:outline-none"
