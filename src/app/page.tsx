@@ -124,6 +124,10 @@ export default function Home() {
     } catch (e) { console.error(e); }
   };
 
+  const isAdmin = useMemo(() => {
+    return profile?.status === 'admin' || profile?.role === 'admin' || profile?.role === 'superAdmin' || profile?.isAdmin === true;
+  }, [profile]);
+
   if (!hasMounted) return null;
   if (isLoading) return <div className="fixed inset-0 bg-background flex items-center justify-center z-[500]"><Loader2 className="w-12 h-12 text-primary animate-spin" /></div>;
 
@@ -163,93 +167,114 @@ export default function Home() {
                 <AvatarFallback className="bg-primary/20 text-primary font-black">{user.email?.[0].toUpperCase()}</AvatarFallback>
               </Avatar>
               <div className="hidden sm:block">
-                <p className="font-black text-white/90">{profile?.displayName || 'طالب EASY'}</p>
+                <p className="font-black text-white/90 text-sm">{profile?.displayName || 'طالب EASY'}</p>
                 <div className="flex items-center gap-2">
-                   <Badge className="bg-primary text-white text-[10px] px-2 py-0">LVL {profile?.level || 1}</Badge>
-                   <span className="text-[10px] text-white/30">{profile?.xp || 0} XP</span>
+                   <Badge className="bg-primary text-white text-[9px] px-1.5 py-0">LVL {profile?.level || 1}</Badge>
+                   <span className="text-[9px] text-white/30">{profile?.xp || 0} XP</span>
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button onClick={() => openOverlay('themes')} variant="ghost" size="icon" className="w-10 h-10 rounded-xl text-primary"><Palette className="w-5 h-5" /></Button>
-              <Button onClick={() => openOverlay('leaderboard')} variant="ghost" size="icon" className="w-10 h-10 rounded-xl text-amber-500"><Trophy className="w-5 h-5" /></Button>
-              <Button onClick={() => openOverlay('favorites')} variant="ghost" size="icon" className="w-10 h-10 rounded-xl text-rose-500"><Heart className="w-5 h-5" /></Button>
-              <Button onClick={() => openOverlay('errors')} variant="ghost" size="icon" className="w-10 h-10 rounded-xl text-blue-500"><History className="w-5 h-5" /></Button>
-              {profile?.status === 'admin' && (
-                <Button onClick={() => window.location.href = '/admin'} variant="ghost" size="icon" className="w-10 h-10 rounded-xl text-emerald-400 border border-emerald-500/20"><ShieldCheck className="w-5 h-5" /></Button>
+            <div className="flex items-center gap-1 sm:gap-2">
+              <Button onClick={() => openOverlay('themes')} variant="ghost" size="icon" className="w-9 h-9 rounded-xl text-primary"><Palette className="w-4 h-4" /></Button>
+              <Button onClick={() => openOverlay('leaderboard')} variant="ghost" size="icon" className="w-9 h-9 rounded-xl text-amber-500"><Trophy className="w-4 h-4" /></Button>
+              <Button onClick={() => openOverlay('favorites')} variant="ghost" size="icon" className="w-9 h-9 rounded-xl text-rose-500"><Heart className="w-4 h-4" /></Button>
+              <Button onClick={() => openOverlay('errors')} variant="ghost" size="icon" className="w-9 h-9 rounded-xl text-blue-500"><History className="w-4 h-4" /></Button>
+              {isAdmin && (
+                <Button onClick={() => window.location.href = '/admin'} variant="ghost" size="icon" className="w-9 h-9 rounded-xl text-emerald-400 border border-emerald-500/20"><ShieldCheck className="w-4 h-4" /></Button>
               )}
-              <Button onClick={() => signOut(auth)} variant="ghost" size="icon" className="w-10 h-10 rounded-xl text-destructive"><LogOut className="w-5 h-5" /></Button>
+              <Button onClick={() => signOut(auth)} variant="ghost" size="icon" className="w-9 h-9 rounded-xl text-destructive"><LogOut className="w-4 h-4" /></Button>
             </div>
           </div>
         </nav>
       )}
 
       <div className="container mx-auto px-4 pt-32 md:pt-48 pb-10 text-center space-y-6 relative z-10">
-        <h1 className="text-7xl sm:text-9xl md:text-[12rem] text-easy-premium animate-in fade-in slide-in-from-top-10 duration-1000">
+        <h1 className="text-6xl sm:text-8xl md:text-[10rem] text-easy-premium animate-in fade-in slide-in-from-top-10 duration-1000">
           EASY
         </h1>
-        <p className="text-xl md:text-3xl font-black text-white/40 tracking-wide animate-pulse">تغلّب على نفسك <span className="text-white glow-text italic">كل يوم</span> 💎</p>
-        <div className="max-w-2xl mx-auto pt-6 relative group">
-          <Search className="absolute right-6 top-1/2 -translate-y-1/2 text-white/20 w-6 h-6" />
-          <Input placeholder="ابحث عن نموذج تدريبي..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="h-16 w-full rounded-2xl bg-white/[0.02] border-white/10 pr-16 text-xl font-bold transition-all focus:border-primary/40" />
+        <p className="text-lg md:text-2xl font-black text-white/40 tracking-wide animate-pulse">تغلّب على نفسك <span className="text-white glow-text italic">كل يوم</span> 💎</p>
+        <div className="max-w-2xl mx-auto pt-6 relative group px-4">
+          <Search className="absolute right-10 top-1/2 -translate-y-1/2 text-white/20 w-5 h-5" />
+          <Input placeholder="ابحث عن نموذج تدريبي..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="h-14 w-full rounded-2xl bg-white/[0.02] border-white/10 pr-14 text-lg font-bold transition-all focus:border-primary/40" />
         </div>
       </div>
 
-      <section className="container mx-auto px-4 md:px-8 pb-32 grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-10">
+      <section className="container mx-auto px-4 md:px-8 pb-10 grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
         {filteredSections.map((section) => (
-          <Card key={section.firebaseId || section.id} className="group glass-card rounded-[40px] p-8 md:p-10 relative overflow-hidden border-white/5">
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-8 relative z-10">
-              <div className="text-center sm:text-right space-y-4">
-                <div className="flex items-center justify-center sm:justify-start gap-3">
-                  <Badge className="bg-primary/20 text-primary border-none font-black">نموذج {section.id}</Badge>
-                  {isNewSection(section) && <Badge className="bg-amber-500/20 text-amber-500 border-none animate-pulse">جديد ✨</Badge>}
+          <Card key={section.firebaseId || section.id} className="group glass-card rounded-[35px] p-6 md:p-8 relative overflow-hidden border-white/5">
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-6 relative z-10">
+              <div className="text-center sm:text-right space-y-3">
+                <div className="flex items-center justify-center sm:justify-start gap-2">
+                  <Badge className="bg-primary/20 text-primary border-none font-black text-[10px]">نموذج {section.id}</Badge>
+                  {isNewSection(section) && <Badge className="bg-amber-500/20 text-amber-500 border-none animate-pulse text-[10px]">جديد ✨</Badge>}
                 </div>
-                <h2 className="text-2xl md:text-4xl font-black group-hover:text-primary transition-colors">{section.title}</h2>
-                <div className="flex justify-center sm:justify-start items-center gap-6 text-white/20 text-sm font-bold">
-                  <span className="flex items-center gap-2"><Zap className="w-4 h-4" /> {section.questions?.length || 0} سؤال</span>
-                  <span className="flex items-center gap-2"><History className="w-4 h-4" /> {section.duration} دقيقة</span>
+                <h2 className="text-xl md:text-3xl font-black group-hover:text-primary transition-colors">{section.title}</h2>
+                <div className="flex justify-center sm:justify-start items-center gap-4 text-white/20 text-xs font-bold">
+                  <span className="flex items-center gap-1.5"><Zap className="w-3.5 h-3.5" /> {section.questions?.length || 0} سؤال</span>
+                  <span className="flex items-center gap-1.5"><History className="w-3.5 h-3.5" /> {section.duration} دقيقة</span>
                 </div>
               </div>
-              <Button onClick={() => { setSelectedSection(section); setActiveView('practice'); }} className="w-full sm:w-auto h-20 px-10 rounded-3xl text-2xl font-black bg-primary text-white shadow-xl hover:scale-105 transition-all">
-                ابدأ <ArrowRight className="mr-3 w-8 h-8" />
+              <Button onClick={() => { setSelectedSection(section); setActiveView('practice'); }} className="w-full sm:w-auto h-16 px-8 rounded-2xl text-xl font-black bg-primary text-white shadow-xl hover:scale-105 transition-all">
+                ابدأ <ArrowRight className="mr-2 w-6 h-6" />
               </Button>
             </div>
           </Card>
         ))}
       </section>
 
+      {/* Admin Panel Button Section - For Admins Only */}
+      {user && isAdmin && (
+        <div className="container mx-auto px-4 py-12 flex justify-center border-t border-white/5 mt-10">
+          <Button 
+            onClick={() => window.location.href = '/admin'}
+            className="group relative h-16 px-12 rounded-[25px] bg-black border border-primary/20 hover:border-primary transition-all duration-500 overflow-hidden shadow-2xl"
+          >
+            <div className="absolute inset-0 bg-primary/5 group-hover:bg-primary/10 transition-colors" />
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity blur-2xl bg-primary/30" />
+            <div className="relative flex items-center gap-4 text-white">
+              <ShieldCheck className="w-7 h-7 text-primary group-hover:scale-110 transition-transform duration-300" />
+              <span className="text-xl font-black tracking-tight uppercase">Admin Panel</span>
+            </div>
+          </Button>
+        </div>
+      )}
+
       {activeOverlay && (
         <div className="fixed inset-0 z-[500] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={() => setActiveOverlay(null)} />
           <Card className="w-full max-w-4xl max-h-[85vh] glass-card rounded-[40px] relative z-10 flex flex-col border-primary/20">
             <div className="p-8 border-b border-white/5 flex items-center justify-between">
-              <h2 className="text-3xl font-black">{activeOverlay === 'themes' ? "مركز الثيمات" : activeOverlay === 'leaderboard' ? "نخبة EASY" : activeOverlay === 'errors' ? "سجل الأخطاء" : "المفضلة"}</h2>
-              <Button variant="ghost" size="icon" className="rounded-full w-12 h-12" onClick={() => setActiveOverlay(null)}><X className="w-8 h-8" /></Button>
+              <h2 className="text-2xl font-black">{activeOverlay === 'themes' ? "مركز الثيمات" : activeOverlay === 'leaderboard' ? "نخبة EASY" : activeOverlay === 'errors' ? "سجل الأخطاء" : "المفضلة"}</h2>
+              <Button variant="ghost" size="icon" className="rounded-full w-10 h-10" onClick={() => setActiveOverlay(null)}><X className="w-6 h-6" /></Button>
             </div>
             <ScrollArea className="flex-1 p-8">
               {activeOverlay === 'themes' ? (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   {THEMES.map((t) => (
-                    <button key={t.name} onClick={() => changeTheme(t.value)} className={cn("p-6 rounded-[30px] glass-card flex flex-col items-center gap-4 transition-all hover:scale-105", profile?.theme === t.value && "border-primary shadow-glow")}>
-                      <div className="w-16 h-16 rounded-full" style={{ backgroundColor: t.color }} />
-                      <span className="font-black text-sm">{t.name}</span>
+                    <button key={t.name} onClick={() => changeTheme(t.value)} className={cn("p-4 rounded-[25px] glass-card flex flex-col items-center gap-3 transition-all hover:scale-105", profile?.theme === t.value && "border-primary shadow-glow")}>
+                      <div className="w-12 h-12 rounded-full" style={{ backgroundColor: t.color }} />
+                      <span className="font-black text-xs">{t.name}</span>
                     </button>
                   ))}
                 </div>
               ) : (
-                <div className="space-y-6">
-                  {overlayData.map((item, idx) => (
-                    <div key={idx} className="p-6 glass-card rounded-[30px] border-white/5 flex justify-between items-center">
-                      <div className="flex items-center gap-6">
-                         <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center font-black">{idx + 1}</div>
-                         <div>
-                            <p className="font-black text-lg">{item.displayName || item.questionData?.question || item.question}</p>
-                            <p className="text-white/20 text-xs">{item.xp ? `${item.xp} XP` : item.questionData?.sectionTitle || "مراجعة"}</p>
-                         </div>
+                <div className="space-y-4">
+                  {overlayData.length === 0 ? (
+                    <div className="text-center py-20 text-white/20 font-black">لا يوجد بيانات حالياً</div>
+                  ) : (
+                    overlayData.map((item, idx) => (
+                      <div key={idx} className="p-5 glass-card rounded-[25px] border-white/5 flex justify-between items-center">
+                        <div className="flex items-center gap-4">
+                           <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center font-black text-xs">{idx + 1}</div>
+                           <div>
+                              <p className="font-black text-base">{item.displayName || item.questionData?.question || item.question}</p>
+                              <p className="text-white/20 text-[10px]">{item.xp ? `${item.xp} XP` : item.questionData?.sectionTitle || "مراجعة"}</p>
+                           </div>
+                        </div>
+                        {activeOverlay === 'errors' && <Button variant="ghost" size="icon" onClick={() => deleteErrorLog(item.id)} className="text-destructive"><Trash2 className="w-4 h-4" /></Button>}
                       </div>
-                      {activeOverlay === 'errors' && <Button variant="ghost" size="icon" onClick={() => deleteErrorLog(item.id)} className="text-destructive"><Trash2 className="w-5 h-5" /></Button>}
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               )}
             </ScrollArea>
@@ -258,8 +283,8 @@ export default function Home() {
       )}
 
       <footer className="text-center py-20 opacity-20 space-y-4">
-        <p className="text-2xl tracking-[0.5em] font-black uppercase">DR.MAHMOUD ABD EL RAZEK</p>
-        <p className="text-xs font-bold uppercase tracking-widest">Easy Prep Master &copy; 2024</p>
+        <p className="text-xl tracking-[0.4em] font-black uppercase">DR.MAHMOUD ABD EL RAZEK</p>
+        <p className="text-[10px] font-bold uppercase tracking-widest">Easy Prep Master &copy; 2024</p>
       </footer>
     </main>
   );

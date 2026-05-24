@@ -39,22 +39,24 @@
   }
 }
 
-/* شعار EASY المطور - ضمان الظهور التام */
+/* شعار EASY المطور - ضمان الظهور التام والوضوح الفائق */
 .text-easy-premium {
   @apply font-black tracking-tighter text-center block w-full select-none relative;
   display: block;
   background: linear-gradient(
     to bottom,
-    #ffffff 30%,
+    #ffffff 20%,
+    #ffffff 40%,
     hsl(var(--primary)) 100%
   );
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  color: white; /* Fallback */
-  filter: drop-shadow(0 0 15px hsla(var(--primary), 0.4));
-  padding: 0.2em 0;
+  color: white; /* Fallback for transparency */
+  filter: drop-shadow(0 0 20px hsla(var(--primary), 0.5));
+  padding: 0.1em 0;
   z-index: 50;
+  line-height: 1;
 }
 
 .glow-text {
