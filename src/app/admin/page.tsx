@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/dialog";
 import { 
   Trash2, ShieldCheck, Database, Ban, AlertCircle, TrendingUp,
-  XCircle, Lock, Edit2, History, Copy, Layers, Loader2, Search, FileText, UserCheck, X as XIcon, CheckCircle, PlusCircle, Save, BookOpen, ListTree, Crown, Users, Calendar
+  XCircle, Lock, Edit2, History, Copy, Layers, Loader2, Search, FileText, UserCheck, X as XIcon, CheckCircle, PlusCircle, Save, BookOpen, ListTree, Crown, Users, Calendar, MessageCircle, Home
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -144,7 +144,6 @@ export default function AdminPage() {
         const profile = await getUserProfile(user.uid);
         setCurrentUserRole(profile?.role || 'student');
         if (profile?.role === 'student') {
-          // إذا كان طالباً، لا نسمح له بالبقاء هنا حتى لو كان الكود صحيحاً
           setIsAuthorized(false);
           localStorage.removeItem(AUTH_KEY);
         }
@@ -498,8 +497,9 @@ export default function AdminPage() {
           ))}
         </div>
 
-        <Tabs defaultValue="requests" className="space-y-10">
+        <Tabs defaultValue="welcome" className="space-y-10">
           <TabsList className="bg-white/5 border border-white/5 p-1.5 h-auto rounded-[25px] md:rounded-[30px] w-full flex flex-wrap justify-start md:justify-center">
+            <TabsTrigger value="welcome" className="px-4 md:px-8 py-2 md:py-4 font-black rounded-[15px] md:rounded-[20px] text-sm md:text-lg flex gap-2"><Home className="w-4 h-4 md:w-5 md:h-5" /> ترحيب</TabsTrigger>
             <TabsTrigger value="requests" className="px-4 md:px-8 py-2 md:py-4 font-black rounded-[15px] md:rounded-[20px] text-sm md:text-lg flex gap-2">الطلبات {stats.requests > 0 && <Badge className="bg-amber-500 text-[10px]">{stats.requests}</Badge>}</TabsTrigger>
             <TabsTrigger value="users" className="px-4 md:px-8 py-2 md:py-4 font-black rounded-[15px] md:rounded-[20px] text-sm md:text-lg">الطلاب</TabsTrigger>
             <TabsTrigger value="content" className="px-4 md:px-8 py-2 md:py-4 font-black rounded-[15px] md:rounded-[20px] text-sm md:text-lg">إدارة المحتوى</TabsTrigger>
@@ -508,15 +508,43 @@ export default function AdminPage() {
                 Admins <ShieldCheck className="w-4 h-4" />
               </TabsTrigger>
             )}
-            <TabsTrigger value="logs" className="px-4 md:px-8 py-2 md:py-4 font-black rounded-[15px] md:rounded-[20px] text-sm md:text-lg">النشاط</TabsTrigger>
+            <TabsTrigger value="logs" className="px-4 md:px-8 py-2 md:py-4 font-black rounded-[15px] md:rounded-[20px] text-sm md:text-lg flex gap-2">النشاط <History className="w-4 h-4" /></TabsTrigger>
           </TabsList>
+
+          <TabsContent value="welcome">
+            <Card className="p-8 md:p-14 glass-card rounded-[40px] md:rounded-[60px] border-primary/20 text-center space-y-10 relative overflow-hidden">
+               <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary/0 via-primary/40 to-primary/0" />
+               <div className="space-y-6">
+                 <div className="w-24 h-24 md:w-32 md:h-32 bg-primary/10 rounded-[40px] flex items-center justify-center mx-auto ring-4 ring-primary/20 animate-float-soft">
+                   <Crown className="w-12 h-12 md:w-16 md:h-16 text-primary" />
+                 </div>
+                 <h2 className="text-3xl md:text-6xl font-black text-white">أهلاً بك يا دكتور محمود 👋</h2>
+                 <p className="text-lg md:text-2xl text-white/40 max-w-3xl mx-auto font-bold leading-relaxed">
+                   أنت الآن في قلب نظام EASY. من هنا يمكنك التحكم في كل ذرة في المنصة، من قبول الطلاب إلى بناء أصعب التحديات اللفظية. أهم شيء هو الفهم، ونحن هنا لتسهيله.
+                 </p>
+               </div>
+               
+               <div className="pt-10 border-t border-white/5">
+                 <div className="glass-card p-8 md:p-12 rounded-[40px] border-emerald-500/20 max-w-2xl mx-auto space-y-6">
+                   <div className="w-16 h-16 bg-emerald-500/10 rounded-3xl flex items-center justify-center mx-auto">
+                     <MessageCircle className="w-8 h-8 text-emerald-500" />
+                   </div>
+                   <h3 className="text-xl md:text-3xl font-black">غرفة تواصل EASY 💬</h3>
+                   <p className="text-white/40 font-bold text-sm md:text-base">تواصل مباشرة مع الطلاب والمشرفين عبر المجموعة الرسمية على واتساب.</p>
+                   <Button onClick={() => window.open('https://chat.whatsapp.com/your-group-link', '_blank')} className="h-16 md:h-20 w-full rounded-3xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xl md:text-2xl flex gap-3 shadow-[0_0_30px_rgba(16,185,129,0.3)]">
+                     <MessageCircle className="w-6 h-6 md:w-8 md:h-8" /> انضم لمجموعة الواتساب
+                   </Button>
+                 </div>
+               </div>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="requests">
             <Card className="p-6 md:p-10 glass-card rounded-[40px] md:rounded-[50px] space-y-10 border-white/5">
               <h2 className="text-2xl md:text-3xl font-black flex items-center gap-4">المستخدمين الجدد ⏳</h2>
               <div className="grid gap-6">
                 {pendingUsers.map((u) => (
-                  <div key={u.id} className="flex flex-col md:flex-row justify-between items-center p-6 md:p-8 bg-white/[0.02] border border-white/5 rounded-3xl gap-6">
+                  <div key={`req-${u.id}`} className="flex flex-col md:flex-row justify-between items-center p-6 md:p-8 bg-white/[0.02] border border-white/5 rounded-3xl gap-6">
                     <div className="flex items-center gap-6 w-full">
                       <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center font-black text-xl md:text-2xl text-amber-500 shrink-0">{u.displayName?.[0] || '?' }</div>
                       <div className="overflow-hidden">
@@ -547,7 +575,7 @@ export default function AdminPage() {
               </div>
               <div className="grid gap-6">
                 {usersList.map((u) => (
-                  <div key={u.id} className="flex flex-col md:flex-row justify-between items-center p-6 md:p-8 bg-white/[0.02] border border-white/5 rounded-3xl gap-6">
+                  <div key={`user-${u.id}`} className="flex flex-col md:flex-row justify-between items-center p-6 md:p-8 bg-white/[0.02] border border-white/5 rounded-3xl gap-6">
                     <div className="flex items-center gap-6 w-full">
                       <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-primary/10 flex items-center justify-center font-black text-xl md:text-2xl text-primary shrink-0">{u.displayName?.[0] || 'U'}</div>
                       <div className="overflow-hidden">
@@ -591,7 +619,7 @@ export default function AdminPage() {
                 
                 <div className="grid gap-6">
                   {adminsList.map((admin) => (
-                    <div key={admin.id} className="flex flex-col md:flex-row justify-between items-center p-6 md:p-8 bg-white/[0.02] border border-white/5 rounded-3xl gap-6">
+                    <div key={`admin-${admin.id}`} className="flex flex-col md:flex-row justify-between items-center p-6 md:p-8 bg-white/[0.02] border border-white/5 rounded-3xl gap-6">
                       <div className="flex items-center gap-6 w-full">
                         <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-primary/20 flex items-center justify-center shrink-0">
                           {admin.role === 'owner' ? <Crown className="text-amber-500 w-6 h-6 md:w-8 md:h-8" /> : <ShieldCheck className="text-primary w-6 h-6 md:w-8 md:h-8" />}
@@ -828,7 +856,7 @@ export default function AdminPage() {
                        <h2 className="text-2xl md:text-3xl font-black">الأقسام النشطة</h2>
                        <div className="grid gap-4">
                           {sections.map((s) => (
-                            <div key={s.firebaseId || s.id} className="p-4 md:p-6 bg-white/[0.02] border border-white/5 rounded-2xl flex flex-col sm:flex-row justify-between items-center group gap-4">
+                            <div key={`live-sec-${s.firebaseId || s.id}`} className="p-4 md:p-6 bg-white/[0.02] border border-white/5 rounded-2xl flex flex-col sm:flex-row justify-between items-center group gap-4">
                                <div className="flex items-center gap-4 w-full">
                                   <Badge className="bg-primary/20 text-primary shrink-0">{s.id}</Badge>
                                   <div className="flex flex-col overflow-hidden">
@@ -853,7 +881,7 @@ export default function AdminPage() {
               <h2 className="text-2xl md:text-3xl font-black flex items-center gap-4"><History className="text-primary" /> سجل النشاط</h2>
               <div className="space-y-4">
                 {activityLogs.map((log, i) => (
-                  <div key={`log-${i}`} className="p-4 md:p-6 bg-white/[0.02] border border-white/5 rounded-3xl flex flex-col sm:flex-row justify-between items-center gap-4">
+                  <div key={`log-item-${log.id || i}`} className="p-4 md:p-6 bg-white/[0.02] border border-white/5 rounded-3xl flex flex-col sm:flex-row justify-between items-center gap-4">
                     <div className="flex items-center gap-3 w-full">
                       <Badge className={cn("text-white text-[10px]", 
                         log.action === 'BAN' ? "bg-rose-500" : 
@@ -869,6 +897,7 @@ export default function AdminPage() {
                     <p className="text-[10px] md:text-xs text-white/20 shrink-0 w-full sm:w-auto text-left sm:text-right">{log.timestamp?.toDate()?.toLocaleString('ar-SA')}</p>
                   </div>
                 ))}
+                {activityLogs.length === 0 && <div className="py-20 text-center text-white/20 font-black">لا يوجد نشاط مسجل حالياً</div>}
               </div>
             </Card>
           </TabsContent>
