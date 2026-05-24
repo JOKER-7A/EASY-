@@ -9,7 +9,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
-  Timer, Zap, Play, XCircle, Moon, CheckCircle2, Crown, StarIcon, Flame, Heart, BookText, Eye, ArrowLeft, ArrowRight, MessageCircle
+  Timer, Zap, Play, XCircle, Moon, CheckCircle2, Crown, StarIcon, Flame, Heart, BookText, Eye, ArrowLeft, ArrowRight, MessageCircle, RefreshCcw, LayoutList, Check, X
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -43,6 +43,7 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
   const [startTime, setStartTime] = useState<number | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [motivationMessage, setMotivationMessage] = useState("");
+  const [showReview, setShowReview] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -117,10 +118,8 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
     
     if (auth.currentUser) {
       const isCorrect = opt === q.correct;
-      // تحديث الـ XP فوراً
       updateUserXP(auth.currentUser.uid, isCorrect);
       
-      // إذا كانت الإجابة خاطئة، سجل الخطأ فوراً وبشكل مضمون في قاعدة البيانات
       if (!isCorrect) {
         saveErrorLogToDb(auth.currentUser.uid, q, section.title, opt);
       }
@@ -146,10 +145,7 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
       return;
     }
     
-    // استدعاء دالة التبديل المحسنة لضمان الحفظ في Firebase
     const isAdded = await toggleFavoriteInDb(auth.currentUser.uid, question, section.title);
-    
-    // تحديث الحالة المحلية فوراً لمزامنة الأيقونة
     setFavorites(prev => isAdded ? [...prev, String(question.id)] : prev.filter(id => id !== String(question.id)));
     
     toast({ 
@@ -209,15 +205,15 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
 
     return (
       <ScrollArea className="h-screen bg-background" dir="rtl">
-        <div className="max-w-4xl mx-auto py-24 px-6 space-y-16">
+        <div className="max-w-4xl mx-auto py-12 md:py-24 px-6 space-y-16">
           <div className="text-center space-y-8">
             <div className={cn("inline-block p-14 rounded-[60px] bg-white/[0.02] border border-white/10 relative", motivation.glow)}>
                {score === 100 && <div className="absolute -inset-4 bg-primary/20 blur-[60px] rounded-full animate-pulse" />}
                <motivation.icon className={cn("w-24 h-24 relative z-10", motivation.color)} />
             </div>
             <div className="space-y-2">
-              <h1 className="text-6xl font-black italic">{motivation.text}</h1>
-              <p className="text-8xl font-black text-primary tracking-tighter">{score}%</p>
+              <h1 className="text-4xl md:text-6xl font-black italic">{motivation.text}</h1>
+              <p className="text-6xl md:text-8xl font-black text-primary tracking-tighter">{score}%</p>
             </div>
           </div>
 
@@ -228,17 +224,89 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
               { label: 'إجمالي الأسئلة', val: section.questions.length, color: 'text-foreground' },
               { label: 'زمن الحل', val: Math.floor((Date.now() - (startTime || 0)) / 60000) + 'د', color: 'text-primary' }
             ].map((s, i) => (
-              <Card key={i} className="p-8 text-center glass-card rounded-[35px] border-white/5">
+              <Card key={i} className="p-6 md:p-8 text-center glass-card rounded-[35px] border-white/5">
                 <p className="text-[10px] font-black opacity-30 uppercase tracking-widest mb-2">{s.label}</p>
-                <p className={cn("text-3xl font-black", s.color)}>{s.val}</p>
+                <p className={cn("text-2xl md:text-3xl font-black", s.color)}>{s.val}</p>
               </Card>
             ))}
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 pb-20">
-            <Button onClick={() => window.location.reload()} className="flex-2 h-16 text-xl font-black rounded-3xl bg-primary shadow-2xl shadow-primary/20">إعادة المحاولة 🔄</Button>
-            <Button onClick={onExit} variant="outline" className="flex-1 h-16 text-xl font-black rounded-3xl border-white/10 hover:bg-white/5">الخروج</Button>
-          </div>
+          {!showReview ? (
+            <div className="flex flex-col gap-4 max-w-2xl mx-auto">
+              <Button onClick={() => setShowReview(true)} className="h-16 text-xl font-black rounded-3xl bg-emerald-500 hover:bg-emerald-600 shadow-xl shadow-emerald-500/20 gap-3">
+                <LayoutList className="w-6 h-6" /> مراجعة الإجابات وتصحيح الأخطاء 📝
+              </Button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Button onClick={() => window.location.reload()} variant="outline" className="h-16 text-xl font-black rounded-3xl border-white/10 hover:bg-white/5 gap-3">
+                  <RefreshCcw className="w-5 h-5" /> إعادة المحاولة
+                </Button>
+                <Button onClick={onExit} variant="outline" className="h-16 text-xl font-black rounded-3xl border-white/10 hover:bg-white/5">
+                  خروج
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-10 pb-20">
+              <div className="flex items-center justify-between border-b border-white/5 pb-6">
+                <h2 className="text-2xl md:text-3xl font-black italic">تصحيح الاختبار 📋</h2>
+                <Button onClick={() => setShowReview(false)} variant="ghost" className="font-black text-rose-500 hover:bg-rose-500/10 rounded-2xl">إغلاق المراجعة</Button>
+              </div>
+              
+              <div className="space-y-8">
+                {section.questions.map((question, idx) => {
+                  const userAnswer = userAnswers[question.id];
+                  const isCorrect = userAnswer === question.correct;
+
+                  return (
+                    <Card key={question.id} className="p-8 glass-card rounded-[40px] border-white/5 space-y-6 overflow-hidden relative">
+                      <div className="flex justify-between items-start">
+                        <Badge className={cn("px-4 py-1 rounded-xl border-none", isCorrect ? "bg-emerald-500/10 text-emerald-500" : "bg-rose-500/10 text-rose-500")}>
+                          سؤال {idx + 1} - {isCorrect ? 'إجابة صحيحة' : 'إجابة خاطئة'}
+                        </Badge>
+                        {isCorrect ? <CheckCircle2 className="text-emerald-500 w-6 h-6" /> : <XCircle className="text-rose-500 w-6 h-6" />}
+                      </div>
+
+                      <h3 className="text-xl md:text-2xl font-black leading-relaxed">{question.question}</h3>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {question.options.map((opt, optIdx) => {
+                          const isCorrectOpt = opt === question.correct;
+                          const isUserOpt = opt === userAnswer;
+
+                          return (
+                            <div 
+                              key={optIdx} 
+                              className={cn(
+                                "p-5 rounded-2xl border flex items-center justify-between font-bold transition-all",
+                                isCorrectOpt ? "bg-emerald-500 border-emerald-400 text-white shadow-lg shadow-emerald-500/20" : 
+                                isUserOpt && !isCorrect ? "bg-rose-500 border-rose-400 text-white shadow-lg shadow-rose-500/20" :
+                                "bg-white/[0.02] border-white/5 text-white/40"
+                              )}
+                            >
+                              <span className="flex items-center gap-3">
+                                <span className={cn("w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black", 
+                                  isCorrectOpt || isUserOpt ? "bg-white/20" : "bg-white/5"
+                                )}>
+                                  {['أ', 'ب', 'ج', 'د'][optIdx]}
+                                </span>
+                                {opt}
+                              </span>
+                              {isCorrectOpt && <Check className="w-5 h-5" />}
+                              {isUserOpt && !isCorrect && <X className="w-5 h-5" />}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+
+              <div className="flex justify-center pt-10">
+                 <Button onClick={onExit} className="h-16 px-12 text-xl font-black rounded-3xl bg-primary">العودة للرئيسية</Button>
+              </div>
+            </div>
+          )}
         </div>
       </ScrollArea>
     );
@@ -340,9 +408,11 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
 
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6">
             <Button onClick={handlePrevious} disabled={currentQuestionIndex === 0} variant="ghost" className="w-full sm:w-auto h-14 px-8 rounded-2xl font-black gap-2 hover:bg-white/5"><ArrowRight className="w-5 h-5" /> السابق</Button>
-            <Button onClick={handleNext} className="w-full sm:w-auto h-16 px-12 rounded-[25px] font-black text-xl bg-primary gap-3 shadow-2xl shadow-primary/20 transition-all active:scale-95">
-              {currentQuestionIndex === section.questions.length - 1 ? "إنهاء المراجعة" : "السؤال التالي"} <ArrowLeft className="w-6 h-6" />
-            </Button>
+            <div className="flex gap-3 w-full sm:w-auto">
+              <Button onClick={handleNext} className="flex-1 sm:flex-none h-16 px-12 rounded-[25px] font-black text-xl bg-primary gap-3 shadow-2xl shadow-primary/20 transition-all active:scale-95">
+                {currentQuestionIndex === section.questions.length - 1 ? "إنهاء المراجعة" : "السؤال التالي"} <ArrowLeft className="w-6 h-6" />
+              </Button>
+            </div>
           </div>
 
           <div className="mt-12 p-8 rounded-[40px] bg-primary/5 border border-primary/10 flex flex-col items-center text-center space-y-4 animate-in fade-in zoom-in duration-700">
