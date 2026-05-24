@@ -164,30 +164,39 @@ export default function AdminPage() {
     }
   }, []);
 
-  // Theme Sync Logic for Admin Panel
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
       setLoading(true);
       if (user) {
-        const userRef = doc(db, "userProfiles", user.uid);
-        onSnapshot(userRef, (snap) => {
-          if (snap.exists()) {
-            const data = snap.data();
-            if (data.theme) {
-              document.documentElement.style.setProperty('--primary', data.theme);
+        try {
+          // المزامنة الحية للسمة
+          const userRef = doc(db, "userProfiles", user.uid);
+          onSnapshot(userRef, (snap) => {
+            if (snap.exists()) {
+              const data = snap.data();
+              if (data.theme) {
+                document.documentElement.style.setProperty('--primary', data.theme);
+              }
             }
-          }
-        });
+          });
 
-        const profile = await getUserProfile(user.uid, user.email || '');
-        const role = profile?.role || 'user';
-        setCurrentUserRole(role);
-        
-        const adminRoles = ['rootOwner', 'owner', 'superAdmin', 'admin', 'editor', 'helper'];
-        setIsAuthorized(adminRoles.includes(role));
-        
-        if (adminRoles.includes(role)) {
-          await fetchData();
+          // التحقق من الرتبة بشكل صارم
+          const profile = await getUserProfile(user.uid, user.email || '');
+          const role = profile?.role || 'user';
+          setCurrentUserRole(role);
+          
+          // الأدوار المسموح لها بدخول لوحة الإدارة (قصرها على OWNER و ROOT OWNER و SUPER ADMIN)
+          const authorizedRoles = ['rootOwner', 'owner', 'superAdmin'];
+          const hasAccess = authorizedRoles.includes(role);
+          
+          setIsAuthorized(hasAccess);
+          
+          if (hasAccess) {
+            await fetchData();
+          }
+        } catch (error) {
+          console.error("Auth Guard Error:", error);
+          setIsAuthorized(false);
         }
       } else {
         setIsAuthorized(false);
@@ -530,18 +539,23 @@ export default function AdminPage() {
     </div>
   );
 
+  // شاشة الحماية في حالة عدم وجود صلاحية
   if (isAuthorized === false) {
     return (
       <main className="min-h-screen bg-black flex items-center justify-center p-4 overflow-hidden relative" dir="rtl">
         <div className="absolute inset-0 bg-mesh opacity-20" />
-        <Card className="w-full max-w-md p-10 glass-card rounded-[40px] border-primary/20 relative z-10 text-center space-y-6">
-          <div className="w-20 h-20 bg-rose-500/10 rounded-3xl flex items-center justify-center mx-auto ring-2 ring-rose-500/20">
-            <Lock className="w-10 h-10 text-rose-500" />
+        <Card className="w-full max-w-md p-10 glass-card rounded-[40px] border-primary/20 relative z-10 text-center space-y-6 shadow-[0_0_100px_rgba(var(--primary),0.1)]">
+          <div className="w-24 h-24 bg-rose-500/10 rounded-[35px] flex items-center justify-center mx-auto ring-4 ring-rose-500/10">
+            <Lock className="w-12 h-12 text-rose-500" />
           </div>
-          <h1 className="text-3xl font-black text-white">دخول غير مصرح ⛔</h1>
-          <p className="text-white/40 font-bold leading-relaxed">عذراً، لا تمتلك الصلاحيات الكافية لدخول لوحة الإدارة.</p>
-          <Button onClick={() => window.location.href = '/'} className="w-full h-14 bg-primary rounded-2xl font-black">العودة للرئيسية</Button>
-          <Button onClick={handleAdminLogout} variant="ghost" className="text-rose-500 text-xs font-bold">تسجيل الخروج</Button>
+          <div className="space-y-2">
+            <h1 className="text-3xl font-black text-white">دخول غير مصرح ⛔</h1>
+            <p className="text-white/40 font-bold leading-relaxed">عذراً، لا تمتلك الصلاحيات الكافية لدخول لوحة الإدارة.</p>
+          </div>
+          <div className="pt-6 space-y-3">
+            <Button onClick={() => window.location.href = '/'} className="w-full h-14 bg-primary rounded-2xl font-black text-lg shadow-xl shadow-primary/20">العودة للرئيسية</Button>
+            <Button onClick={handleAdminLogout} variant="ghost" className="w-full h-12 text-rose-500 font-bold hover:bg-rose-500/10 rounded-xl">تسجيل الخروج</Button>
+          </div>
         </Card>
       </main>
     );
