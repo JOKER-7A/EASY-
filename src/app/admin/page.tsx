@@ -2,35 +2,36 @@
 
 import React, { useState, useEffect } from 'react';
 import { auth, db } from '@/lib/firebase';
-import { signInWithEmailAndPassword, onAuthStateChanged, signOut, User } from 'firebase/auth';
+import { signOut } from 'firebase/auth';
 import { getSectionsFromDb } from '@/lib/db-service';
 import { 
-  collection, getDocs, addDoc, doc, deleteDoc, updateDoc, query, orderBy, limit, where, getDoc 
+  collection, getDocs, addDoc, doc, deleteDoc, updateDoc, getDoc 
 } from 'firebase/firestore';
-import { Section, Question } from '@/lib/practice-data';
+import { Section } from '@/lib/practice-data';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
-  Plus, Trash2, LogOut, Settings, LayoutDashboard, FileText, HelpCircle, Loader2, Save, Users, 
-  Search, Edit2, BookOpen, ShieldCheck, Database, Ban, AlertCircle, MessageSquare, TrendingUp,
-  UserPlus, CheckCircle2, XCircle
+  Trash2, Settings, FileText, HelpCircle, Loader2, Users, 
+  Search, ShieldCheck, Database, Ban, AlertCircle, TrendingUp,
+  XCircle, Lock
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+const ADMIN_SECRET_CODE = "EASY77100";
+const AUTH_KEY = "easy_admin_authorized";
+
 export default function AdminPage() {
-  const [user, setUser] = useState<User | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [adminCodeInput, setAdminCodeInput] = useState('');
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  
   const [sections, setSections] = useState<Section[]>([]);
   const [usersList, setUsersList] = useState<any[]>([]);
   const [errorLogs, setErrorLogs] = useState<any[]>([]);
@@ -54,22 +55,13 @@ export default function AdminPage() {
   });
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (u) => {
-      setUser(u);
-      if (u) {
-        const userRef = doc(db, "userProfiles", u.uid);
-        const userSnap = await getDoc(userRef);
-        if (userSnap.exists() && userSnap.data().status === 'admin') {
-          setIsAdmin(true);
-          fetchData();
-        } else {
-          setIsAdmin(false);
-          if (u) signOut(auth);
-        }
-      }
-      setLoading(false);
-    });
-    return () => unsubscribe();
+    // التحقق من حالة الدخول المخزنة محلياً
+    const authStatus = localStorage.getItem(AUTH_KEY);
+    if (authStatus === 'true') {
+      setIsAuthorized(true);
+      fetchData();
+    }
+    setLoading(false);
   }, []);
 
   const fetchData = async () => {
@@ -90,24 +82,35 @@ export default function AdminPage() {
         sections: sectionsData.length,
         questions: sectionsData.reduce((acc, s) => acc + (s.questions?.length || 0), 0),
         errors: errorsData.length,
-        banned: usersData.filter(u => u.isBanned).length,
-        active: usersData.filter(u => u.xp > 0).length
+        banned: usersData.filter((u: any) => u.isBanned).length,
+        active: usersData.filter((u: any) => u.xp > 0).length
       });
     } catch (error) {
-      console.error(error);
+      console.error("Error fetching data:", error);
     }
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleAdminLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-    } catch (error: any) {
-      toast({ title: "خطأ في الدخول", variant: "destructive" });
-    } finally {
-      setIsSubmitting(false);
+    if (adminCodeInput === ADMIN_SECRET_CODE) {
+      setIsAuthorized(true);
+      localStorage.setItem(AUTH_KEY, 'true');
+      fetchData();
+      toast({ title: "تم الدخول بنجاح ✅", description: "أهلاً بك يا دكتور محمود" });
+    } else {
+      toast({ 
+        title: "كود خاطئ ❌", 
+        description: "يرجى التأكد من الكود السري للأدمن", 
+        variant: "destructive" 
+      });
     }
+  };
+
+  const handleAdminLogout = () => {
+    setIsAuthorized(false);
+    localStorage.removeItem(AUTH_KEY);
+    signOut(auth);
+    toast({ title: "تم تسجيل الخروج" });
   };
 
   const handleToggleBan = async (userId: string, currentStatus: boolean) => {
@@ -154,43 +157,59 @@ export default function AdminPage() {
     </div>
   );
 
-  if (!user || !isAdmin) {
+  // واجهة الدخول بالكود السري فقط
+  if (!isAuthorized) {
     return (
-      <main className="min-h-screen bg-black flex items-center justify-center p-4 bg-mesh">
-        <Card className="w-full max-w-md p-10 glass-card rounded-[40px] border-primary/20">
+      <main className="min-h-screen bg-black flex items-center justify-center p-4 bg-mesh overflow-hidden">
+        <Card className="w-full max-w-md p-10 glass-card rounded-[40px] border-primary/20 animate-in fade-in zoom-in duration-500">
           <div className="text-center mb-10">
-            <ShieldCheck className="w-20 h-20 text-primary mx-auto mb-6 text-glow" />
+            <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mx-auto mb-6 ring-2 ring-primary/20">
+              <Lock className="w-10 h-10 text-primary text-glow" />
+            </div>
             <h1 className="text-4xl font-black text-white">بوابة الإدارة 🔐</h1>
-            <p className="text-primary/60 font-bold mt-2 uppercase tracking-widest text-xs">EASY Administrative Access</p>
+            <p className="text-primary/60 font-bold mt-2 uppercase tracking-widest text-[10px]">EASY Administrative Access</p>
           </div>
-          <form onSubmit={handleLogin} className="space-y-6">
-            <Input type="email" placeholder="admin@easy.com" value={email} onChange={(e) => setEmail(e.target.value)} className="h-16 rounded-2xl bg-white/5 border-white/10" required />
-            <Input type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className="h-16 rounded-2xl bg-white/5 border-white/10" required />
-            <Button disabled={isSubmitting} type="submit" className="w-full h-16 bg-primary text-white font-black text-2xl rounded-2xl shadow-xl">
-              {isSubmitting ? <Loader2 className="animate-spin" /> : "تحقق 🚀"}
+          <form onSubmit={handleAdminLogin} className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-white/40 uppercase mr-4">Admin Security Code</label>
+              <Input 
+                type="password" 
+                placeholder="Enter Secret Code" 
+                value={adminCodeInput} 
+                onChange={(e) => setAdminCodeInput(e.target.value)} 
+                className="h-16 rounded-2xl bg-white/5 border-white/10 text-center text-2xl tracking-[0.5em] focus:border-primary/50" 
+                required 
+              />
+            </div>
+            <Button disabled={isSubmitting} type="submit" className="w-full h-16 bg-primary text-white font-black text-xl rounded-2xl shadow-xl hover:scale-[1.02] transition-transform">
+              تحقق 🚀
             </Button>
           </form>
+          <div className="mt-8 text-center">
+             <button onClick={() => window.location.href = '/'} className="text-xs text-white/20 hover:text-white transition-colors">العودة للموقع الرئيسي</button>
+          </div>
         </Card>
       </main>
     );
   }
 
+  // لوحة الإدارة الكاملة بعد الدخول بالكود
   return (
     <main className="min-h-screen bg-black p-4 md:p-12 text-white bg-mesh" dir="rtl">
       <div className="max-w-7xl mx-auto space-y-12">
         <header className="flex flex-col md:flex-row justify-between items-center gap-8 glass-card p-8 rounded-[40px] border-primary/10">
           <div className="flex items-center gap-6">
             <div className="bg-primary/20 p-5 rounded-3xl ring-2 ring-primary/20">
-              <Settings className="text-primary w-8 h-8" />
+              <ShieldCheck className="text-primary w-8 h-8" />
             </div>
             <div>
               <h1 className="text-4xl font-black tracking-tight">لوحة القيادة</h1>
-              <p className="text-primary font-bold uppercase tracking-widest text-xs opacity-60">Elite Control Center</p>
+              <p className="text-primary font-bold uppercase tracking-widest text-xs opacity-60">Elite Command Center</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
             <Button variant="outline" onClick={() => window.location.href = '/'} className="h-12 px-8 rounded-2xl border-white/10 font-bold">الموقع الرئيسي</Button>
-            <Button variant="ghost" onClick={() => signOut(auth)} className="h-12 px-8 rounded-2xl text-destructive hover:bg-destructive/10 font-bold">خروج</Button>
+            <Button variant="ghost" onClick={handleAdminLogout} className="h-12 px-8 rounded-2xl text-destructive hover:bg-destructive/10 font-bold">خروج</Button>
           </div>
         </header>
 
@@ -276,7 +295,6 @@ export default function AdminPage() {
                     {isSubmitting ? <Loader2 className="animate-spin" /> : "نشر النموذج 🚀"}
                   </Button>
                 </div>
-                {/* Section Creation Logic */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   <div className="space-y-3">
                     <label className="text-xs font-bold uppercase text-primary">رقم النموذج</label>
