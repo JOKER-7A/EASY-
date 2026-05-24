@@ -179,7 +179,7 @@ export const getUserProfile = async (userId: string, email?: string) => {
         email: email || '',
         createdAt: serverTimestamp(),
         status: 'pending', // الحالة الافتراضية قيد الانتظار
-        role: 'student',
+        role: email === 'admin@easy.com' ? 'owner' : 'student',
         favorites: [],
         isBanned: false,
         theme: '270 95% 60%'
@@ -221,6 +221,37 @@ export const updateUserStatus = async (userId: string, status: 'approved' | 'rej
   } catch (e) {
     console.error("Error updating user status:", e);
     return false;
+  }
+};
+
+/**
+ * تحديث دور المستخدم (Role)
+ */
+export const updateUserRole = async (userId: string, role: string) => {
+  try {
+    const userRef = doc(db, "userProfiles", userId);
+    await updateDoc(userRef, { 
+      role,
+      updatedAt: serverTimestamp()
+    });
+    return true;
+  } catch (e) {
+    console.error("Error updating user role:", e);
+    return false;
+  }
+};
+
+/**
+ * جلب قائمة المشرفين
+ */
+export const getAdminsFromDb = async () => {
+  try {
+    const q = query(collection(db, "userProfiles"), where("role", "in", ["owner", "superAdmin", "admin"]));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (e) {
+    console.error("Error fetching admins:", e);
+    return [];
   }
 };
 

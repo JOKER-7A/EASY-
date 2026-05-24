@@ -11,7 +11,10 @@ import {
   deleteTemplateFromDb,
   updateUserStatus,
   updateSectionInDb,
-  updateTemplateInDb
+  updateTemplateInDb,
+  getAdminsFromDb,
+  updateUserRole,
+  getUserProfile
 } from '@/lib/db-service';
 import { 
   collection, getDocs, addDoc, doc, deleteDoc, updateDoc, serverTimestamp, query, orderBy, limit, where 
@@ -30,7 +33,7 @@ import {
 } from "@/components/ui/dialog";
 import { 
   Trash2, ShieldCheck, Database, Ban, AlertCircle, TrendingUp,
-  XCircle, Lock, Edit2, History, Copy, Layers, Loader2, Search, FileText, UserCheck, X as XIcon, CheckCircle, PlusCircle, Save, BookOpen, ListTree
+  XCircle, Lock, Edit2, History, Copy, Layers, Loader2, Search, FileText, UserCheck, X as XIcon, CheckCircle, PlusCircle, Save, BookOpen, ListTree, Crown, Users
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -49,7 +52,11 @@ export default function AdminPage() {
   const [templates, setTemplates] = useState<any[]>([]);
   const [usersList, setUsersList] = useState<any[]>([]);
   const [pendingUsers, setPendingUsers] = useState<any[]>([]);
+  const [adminsList, setAdminsList] = useState<any[]>([]);
   const [activityLogs, setActivityLogs] = useState<any[]>([]);
+  const [currentUserRole, setCurrentUserRole] = useState<string>('student');
+  const [adminSearchEmail, setAdminSearchEmail] = useState('');
+  
   const [stats, setStats] = useState({
     students: 0,
     sections: 0,
@@ -97,12 +104,20 @@ export default function AdminPage() {
       setUsersList(allUsers.filter((u: any) => u.status !== 'pending'));
       setPendingUsers(allUsers.filter((u: any) => u.status === 'pending'));
 
+      const adminsData = await getAdminsFromDb();
+      setAdminsList(adminsData);
+
       const errorsSnap = await getDocs(collection(db, "errorLogs"));
       const errorsData = errorsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
       const logsSnap = await getDocs(query(collection(db, "userActivityLogs"), orderBy("timestamp", "desc"), limit(50)));
       setActivityLogs(logsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       
+      if (auth.currentUser) {
+        const profile = await getUserProfile(auth.currentUser.uid);
+        setCurrentUserRole(profile?.role || 'student');
+      }
+
       setStats({
         students: allUsers.filter((u: any) => u.status !== 'pending').length,
         sections: sectionsData.length,
@@ -132,7 +147,7 @@ export default function AdminPage() {
       setIsAuthorized(true);
       localStorage.setItem(AUTH_KEY, 'true');
       fetchData();
-      toast({ title: "تم الدخول بنجاح ✅", description: "أهلاً بك يا دكتور محمود" });
+      toast({ title: "تم الدخول بنجاح ✅", description: "أهلاً بك في لوحة الإدارة" });
     } else {
       toast({ 
         title: "كود خاطئ ❌", 
@@ -155,6 +170,7 @@ export default function AdminPage() {
       await updateUserStatus(userId, status);
       await addDoc(collection(db, "userActivityLogs"), {
         userId,
+        adminId: auth.currentUser?.uid,
         action: status === 'approved' ? 'APPROVAL' : 'REJECTION',
         timestamp: serverTimestamp()
       });
@@ -162,6 +178,54 @@ export default function AdminPage() {
       fetchData();
     } catch (e) {
       toast({ title: "فشلت العملية", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRoleChange = async (userId: string, newRole: string) => {
+    const userToChange = adminsList.find(a => a.id === userId) || usersList.find(u => u.id === userId);
+    
+    // منع تغيير رتبة الـ Owner إلا من قبل نفسه (أو سياسة معينة)
+    if (userToChange?.role === 'owner' && currentUserRole !== 'owner') {
+      toast({ title: "لا تملك صلاحية تعديل رتبة المالك", variant: "destructive" });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await updateUserRole(userId, newRole);
+      await addDoc(collection(db, "userActivityLogs"), {
+        userId,
+        adminId: auth.currentUser?.uid,
+        action: 'ROLE_CHANGE',
+        newRole,
+        timestamp: serverTimestamp()
+      });
+      toast({ title: "تم تحديث الرتبة بنجاح ✅" });
+      fetchData();
+    } catch (e) {
+      toast({ title: "فشلت العملية", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleAddAdminByEmail = async () => {
+    if (!adminSearchEmail.trim()) return;
+    setIsSubmitting(true);
+    try {
+      const q = query(collection(db, "userProfiles"), where("email", "==", adminSearchEmail.trim()));
+      const snap = await getDocs(q);
+      if (snap.empty) {
+        toast({ title: "المستخدم غير موجود", variant: "destructive" });
+      } else {
+        const userId = snap.docs[0].id;
+        await handleRoleChange(userId, 'admin');
+        setAdminSearchEmail('');
+      }
+    } catch (e) {
+      toast({ title: "خطأ في البحث", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -366,14 +430,16 @@ export default function AdminPage() {
                 required 
               />
             </div>
-            <Button disabled={isSubmitting} type="submit" className="w-full h-16 bg-primary text-white font-black text-xl rounded-2xl shadow-xl hover:scale-[1.02] transition-transform">
+            <button type="submit" disabled={isSubmitting} className="w-full h-16 bg-primary text-white font-black text-xl rounded-2xl shadow-xl hover:scale-[1.02] transition-transform">
               تحقق 🚀
-            </Button>
+            </button>
           </form>
         </Card>
       </main>
     );
   }
+
+  const isOwnerOrSuper = currentUserRole === 'owner' || currentUserRole === 'superAdmin';
 
   return (
     <main className="min-h-screen bg-black p-4 md:p-12 text-white bg-mesh" dir="rtl">
@@ -385,7 +451,9 @@ export default function AdminPage() {
             </div>
             <div>
               <h1 className="text-4xl font-black tracking-tight">لوحة القيادة</h1>
-              <p className="text-primary font-bold uppercase tracking-widest text-xs opacity-60">Elite Command Center</p>
+              <p className="text-primary font-bold uppercase tracking-widest text-xs opacity-60">
+                {currentUserRole === 'owner' ? 'Elite Creator' : currentUserRole === 'superAdmin' ? 'Supreme Admin' : 'Content Admin'}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -396,7 +464,7 @@ export default function AdminPage() {
 
         <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-6">
           {[
-            { label: 'الطلاب', val: stats.students, icon: Search, color: 'text-blue-500' },
+            { label: 'الطلاب', val: stats.students, icon: Users, color: 'text-blue-500' },
             { label: 'الطلبات', val: stats.requests, icon: UserCheck, color: 'text-amber-500' },
             { label: 'الأقسام', val: stats.sections, icon: Database, color: 'text-purple-500' },
             { label: 'الأسئلة', val: stats.questions, icon: FileText, color: 'text-emerald-500' },
@@ -417,6 +485,7 @@ export default function AdminPage() {
             <TabsTrigger value="requests" className="px-12 font-black rounded-[20px] h-full text-lg flex gap-2">طلبات الانضمام {stats.requests > 0 && <Badge className="bg-amber-500">{stats.requests}</Badge>}</TabsTrigger>
             <TabsTrigger value="users" className="px-12 font-black rounded-[20px] h-full text-lg">الطلاب</TabsTrigger>
             <TabsTrigger value="content" className="px-12 font-black rounded-[20px] h-full text-lg">إدارة المحتوى</TabsTrigger>
+            {isOwnerOrSuper && <TabsTrigger value="admins" className="px-12 font-black rounded-[20px] h-full text-lg">المشرفين</TabsTrigger>}
             <TabsTrigger value="logs" className="px-12 font-black rounded-[20px] h-full text-lg">النشاط</TabsTrigger>
           </TabsList>
 
@@ -463,7 +532,7 @@ export default function AdminPage() {
                         <p className="font-black text-xl flex items-center gap-3">
                           {u.displayName || 'بدون اسم'}
                           {u.isBanned && <Badge className="bg-destructive text-white border-none">محظور</Badge>}
-                          <Badge className="bg-primary/20 text-primary border-none">{u.status || 'student'}</Badge>
+                          <Badge className="bg-primary/20 text-primary border-none">{u.role || 'student'}</Badge>
                         </p>
                         <p className="text-white/30 font-bold text-sm">{u.email} | {u.phoneNumber}</p>
                         <div className="flex gap-4 mt-2">
@@ -475,7 +544,60 @@ export default function AdminPage() {
                     <div className="flex gap-3">
                        <Button onClick={() => { setSelectedUser(u); setNewName(u.displayName || ''); setEditNameModalOpen(true); }} variant="ghost" className="h-12 px-6 rounded-xl font-black text-primary hover:bg-primary/10"><Edit2 className="w-4 h-4 ml-2" /> تعديل</Button>
                        <Button onClick={() => { setSelectedUser(u); setBanModalOpen(true); }} variant="ghost" className="h-12 px-6 rounded-xl font-black text-destructive hover:bg-destructive/10"><Ban className="w-4 h-4 ml-2" /> حظر</Button>
-                       <Button variant="ghost" size="icon" onClick={() => { if(confirm("هل تريد حذف حساب الطالب نهائياً؟")) deleteDoc(doc(db, "userProfiles", u.id)).then(() => fetchData()) }} className="text-white/20 hover:text-destructive"><Trash2 className="w-5 h-5" /></Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="admins">
+            <Card className="p-10 glass-card rounded-[50px] space-y-10 border-white/5">
+              <div className="flex flex-col md:flex-row justify-between items-center border-b border-white/5 pb-8 gap-4">
+                <h2 className="text-3xl font-black flex items-center gap-4"><Crown className="text-primary" /> إدارة المشرفين</h2>
+                <div className="flex gap-4 w-full md:w-auto">
+                  <Input 
+                    placeholder="إيميل المستخدم لإضافته..." 
+                    value={adminSearchEmail} 
+                    onChange={(e) => setAdminSearchEmail(e.target.value)}
+                    className="h-14 rounded-2xl bg-black border-white/10" 
+                  />
+                  <Button onClick={handleAddAdminByEmail} disabled={isSubmitting} className="h-14 px-8 bg-primary rounded-2xl font-black">إضافة</Button>
+                </div>
+              </div>
+              
+              <div className="grid gap-6">
+                {adminsList.map((admin) => (
+                  <div key={admin.id} className="flex flex-col md:flex-row justify-between items-center p-8 bg-white/[0.02] border border-white/5 rounded-3xl">
+                    <div className="flex items-center gap-6">
+                      <div className="w-16 h-16 rounded-2xl bg-primary/20 flex items-center justify-center">
+                        {admin.role === 'owner' ? <Crown className="text-amber-500 w-8 h-8" /> : <ShieldCheck className="text-primary w-8 h-8" />}
+                      </div>
+                      <div>
+                        <p className="font-black text-xl">{admin.displayName || 'مشرف'}</p>
+                        <p className="text-white/30 font-bold text-sm">{admin.email}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-6 mt-6 md:mt-0">
+                      <div className="space-y-1 text-right">
+                        <label className="text-[10px] font-bold text-white/40 uppercase">الرتبة الحالية</label>
+                        <Select 
+                          disabled={admin.role === 'owner' || (admin.role === 'superAdmin' && currentUserRole !== 'owner') || isSubmitting}
+                          value={admin.role} 
+                          onValueChange={(val) => handleRoleChange(admin.id, val)}
+                        >
+                          <SelectTrigger className="h-12 w-48 bg-black border-white/10 text-white rounded-xl">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-black border-white/10 text-white">
+                            <SelectItem value="owner" disabled={currentUserRole !== 'owner'}>Owner</SelectItem>
+                            <SelectItem value="superAdmin" disabled={currentUserRole !== 'owner'}>Super Admin</SelectItem>
+                            <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="student">إزالة من الإدارة</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -509,7 +631,6 @@ export default function AdminPage() {
                         </div>
                       </div>
 
-                      {/* Section Info */}
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         <div className="space-y-3">
                           <label className="text-xs font-bold uppercase text-primary">رقم القسم</label>
@@ -525,7 +646,6 @@ export default function AdminPage() {
                         </div>
                       </div>
 
-                      {/* Reading Passages Manager */}
                       <div className="space-y-6 pt-10 border-t border-white/5">
                         <div className="flex justify-between items-center">
                           <h3 className="text-xl font-black flex items-center gap-3"><BookOpen className="text-primary" /> القطع القرائية ({newSection.readingPassages?.length || 0})</h3>
@@ -554,7 +674,6 @@ export default function AdminPage() {
                         ))}
                       </div>
 
-                      {/* Questions Manager */}
                       <div className="space-y-8 pt-10 border-t border-white/5">
                         <div className="flex justify-between items-center">
                           <h3 className="text-xl font-black flex items-center gap-3"><ListTree className="text-primary" /> الأسئلة ({newSection.questions?.length || 0})</h3>
@@ -705,9 +824,14 @@ export default function AdminPage() {
                 {activityLogs.map((log, i) => (
                   <div key={i} className="p-6 bg-white/[0.02] border border-white/5 rounded-3xl flex justify-between items-center">
                     <div className="flex items-center gap-3">
-                      <Badge className={cn("text-white", log.action === 'BAN' ? "bg-rose-500" : log.action === 'NAME_CHANGE' ? "bg-emerald-500" : "bg-blue-500")}>{log.action}</Badge>
+                      <Badge className={cn("text-white", 
+                        log.action === 'BAN' ? "bg-rose-500" : 
+                        log.action === 'ROLE_CHANGE' ? "bg-amber-500" : 
+                        log.action === 'NAME_CHANGE' ? "bg-emerald-500" : "bg-blue-500")}>
+                        {log.action}
+                      </Badge>
                       <span className="font-black">{log.userName || log.userId}</span>
-                      <span className="text-white/40"> - {log.reason || log.action}</span>
+                      <span className="text-white/40"> - {log.reason || log.action} {log.newRole && `(${log.newRole})`}</span>
                     </div>
                     <p className="text-xs text-white/20">{log.timestamp?.toDate()?.toLocaleString()}</p>
                   </div>
@@ -783,7 +907,7 @@ export default function AdminPage() {
               <Textarea 
                 placeholder="لماذا يتم تغيير الاسم؟" 
                 value={nameChangeReason} 
-                onChange={(e) => nameChangeReason(e.target.value)} 
+                onChange={(e) => setNameChangeReason(e.target.value)} 
                 className="min-h-[100px] bg-black/40 border-white/10 rounded-2xl focus:border-primary/50 resize-none" 
               />
             </div>
