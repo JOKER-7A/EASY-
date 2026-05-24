@@ -4,24 +4,48 @@
 
 @layer base {
   :root {
-    --background: 240 10% 2%; /* Ultra Dark Blue-Black */
-    --foreground: 210 40% 98%;
-    --card: 240 10% 4%;
-    --card-foreground: 210 40% 98%;
-    --popover: 240 10% 4%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 270 95% 60%; 
-    --primary-foreground: 210 40% 98%;
-    --secondary: 240 10% 10%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 240 10% 10%;
-    --muted-foreground: 240 5% 65%;
-    --accent: 270 95% 60%;
-    --accent-foreground: 240 10% 4%;
-    --border: 240 10% 12%;
-    --input: 240 10% 12%;
-    --ring: 270 95% 60%;
-    --radius: 1.5rem;
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 262.1 83.3% 57.8%;
+    --primary-foreground: 210 20% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 262.1 83.3% 57.8%;
+    --radius: 1rem;
+  }
+
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 263.4 70% 50.4%;
+    --primary-foreground: 210 20% 98%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 263.4 70% 50.4%;
   }
 }
 
@@ -33,81 +57,44 @@
     @apply bg-background text-foreground overflow-x-hidden antialiased;
     direction: rtl;
     background-image: 
-      radial-gradient(circle at 50% -20%, hsla(var(--primary), 0.15), transparent 50%),
-      radial-gradient(circle at 0% 100%, hsla(var(--primary), 0.08), transparent 40%);
+      radial-gradient(circle at 50% -20%, hsla(var(--primary), 0.1), transparent 50%);
     background-attachment: fixed;
   }
 }
 
-/* شعار EASY المطور - وضوح تام وتأثيرات احترافية */
 .text-easy-premium {
   @apply font-black tracking-tighter text-center block w-full select-none relative;
-  color: white; /* Fallback if clip fails */
   background: linear-gradient(
     to bottom,
-    #ffffff 0%,
-    #ffffff 50%,
+    hsl(var(--foreground)) 0%,
     hsl(var(--primary)) 100%
   );
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 20px hsla(var(--primary), 0.5));
+  filter: drop-shadow(0 0 20px hsla(var(--primary), 0.3));
   line-height: 1;
 }
 
-/* اسم الدكتور محمود - ذهبي ملكي فاخر جداً */
 .text-dr-mahmoud {
-  @apply font-black tracking-widest uppercase relative inline-block text-2xl md:text-3xl;
+  @apply font-black tracking-widest uppercase relative inline-block text-xl md:text-3xl;
   background: linear-gradient(
     45deg,
     #ffd700 0%,
-    #fff8dc 50%,
     #ffb900 100%
   );
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.6));
-  animation: gold-pulse 3s infinite ease-in-out;
-}
-
-@keyframes gold-pulse {
-  0%, 100% { 
-    filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.4));
-    transform: scale(1);
-  }
-  50% { 
-    filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.8));
-    transform: scale(1.02);
-  }
-}
-
-@keyframes celebration-glow {
-  0%, 100% { box-shadow: 0 0 20px hsla(45, 100%, 50%, 0.2); }
-  50% { box-shadow: 0 0 80px hsla(45, 100%, 50%, 0.7); }
-}
-
-.celebration-glow {
-  animation: celebration-glow 2s infinite ease-in-out;
-}
-
-.glow-text {
-  filter: drop-shadow(0 0 10px hsla(var(--primary), 0.5));
+  filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.4));
 }
 
 .glass-card {
-  @apply bg-white/[0.02] backdrop-blur-2xl border border-white/10 shadow-[0_4px_24px_rgba(0,0,0,0.5)] transition-all duration-300;
+  @apply bg-card/50 backdrop-blur-xl border border-border shadow-sm transition-all duration-300;
 }
 
 .glass-card:hover {
-  @apply border-primary/40 bg-white/[0.04] -translate-y-1 shadow-[0_12px_40px_rgba(0,0,0,0.7)];
-}
-
-.bg-mesh {
-  background-image: 
-    radial-gradient(at 0% 0%, hsla(var(--primary), 0.1) 0, transparent 50%), 
-    radial-gradient(at 100% 0%, hsla(var(--primary), 0.1) 0, transparent 50%);
+  @apply border-primary/40 shadow-lg -translate-y-1;
 }
 
 @keyframes float-soft {
@@ -119,5 +106,5 @@
   animation: float-soft 4s ease-in-out infinite;
 }
 
-h1 { @apply text-4xl md:text-5xl lg:text-7xl font-black tracking-tight; }
-p { @apply text-base md:text-lg leading-relaxed; }
+h1 { @apply text-4xl md:text-5xl lg:text-7xl font-black tracking-tight leading-tight; }
+p { @apply text-base md:text-lg leading-relaxed opacity-80; }
