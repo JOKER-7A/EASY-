@@ -478,20 +478,32 @@ export default function Home() {
                         <div className="flex justify-between items-start mb-4">
                           <div className="flex items-center gap-3">
                              <Badge className="bg-primary/20 text-primary border-none rounded-xl font-black">#{idx + 1}</Badge>
-                             <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">{item.questionData?.type || item.role || 'ITEM'}</span>
+                             <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">
+                                {typeof item.questionData?.type === 'string' ? item.questionData.type : typeof item.type === 'string' ? item.type : 'ITEM'}
+                             </span>
                           </div>
                           {activeOverlay === 'errors' && (
                             <Button size="icon" variant="ghost" onClick={() => deleteErrorLog(item.id).then(() => openOverlay('errors'))} className="text-rose-500/30 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl"><Trash2 className="w-4 h-4" /></Button>
                           )}
                         </div>
-                        <h4 className="text-lg md:text-xl font-black mb-3 leading-relaxed">{item.questionData?.question || item.question || item.displayName}</h4>
+                        <h4 className="text-lg md:text-xl font-black mb-3 leading-relaxed">
+                          {typeof item.questionData?.question === 'string' ? item.questionData.question : 
+                           typeof item.question === 'string' ? item.question : 
+                           typeof item.displayName === 'string' ? item.displayName : 'بدون عنوان'}
+                        </h4>
                         {item.questionData && (
                           <div className="space-y-3 pt-3 border-t border-white/5">
-                             <p className="text-sm font-bold text-emerald-500 flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> الإجابة: {item.questionData.correct}</p>
-                             {item.userAnswer && <p className="text-xs font-bold text-rose-500/60 flex items-center gap-2"><XCircle className="w-3.5 h-3.5" /> إجابتك: {item.userAnswer}</p>}
+                             <p className="text-sm font-bold text-emerald-500 flex items-center gap-2">
+                               <CheckCircle2 className="w-4 h-4" /> الإجابة: {typeof item.questionData.correct === 'string' ? item.questionData.correct : 'غير محددة'}
+                             </p>
+                             {typeof item.userAnswer === 'string' && (
+                               <p className="text-xs font-bold text-rose-500/60 flex items-center gap-2">
+                                 <XCircle className="w-3.5 h-3.5" /> إجابتك: {item.userAnswer}
+                               </p>
+                             )}
                           </div>
                         )}
-                        {item.xp !== undefined && <p className="text-lg font-black text-amber-500">{item.xp} <span className="text-xs opacity-40 uppercase">XP</span></p>}
+                        {typeof item.xp === 'number' && <p className="text-lg font-black text-amber-500">{item.xp} <span className="text-xs opacity-40 uppercase">XP</span></p>}
                       </div>
                     ))
                   )}

@@ -265,17 +265,18 @@ export const saveAttemptToDb = async (userId: string | undefined, attempt: any) 
 export const saveErrorLogToDb = async (userId: string, question: Question, sectionTitle: string, userAnswer: string) => {
   try {
     const errorId = `${userId}_${question.id}`;
+    // نضمن أن السؤال يُخزن كنصوص وليس ككائن كامل لتجنب أخطاء React
     await setDoc(doc(db, "errorLogs", errorId), {
       userId,
       questionId: question.id,
-      userAnswer,
+      userAnswer: String(userAnswer),
       questionData: { 
         id: question.id,
-        question: question.question,
+        question: String(question.question),
         options: question.options,
-        correct: question.correct,
-        type: question.type,
-        sectionTitle 
+        correct: String(question.correct),
+        type: String(question.type),
+        sectionTitle: String(sectionTitle)
       },
       lastOccurred: serverTimestamp(),
       count: increment(1)
@@ -327,13 +328,14 @@ export const toggleFavoriteInDb = async (userId: string, question: Question, sec
       });
       return false;
     } else {
+      // نضمن أن السؤال يُخزن كنصوص وليس ككائن كامل لتجنب أخطاء React
       const newFav = {
         id: question.id,
-        question: question.question,
+        question: String(question.question),
         options: question.options,
-        correct: question.correct,
-        type: question.type,
-        sectionTitle,
+        correct: String(question.correct),
+        type: String(question.type),
+        sectionTitle: String(sectionTitle),
         addedAt: new Date().toISOString()
       };
       await updateDoc(userRef, {
