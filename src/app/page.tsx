@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -6,7 +7,9 @@ import {
   getSectionsFromDb, 
   getLeaderboard, 
   getErrorLogs,
-  deleteErrorLog
+  deleteErrorLog,
+  getUserProfile,
+  updateOnboardingData
 } from '@/lib/db-service';
 import PracticeSession from '@/components/PracticeSession';
 import { Button } from '@/components/ui/button';
@@ -16,11 +19,11 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
-  Zap, Search, Trophy, History, X, Loader2, Palette, LogOut, ArrowRight, Heart, Trash2, ShieldCheck, Settings, Star, Ban, Clock
+  Zap, Search, Trophy, History, X, Loader2, Palette, LogOut, ArrowRight, Heart, Trash2, ShieldCheck, Settings, Star, Ban, Clock, UserCheck, Phone, User
 } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
 import { 
-  onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut 
+  onAuthStateChanged, User as FirebaseUser, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut 
 } from 'firebase/auth';
 import { doc, updateDoc, onSnapshot, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -43,7 +46,7 @@ export default function Home() {
   const [sections, setSections] = useState<Section[]>([]);
   const [selectedSection, setSelectedSection] = useState<Section | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<FirebaseUser | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
@@ -51,6 +54,12 @@ export default function Home() {
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [activeOverlay, setActiveOverlay] = useState<'leaderboard' | 'errors' | 'themes' | 'favorites' | null>(null);
   const [overlayData, setOverlayData] = useState<any[]>([]);
+  
+  // Onboarding State
+  const [onboardingName, setOnboardingName] = useState('');
+  const [onboardingPhone, setOnboardingPhone] = useState('');
+  const [isOnboardingSubmitting, setIsOnboardingSubmitting] = useState(false);
+
   const { toast } = useToast();
 
   useEffect(() => {
@@ -59,6 +68,9 @@ export default function Home() {
       setUser(u);
       if (u) {
         const userRef = doc(db, "userProfiles", u.uid);
+        // التحقق من وجود الملف أو إنشاؤه
+        await getUserProfile(u.uid, u.email || '');
+        
         const unsubProfile = onSnapshot(userRef, (docSnap) => {
           if (docSnap.exists()) {
             const p = docSnap.data();
@@ -69,14 +81,18 @@ export default function Home() {
             }
           }
         });
+        setIsLoading(false);
         return () => unsubProfile();
+      } else {
+        setProfile(null);
+        setIsLoading(false);
       }
-      setIsLoading(false);
     });
+    
     getSectionsFromDb().then((data) => {
       setSections(data);
-      setIsLoading(false);
     });
+    
     return () => unsubAuth();
   }, []);
 
@@ -113,6 +129,22 @@ export default function Home() {
     } finally { setIsAuthLoading(false); }
   };
 
+  const handleOnboarding = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!onboardingName.trim() || !onboardingPhone.trim() || !user) return;
+    setIsOnboardingSubmitting(true);
+    try {
+      const success = await updateOnboardingData(user.uid, onboardingName, onboardingPhone);
+      if (success) {
+        toast({ title: "تم إرسال طلبك بنجاح ✅", description: "انتظر موافقة الأدمن للدخول" });
+      }
+    } catch (e) {
+      toast({ title: "فشلت العملية", variant: "destructive" });
+    } finally {
+      setIsOnboardingSubmitting(false);
+    }
+  };
+
   const openOverlay = async (type: 'leaderboard' | 'errors' | 'themes' | 'favorites') => {
     setActiveOverlay(type);
     setOverlayData([]);
@@ -135,16 +167,28 @@ export default function Home() {
     );
   }, [profile, user]);
 
-  // Check Ban Status
   const isBanned = useMemo(() => {
     if (!profile?.isBanned) return false;
-    if (!profile.banExpiresAt) return true; // Permanent
-    const expiresAt = profile.banExpiresAt.toDate();
+    if (!profile.banExpiresAt) return true;
+    const expiresAt = profile.banExpiresAt.toDate ? profile.banExpiresAt.toDate() : new Date(profile.banExpiresAt);
     return expiresAt > new Date();
   }, [profile]);
 
   if (!hasMounted) return null;
 
+  // 1. شاشة التحميل
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 z-[1000] bg-black flex items-center justify-center">
+        <div className="text-center space-y-6">
+          <h1 className="text-6xl text-easy-premium animate-pulse">EASY</h1>
+          <Loader2 className="w-10 h-10 text-primary animate-spin mx-auto" />
+        </div>
+      </div>
+    );
+  }
+
+  // 2. شاشة الحظر
   if (isBanned) {
     return (
       <main className="min-h-screen bg-black flex items-center justify-center p-6 text-center" dir="rtl">
@@ -154,11 +198,11 @@ export default function Home() {
           </div>
           <h1 className="text-4xl font-black text-white">لقد تم حظرك 🚫</h1>
           <div className="space-y-4">
-            <p className="text-xl text-white/60 leading-relaxed">{profile.banReason}</p>
+            <p className="text-xl text-white/60 leading-relaxed">{profile.banReason || "مخالفة شروط الاستخدام"}</p>
             {profile.banExpiresAt && (
               <div className="flex items-center justify-center gap-2 text-primary font-bold">
                 <Clock className="w-5 h-5" />
-                <span>ينتهي الحظر في: {profile.banExpiresAt.toDate().toLocaleString()}</span>
+                <span>ينتهي الحظر في: {profile.banExpiresAt.toDate ? profile.banExpiresAt.toDate().toLocaleString() : new Date(profile.banExpiresAt).toLocaleString()}</span>
               </div>
             )}
           </div>
@@ -172,71 +216,140 @@ export default function Home() {
     );
   }
 
+  // 3. شاشة تسجيل الدخول
+  if (!user) {
+    return (
+      <main className="min-h-screen bg-black flex items-center justify-center p-4 overflow-hidden relative">
+        <div className="absolute inset-0 bg-mesh opacity-30" />
+        <Card className="w-full max-w-lg p-10 glass-card rounded-[40px] border-primary/20 relative z-10">
+          <div className="text-center mb-10">
+            <h1 className="text-7xl md:text-8xl text-easy-premium animate-float-soft">EASY</h1>
+            <p className="text-sm text-primary font-black tracking-widest uppercase mt-4">نظام التدريب اللفظي الذكي</p>
+          </div>
+          <form onSubmit={handleAuth} className="space-y-4">
+            <Input type="email" placeholder="البريد الإلكتروني" value={email} onChange={(e) => setEmail(e.target.value)} className="h-14 rounded-2xl bg-white/5 border-white/10 text-center" />
+            <Input type="password" placeholder="كلمة المرور" value={password} onChange={(e) => setPassword(e.target.value)} className="h-14 rounded-2xl bg-white/5 border-white/10 text-center" />
+            <Button type="submit" disabled={isAuthLoading} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-glow">
+              {isAuthLoading ? <Loader2 className="animate-spin" /> : (authMode === 'login' ? "دخول 🚀" : "انضم الآن ✨")}
+            </Button>
+          </form>
+          <button onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')} className="mt-8 w-full text-white/30 hover:text-white transition-colors text-sm font-bold">
+            {authMode === 'login' ? "ليس لديك حساب؟ سجل الآن" : "لديك حساب؟ سجل دخولك"}
+          </button>
+        </Card>
+      </main>
+    );
+  }
+
+  // 4. شاشة Onboarding (إكمال البيانات)
+  if (user && (!profile?.displayName || !profile?.phoneNumber)) {
+    return (
+      <main className="min-h-screen bg-black flex items-center justify-center p-4 relative overflow-hidden">
+        <div className="absolute inset-0 bg-mesh opacity-20" />
+        <Card className="w-full max-w-lg p-12 glass-card rounded-[50px] border-primary/20 relative z-10 space-y-10">
+          <div className="text-center space-y-4">
+            <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mx-auto ring-2 ring-primary/20">
+              <UserCheck className="w-10 h-10 text-primary" />
+            </div>
+            <h1 className="text-3xl font-black">أهلاً بك في عائلة EASY ✨</h1>
+            <p className="text-white/40 font-bold text-sm">يرجى إكمال بياناتك للبدء في رحلة التدريب</p>
+          </div>
+          <form onSubmit={handleOnboarding} className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-primary uppercase mr-2 flex items-center gap-2"><User className="w-3 h-3" /> الاسم الكامل</label>
+              <Input placeholder="ادخل اسمك الثلاثي" value={onboardingName} onChange={(e) => setOnboardingName(e.target.value)} className="h-14 rounded-2xl bg-white/5 border-white/10" required />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-primary uppercase mr-2 flex items-center gap-2"><Phone className="w-3 h-3" /> رقم الواتساب</label>
+              <Input placeholder="05xxxxxxxx" value={onboardingPhone} onChange={(e) => setOnboardingPhone(e.target.value)} className="h-14 rounded-2xl bg-white/5 border-white/10" required />
+            </div>
+            <Button type="submit" disabled={isOnboardingSubmitting} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-glow">
+              {isOnboardingSubmitting ? <Loader2 className="animate-spin" /> : "إرسال البيانات 🚀"}
+            </Button>
+          </form>
+          <Button variant="ghost" onClick={() => signOut(auth)} className="w-full text-white/30 text-xs">خروج</Button>
+        </Card>
+      </main>
+    );
+  }
+
+  // 5. شاشة انتظار الموافقة (Pending)
+  if (user && profile?.status === 'pending' && !isAdmin) {
+    return (
+      <main className="min-h-screen bg-black flex items-center justify-center p-4 text-center">
+        <Card className="max-w-lg w-full p-12 glass-card rounded-[50px] space-y-8 animate-in fade-in zoom-in border-primary/10">
+          <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mx-auto ring-4 ring-primary/20">
+            <Clock className="w-12 h-12 text-primary animate-pulse" />
+          </div>
+          <div className="space-y-4">
+            <h1 className="text-4xl font-black text-white">طلبك قيد المراجعة ⏳</h1>
+            <p className="text-xl text-white/60 leading-relaxed">أهلاً بك يا {profile.displayName}، لقد استلمنا طلبك وجاري مراجعته من قبل الدكتور محمود. سيتم تفعيل حسابك قريباً.</p>
+          </div>
+          <div className="pt-6">
+            <Button onClick={() => signOut(auth)} variant="outline" className="h-14 px-10 rounded-2xl border-white/10 text-white font-black">
+              تسجيل الخروج
+            </Button>
+          </div>
+        </Card>
+      </main>
+    );
+  }
+
+  // 6. شاشة الرفض (Rejected)
+  if (user && profile?.status === 'rejected' && !isAdmin) {
+    return (
+      <main className="min-h-screen bg-black flex items-center justify-center p-4 text-center">
+        <Card className="max-w-lg w-full p-12 glass-card rounded-[50px] space-y-8 border-rose-500/20">
+          <div className="w-24 h-24 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto">
+            <X className="w-12 h-12 text-rose-500" />
+          </div>
+          <div className="space-y-4">
+            <h1 className="text-4xl font-black text-white">نعتذر منك ❌</h1>
+            <p className="text-xl text-white/60 leading-relaxed">تم رفض طلب انضمامك حالياً. يرجى التواصل مع الإدارة أو المحاولة مرة أخرى ببيانات صحيحة.</p>
+          </div>
+          <div className="flex flex-col gap-4">
+            <Button onClick={() => updateOnboardingData(user.uid, '', '')} className="h-16 rounded-2xl bg-primary text-white font-black">إعادة إرسال الطلب ✨</Button>
+            <Button onClick={() => signOut(auth)} variant="ghost" className="text-white/40">خروج</Button>
+          </div>
+        </Card>
+      </main>
+    );
+  }
+
+  // 7. الواجهة الرئيسية (Approved / Admin)
   if (activeView === 'practice' && selectedSection) {
     return <PracticeSession section={selectedSection} onExit={() => setActiveView('landing')} />;
   }
 
   return (
     <main className="min-h-screen bg-background text-white flex flex-col relative overflow-x-hidden bg-mesh" dir="rtl">
-      {isLoading && (
-        <div className="fixed inset-0 z-[1000] bg-black flex items-center justify-center">
-          <div className="text-center space-y-6">
-            <h1 className="text-6xl text-easy-premium animate-pulse">EASY</h1>
-            <Loader2 className="w-10 h-10 text-primary animate-spin mx-auto" />
-          </div>
-        </div>
-      )}
-
-      {!user && (
-        <div className="fixed inset-0 z-[400] bg-black/95 backdrop-blur-3xl flex items-center justify-center p-4">
-          <Card className="w-full max-w-lg p-10 glass-card rounded-[40px] border-primary/20">
-            <div className="text-center mb-10">
-              <h1 className="text-7xl md:text-8xl text-easy-premium animate-float-soft">EASY</h1>
-              <p className="text-sm text-primary font-black tracking-widest uppercase mt-4">نظام التدريب اللفظي الذكي</p>
-            </div>
-            <form onSubmit={handleAuth} className="space-y-4">
-              <Input type="email" placeholder="البريد الإلكتروني" value={email} onChange={(e) => setEmail(e.target.value)} className="h-14 rounded-2xl bg-white/5 border-white/10" />
-              <Input type="password" placeholder="كلمة المرور" value={password} onChange={(e) => setPassword(e.target.value)} className="h-14 rounded-2xl bg-white/5 border-white/10" />
-              <Button type="submit" disabled={isAuthLoading} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-glow">
-                {isAuthLoading ? <Loader2 className="animate-spin" /> : (authMode === 'login' ? "دخول 🚀" : "انضم الآن ✨")}
-              </Button>
-            </form>
-            <button onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')} className="mt-8 w-full text-white/30 hover:text-white transition-colors">
-              {authMode === 'login' ? "سجل حساباً جديداً" : "لديك حساب؟ سجل دخولك"}
-            </button>
-          </Card>
-        </div>
-      )}
-
-      {user && (
-        <nav className="fixed top-0 left-0 w-full z-[100] px-4 md:px-8 py-4">
-          <div className="max-w-7xl mx-auto flex items-center justify-between p-3 glass-card rounded-[30px]">
-            <div className="flex items-center gap-4">
-              <Avatar className="w-12 h-12 border-2 border-primary/30">
-                <AvatarImage src={user.photoURL || ''} />
-                <AvatarFallback className="bg-primary/20 text-primary font-black">{user.email?.[0].toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <div className="hidden sm:block">
-                <p className="font-black text-white/90 text-sm">{profile?.displayName || 'طالب EASY'}</p>
-                <div className="flex items-center gap-2">
-                   <Badge className="bg-primary text-white text-[9px] px-1.5 py-0">LVL {profile?.level || 1}</Badge>
-                   <span className="text-[9px] text-white/30">{profile?.xp || 0} XP</span>
-                </div>
+      <nav className="fixed top-0 left-0 w-full z-[100] px-4 md:px-8 py-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between p-3 glass-card rounded-[30px]">
+          <div className="flex items-center gap-4">
+            <Avatar className="w-12 h-12 border-2 border-primary/30">
+              <AvatarImage src={user.photoURL || ''} />
+              <AvatarFallback className="bg-primary/20 text-primary font-black">{profile?.displayName?.[0] || 'U'}</AvatarFallback>
+            </Avatar>
+            <div className="hidden sm:block">
+              <p className="font-black text-white/90 text-sm">{profile?.displayName || 'طالب EASY'}</p>
+              <div className="flex items-center gap-2">
+                 <Badge className="bg-primary text-white text-[9px] px-1.5 py-0">LVL {profile?.level || 1}</Badge>
+                 <span className="text-[9px] text-white/30">{profile?.xp || 0} XP</span>
               </div>
             </div>
-            <div className="flex items-center gap-1 sm:gap-2">
-              <Button onClick={() => openOverlay('themes')} variant="ghost" size="icon" className="w-9 h-9 rounded-xl text-primary"><Palette className="w-4 h-4" /></Button>
-              <Button onClick={() => openOverlay('leaderboard')} variant="ghost" size="icon" className="w-9 h-9 rounded-xl text-amber-500"><Trophy className="w-4 h-4" /></Button>
-              <Button onClick={() => openOverlay('favorites')} variant="ghost" size="icon" className="w-9 h-9 rounded-xl text-rose-500"><Heart className="w-4 h-4" /></Button>
-              <Button onClick={() => openOverlay('errors')} variant="ghost" size="icon" className="w-9 h-9 rounded-xl text-blue-500"><History className="w-4 h-4" /></Button>
-              {isAdmin && (
-                <Button onClick={() => window.location.href = '/admin'} variant="ghost" size="icon" className="w-9 h-9 rounded-xl text-emerald-400 border border-emerald-500/20"><ShieldCheck className="w-4 h-4" /></Button>
-              )}
-              <Button onClick={() => signOut(auth)} variant="ghost" size="icon" className="w-9 h-9 rounded-xl text-destructive"><LogOut className="w-4 h-4" /></Button>
-            </div>
           </div>
-        </nav>
-      )}
+          <div className="flex items-center gap-1 sm:gap-2">
+            <Button onClick={() => openOverlay('themes')} variant="ghost" size="icon" className="w-9 h-9 rounded-xl text-primary"><Palette className="w-4 h-4" /></Button>
+            <Button onClick={() => openOverlay('leaderboard')} variant="ghost" size="icon" className="w-9 h-9 rounded-xl text-amber-500"><Trophy className="w-4 h-4" /></Button>
+            <Button onClick={() => openOverlay('favorites')} variant="ghost" size="icon" className="w-9 h-9 rounded-xl text-rose-500"><Heart className="w-4 h-4" /></Button>
+            <Button onClick={() => openOverlay('errors')} variant="ghost" size="icon" className="w-9 h-9 rounded-xl text-blue-500"><History className="w-4 h-4" /></Button>
+            {isAdmin && (
+              <Button onClick={() => window.location.href = '/admin'} variant="ghost" size="icon" className="w-9 h-9 rounded-xl text-emerald-400 border border-emerald-500/20"><ShieldCheck className="w-4 h-4" /></Button>
+            )}
+            <Button onClick={() => signOut(auth)} variant="ghost" size="icon" className="w-9 h-9 rounded-xl text-destructive"><LogOut className="w-4 h-4" /></Button>
+          </div>
+        </div>
+      </nav>
 
       <div className="container mx-auto px-4 pt-32 md:pt-48 pb-10 text-center space-y-6 relative z-10">
         <h1 className="text-6xl sm:text-8xl md:text-[10rem] text-easy-premium animate-in fade-in slide-in-from-top-10 duration-1000">
@@ -272,27 +385,6 @@ export default function Home() {
         ))}
       </section>
 
-      {user && isAdmin && (
-        <div className="container mx-auto px-4 py-20 flex flex-col items-center gap-10 border-t border-white/5">
-          <div className="text-center space-y-2">
-            <p className="text-[10px] text-primary font-black uppercase tracking-[0.3em]">Restricted Access Area</p>
-            <h3 className="text-2xl font-black text-white/40 italic"> elite command center </h3>
-          </div>
-          
-          <Button 
-            onClick={() => window.location.href = '/admin'}
-            className="group relative h-20 px-16 rounded-[30px] bg-black border-2 border-primary/20 hover:border-primary transition-all duration-700 overflow-hidden shadow-[0_0_50px_rgba(0,0,0,1)]"
-          >
-            <div className="absolute inset-0 bg-primary/5 group-hover:bg-primary/10 transition-colors" />
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity blur-3xl bg-primary/40" />
-            <div className="relative flex items-center gap-6 text-white">
-              <ShieldCheck className="w-8 h-8 text-primary group-hover:rotate-12 transition-transform duration-500" />
-              <span className="text-2xl font-black tracking-tighter uppercase">Admin Panel</span>
-            </div>
-          </Button>
-        </div>
-      )}
-
       {activeOverlay && (
         <div className="fixed inset-0 z-[500] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={() => setActiveOverlay(null)} />
@@ -317,18 +409,33 @@ export default function Home() {
                     <div className="text-center py-20 text-white/20 font-black">لا يوجد بيانات حالياً</div>
                   ) : (
                     overlayData.map((item, idx) => (
-                      <div key={idx} className="p-5 glass-card rounded-[25px] border-white/5 flex justify-between items-center">
-                        <div className="flex items-center gap-4">
-                           <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center font-black text-xs">{idx + 1}</div>
-                           <div>
-                              <p className="font-black text-base">
-                                {item.displayName || item.questionData?.question || item.question}
-                              </p>
-                              <p className="text-white/20 text-[10px]">{item.xp ? `${item.xp} XP` : item.questionData?.sectionTitle || "مراجعة"}</p>
-                           </div>
+                      <Card key={idx} className="p-6 glass-card rounded-[30px] border-white/5 space-y-4">
+                        <div className="flex justify-between items-start">
+                          <div className="flex gap-4">
+                             <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-black text-xs">{idx + 1}</div>
+                             <div>
+                                <p className="font-black text-lg leading-tight">
+                                  {item.displayName || item.questionData?.question || item.question}
+                                </p>
+                                <p className="text-white/20 text-[10px] mt-1">{item.xp ? `${item.xp} XP` : item.questionData?.sectionTitle || "مراجعة"}</p>
+                             </div>
+                          </div>
+                          {activeOverlay === 'errors' && <Button variant="ghost" size="icon" onClick={() => deleteErrorLog(item.id)} className="text-destructive"><Trash2 className="w-4 h-4" /></Button>}
+                          {activeOverlay === 'favorites' && <Badge className="bg-primary/20 text-primary border-none">⭐</Badge>}
                         </div>
-                        {activeOverlay === 'errors' && <Button variant="ghost" size="icon" onClick={() => deleteErrorLog(item.id)} className="text-destructive"><Trash2 className="w-4 h-4" /></Button>}
-                      </div>
+                        {(activeOverlay === 'errors' || activeOverlay === 'favorites') && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+                            {(item.questionData?.options || item.options)?.map((opt: string, i: number) => (
+                              <div key={i} className={cn(
+                                "p-3 rounded-xl text-xs font-bold border",
+                                opt === (item.questionData?.correct || item.correct) ? "bg-green-500/10 border-green-500/30 text-green-500" : "bg-white/5 border-white/5 text-white/40"
+                              )}>
+                                {['أ', 'ب', 'ج', 'د'][i]}. {opt}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </Card>
                     ))
                   )}
                 </div>

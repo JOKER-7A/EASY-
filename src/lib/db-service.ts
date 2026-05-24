@@ -140,10 +140,12 @@ export const getUserProfile = async (userId: string, email?: string) => {
       const initialProfile = {
         level: 1,
         xp: 0,
-        displayName: email?.split('@')[0] || 'مستكشف EASY',
+        displayName: '', // فارغ ليطلب من المستخدم في الـ Onboarding
+        phoneNumber: '', // فارغ ليطلب من المستخدم في الـ Onboarding
         email: email || '',
         createdAt: serverTimestamp(),
-        status: 'student',
+        status: 'pending', // الحالة الافتراضية قيد الانتظار
+        role: 'student',
         favorites: [],
         isBanned: false,
         theme: '270 95% 60%'
@@ -153,6 +155,38 @@ export const getUserProfile = async (userId: string, email?: string) => {
     }
   } catch (error) {
     return { id: userId, level: 1, xp: 0, displayName: 'مستكشف EASY' };
+  }
+};
+
+/**
+ * تحديث بيانات المستخدم (Onboarding)
+ */
+export const updateOnboardingData = async (userId: string, name: string, phone: string) => {
+  try {
+    const userRef = doc(db, "userProfiles", userId);
+    await updateDoc(userRef, {
+      displayName: name,
+      phoneNumber: phone,
+      status: 'pending' // التأكيد على حالة الانتظار بعد إرسال البيانات
+    });
+    return true;
+  } catch (e) {
+    console.error("Error updating onboarding data:", e);
+    return false;
+  }
+};
+
+/**
+ * تحديث حالة الموافقة للمستخدم
+ */
+export const updateUserStatus = async (userId: string, status: 'approved' | 'rejected' | 'pending') => {
+  try {
+    const userRef = doc(db, "userProfiles", userId);
+    await updateDoc(userRef, { status });
+    return true;
+  } catch (e) {
+    console.error("Error updating user status:", e);
+    return false;
   }
 };
 

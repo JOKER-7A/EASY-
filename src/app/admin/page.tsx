@@ -1,11 +1,18 @@
+
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { auth, db } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
-import { getSectionsFromDb, getTemplatesFromDb, saveTemplateToDb, deleteTemplateFromDb } from '@/lib/db-service';
 import { 
-  collection, getDocs, addDoc, doc, deleteDoc, updateDoc, serverTimestamp, query, orderBy, limit 
+  getSectionsFromDb, 
+  getTemplatesFromDb, 
+  saveTemplateToDb, 
+  deleteTemplateFromDb,
+  updateUserStatus 
+} from '@/lib/db-service';
+import { 
+  collection, getDocs, addDoc, doc, deleteDoc, updateDoc, serverTimestamp, query, orderBy, limit, where 
 } from 'firebase/firestore';
 import { Section } from '@/lib/practice-data';
 import { Button } from '@/components/ui/button';
@@ -21,7 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { 
   Trash2, ShieldCheck, Database, Ban, AlertCircle, TrendingUp,
-  XCircle, Lock, Edit2, History, Copy, Layers, Loader2, Search, FileText
+  XCircle, Lock, Edit2, History, Copy, Layers, Loader2, Search, FileText, UserCheck, X as XIcon, CheckCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -37,6 +44,7 @@ export default function AdminPage() {
   const [sections, setSections] = useState<Section[]>([]);
   const [templates, setTemplates] = useState<any[]>([]);
   const [usersList, setUsersList] = useState<any[]>([]);
+  const [pendingUsers, setPendingUsers] = useState<any[]>([]);
   const [errorLogs, setErrorLogs] = useState<any[]>([]);
   const [activityLogs, setActivityLogs] = useState<any[]>([]);
   const [stats, setStats] = useState({
@@ -45,7 +53,8 @@ export default function AdminPage() {
     questions: 0,
     errors: 0,
     banned: 0,
-    active: 0
+    active: 0,
+    requests: 0
   });
   
   const { toast } = useToast();
@@ -77,8 +86,9 @@ export default function AdminPage() {
       setTemplates(templatesData);
       
       const usersSnap = await getDocs(collection(db, "userProfiles"));
-      const usersData = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setUsersList(usersData);
+      const allUsers = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setUsersList(allUsers.filter((u: any) => u.status !== 'pending'));
+      setPendingUsers(allUsers.filter((u: any) => u.status === 'pending'));
 
       const errorsSnap = await getDocs(collection(db, "errorLogs"));
       const errorsData = errorsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -88,12 +98,13 @@ export default function AdminPage() {
       setActivityLogs(logsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       
       setStats({
-        students: usersData.length,
+        students: allUsers.filter((u: any) => u.status !== 'pending').length,
         sections: sectionsData.length,
         questions: sectionsData.reduce((acc, s) => acc + (s.questions?.length || 0), 0),
         errors: errorsData.length,
-        banned: usersData.filter((u: any) => u.isBanned).length,
-        active: usersData.filter((u: any) => u.xp > 0).length
+        banned: allUsers.filter((u: any) => u.isBanned).length,
+        active: allUsers.filter((u: any) => u.xp > 0).length,
+        requests: allUsers.filter((u: any) => u.status === 'pending').length
       });
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -130,6 +141,24 @@ export default function AdminPage() {
     localStorage.removeItem(AUTH_KEY);
     signOut(auth);
     toast({ title: "تم تسجيل الخروج" });
+  };
+
+  const handleUserApproval = async (userId: string, status: 'approved' | 'rejected') => {
+    setIsSubmitting(true);
+    try {
+      await updateUserStatus(userId, status);
+      await addDoc(collection(db, "userActivityLogs"), {
+        userId,
+        action: status === 'approved' ? 'APPROVAL' : 'REJECTION',
+        timestamp: serverTimestamp()
+      });
+      toast({ title: status === 'approved' ? "تم قبول الطالب ✨" : "تم رفض الطلب" });
+      fetchData();
+    } catch (e) {
+      toast({ title: "فشلت العملية", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSaveSection = async () => {
@@ -264,8 +293,9 @@ export default function AdminPage() {
 
   if (!isAuthorized) {
     return (
-      <main className="min-h-screen bg-black flex items-center justify-center p-4 overflow-hidden">
-        <Card className="w-full max-w-md p-10 glass-card rounded-[40px] border-primary/20">
+      <main className="min-h-screen bg-black flex items-center justify-center p-4 overflow-hidden relative">
+        <div className="absolute inset-0 bg-mesh opacity-20" />
+        <Card className="w-full max-w-md p-10 glass-card rounded-[40px] border-primary/20 relative z-10">
           <div className="text-center mb-10">
             <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mx-auto mb-6 ring-2 ring-primary/20">
               <Lock className="w-10 h-10 text-primary" />
@@ -313,9 +343,10 @@ export default function AdminPage() {
           </div>
         </header>
 
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-6">
           {[
             { label: 'الطلاب', val: stats.students, icon: Search, color: 'text-blue-500' },
+            { label: 'الطلبات', val: stats.requests, icon: UserCheck, color: 'text-amber-500' },
             { label: 'الأقسام', val: stats.sections, icon: Database, color: 'text-purple-500' },
             { label: 'الأسئلة', val: stats.questions, icon: FileText, color: 'text-emerald-500' },
             { label: 'الأخطاء', val: stats.errors, icon: AlertCircle, color: 'text-rose-500' },
@@ -330,12 +361,38 @@ export default function AdminPage() {
           ))}
         </div>
 
-        <Tabs defaultValue="users" className="space-y-10">
+        <Tabs defaultValue="requests" className="space-y-10">
           <TabsList className="bg-white/5 border border-white/5 p-2 h-20 rounded-[30px] w-full md:w-auto">
+            <TabsTrigger value="requests" className="px-12 font-black rounded-[20px] h-full text-lg flex gap-2">طلبات الانضمام {stats.requests > 0 && <Badge className="bg-amber-500">{stats.requests}</Badge>}</TabsTrigger>
             <TabsTrigger value="users" className="px-12 font-black rounded-[20px] h-full text-lg">الطلاب</TabsTrigger>
             <TabsTrigger value="content" className="px-12 font-black rounded-[20px] h-full text-lg">إدارة المحتوى</TabsTrigger>
             <TabsTrigger value="logs" className="px-12 font-black rounded-[20px] h-full text-lg">النشاط</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="requests">
+            <Card className="p-10 glass-card rounded-[50px] space-y-10 border-white/5">
+              <h2 className="text-3xl font-black flex items-center gap-4">المستخدمين الجدد ⏳</h2>
+              <div className="grid gap-6">
+                {pendingUsers.map((u) => (
+                  <div key={u.id} className="flex flex-col md:flex-row justify-between items-center p-8 bg-white/[0.02] border border-white/5 rounded-3xl">
+                    <div className="flex items-center gap-6">
+                      <div className="w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center font-black text-2xl text-amber-500">{u.displayName?.[0] || '?' }</div>
+                      <div>
+                        <p className="font-black text-xl">{u.displayName || 'مستكشف جديد'}</p>
+                        <p className="text-white/30 font-bold text-sm">{u.email}</p>
+                        <p className="text-amber-500/60 font-black text-xs mt-1">📞 {u.phoneNumber || 'لا يوجد رقم'}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-4 mt-6 md:mt-0">
+                       <Button onClick={() => handleUserApproval(u.id, 'approved')} className="h-14 px-8 rounded-2xl bg-emerald-500 text-white font-black hover:bg-emerald-600"><CheckCircle className="ml-2 w-5 h-5" /> قبول</Button>
+                       <Button onClick={() => handleUserApproval(u.id, 'rejected')} variant="ghost" className="h-14 px-8 rounded-2xl text-rose-500 hover:bg-rose-500/10 font-black"><XIcon className="ml-2 w-5 h-5" /> رفض</Button>
+                    </div>
+                  </div>
+                ))}
+                {pendingUsers.length === 0 && <div className="py-20 text-center text-white/20 font-black text-xl">لا يوجد طلبات انضمام حالياً</div>}
+              </div>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="users">
             <Card className="p-10 glass-card rounded-[50px] space-y-10 border-white/5">
@@ -355,8 +412,9 @@ export default function AdminPage() {
                         <p className="font-black text-xl flex items-center gap-3">
                           {u.displayName || 'بدون اسم'}
                           {u.isBanned && <Badge className="bg-destructive text-white border-none">محظور</Badge>}
+                          <Badge className="bg-primary/20 text-primary border-none">{u.status || 'student'}</Badge>
                         </p>
-                        <p className="text-white/30 font-bold text-sm">{u.email}</p>
+                        <p className="text-white/30 font-bold text-sm">{u.email} | {u.phoneNumber}</p>
                         <div className="flex gap-4 mt-2">
                            <span className="text-xs text-primary font-bold">LVL {u.level || 1}</span>
                            <span className="text-xs text-white/40">{u.xp || 0} XP</span>
@@ -471,8 +529,8 @@ export default function AdminPage() {
                   <div key={i} className="p-6 bg-white/[0.02] border border-white/5 rounded-3xl flex justify-between items-center">
                     <div className="flex items-center gap-3">
                       <Badge className={cn("text-white", log.action === 'BAN' ? "bg-rose-500" : log.action === 'NAME_CHANGE' ? "bg-emerald-500" : "bg-blue-500")}>{log.action}</Badge>
-                      <span className="font-black">{log.userName}</span>
-                      <span className="text-white/40"> - {log.reason}</span>
+                      <span className="font-black">{log.userName || log.userId}</span>
+                      <span className="text-white/40"> - {log.reason || log.action}</span>
                     </div>
                     <p className="text-xs text-white/20">{log.timestamp?.toDate()?.toLocaleString()}</p>
                   </div>
@@ -487,7 +545,7 @@ export default function AdminPage() {
       <Dialog open={banModalOpen} onOpenChange={setBanModalOpen}>
         <DialogContent 
           onOpenAutoFocus={(e) => e.preventDefault()}
-          className="glass-card border-rose-500/20 text-white rounded-[35px] max-w-lg p-10 outline-none fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] shadow-[0_0_100px_rgba(244,63,94,0.15)] focus:outline-none"
+          className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] glass-card border-rose-500/20 text-white rounded-[35px] max-w-lg w-[95%] p-10 outline-none z-[600] shadow-[0_0_100px_rgba(244,63,94,0.15)]"
         >
           <DialogHeader className="text-center space-y-4">
             <DialogTitle className="text-3xl font-black">حظر طالب 🚫</DialogTitle>
@@ -528,7 +586,7 @@ export default function AdminPage() {
       <Dialog open={editNameModalOpen} onOpenChange={setEditNameModalOpen}>
         <DialogContent 
           onOpenAutoFocus={(e) => e.preventDefault()}
-          className="glass-card border-primary/20 text-white rounded-[35px] max-w-lg p-10 outline-none fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] focus:outline-none"
+          className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] glass-card border-primary/20 text-white rounded-[35px] max-w-lg w-[95%] p-10 outline-none z-[600]"
         >
           <DialogHeader className="text-center space-y-4">
             <DialogTitle className="text-3xl font-black">تعديل اسم الطالب ✏️</DialogTitle>
