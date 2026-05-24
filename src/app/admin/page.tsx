@@ -26,7 +26,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription 
@@ -139,7 +139,6 @@ export default function AdminPage() {
       fetchData();
     }
     
-    // مستمع لحالة الـ Auth لضمان جلب الرتبة فوراً
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (user) {
         const profile = await getUserProfile(user.uid);
