@@ -483,7 +483,7 @@ export default function AdminPage() {
             { label: 'محظورين', val: stats.banned, icon: Ban, color: 'text-orange-500' },
             { label: 'نشطين', val: stats.active, icon: TrendingUp, color: 'text-cyan-500' },
           ].map((s, i) => (
-            <Card key={i} className="p-4 md:p-8 glass-card rounded-[30px] md:rounded-[35px] text-center space-y-3 border-white/5">
+            <Card key={`stat-${i}`} className="p-4 md:p-8 glass-card rounded-[30px] md:rounded-[35px] text-center space-y-3 border-white/5">
               <s.icon className={cn("w-6 h-6 md:w-10 md:h-10 mx-auto", s.color)} />
               <p className="text-2xl md:text-4xl font-black">{s.val}</p>
               <p className="text-white/40 font-bold text-[10px] md:text-xs uppercase tracking-wider">{s.label}</p>
@@ -566,64 +566,66 @@ export default function AdminPage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="admins">
-            <Card className="p-6 md:p-10 glass-card rounded-[40px] md:rounded-[50px] space-y-10 border-white/5">
-              <div className="flex flex-col md:flex-row justify-between items-center border-b border-white/5 pb-8 gap-6">
-                <h2 className="text-2xl md:text-3xl font-black flex items-center gap-4"><Crown className="text-primary" /> إدارة المشرفين</h2>
-                <div className="flex gap-4 w-full md:w-auto">
-                  <Input 
-                    placeholder="إيميل المستخدم لإضافته..." 
-                    value={adminSearchEmail} 
-                    onChange={(e) => setAdminSearchEmail(e.target.value)}
-                    className="h-14 rounded-2xl bg-black border-white/10 flex-1 md:w-64" 
-                  />
-                  <Button onClick={handleAddAdminByEmail} disabled={isSubmitting} className="h-14 px-8 bg-primary rounded-2xl font-black">ترقية مشرف 🚀</Button>
-                </div>
-              </div>
-              
-              <div className="grid gap-6">
-                {adminsList.map((admin) => (
-                  <div key={admin.id} className="flex flex-col md:flex-row justify-between items-center p-6 md:p-8 bg-white/[0.02] border border-white/5 rounded-3xl gap-6">
-                    <div className="flex items-center gap-6 w-full">
-                      <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-primary/20 flex items-center justify-center shrink-0">
-                        {admin.role === 'owner' ? <Crown className="text-amber-500 w-6 h-6 md:w-8 md:h-8" /> : <ShieldCheck className="text-primary w-6 h-6 md:w-8 md:h-8" />}
-                      </div>
-                      <div className="overflow-hidden">
-                        <div className="flex items-center gap-2">
-                           <p className="font-black text-lg md:text-xl truncate">{admin.displayName || 'مشرف'}</p>
-                           {admin.role === 'owner' && <Badge className="bg-amber-500/20 text-amber-500 border-none text-[10px]">المالك</Badge>}
-                        </div>
-                        <p className="text-white/30 font-bold text-xs md:text-sm truncate">{admin.email}</p>
-                        <div className="flex items-center gap-2 mt-1 text-white/20 text-[10px] font-bold">
-                          <Calendar className="w-3 h-3" />
-                          <span>تاريخ التعيين: {admin.createdAt?.toDate ? admin.createdAt.toDate().toLocaleDateString('ar-SA') : 'غير معروف'}</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex flex-col items-end gap-2 w-full md:w-auto">
-                      <label className="text-[10px] font-bold text-white/40 uppercase">الصلاحية الحالية</label>
-                      <Select 
-                        disabled={admin.role === 'owner' || (admin.role === 'superAdmin' && currentUserRole !== 'owner') || isSubmitting}
-                        value={admin.role} 
-                        onValueChange={(val) => handleRoleChange(admin.id, val)}
-                      >
-                        <SelectTrigger className="h-12 w-full md:w-48 bg-black border-white/10 text-white rounded-xl">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-black border-white/10 text-white">
-                          <SelectItem value="owner" disabled={currentUserRole !== 'owner'}>المالك (Owner)</SelectItem>
-                          <SelectItem value="superAdmin" disabled={currentUserRole !== 'owner'}>مشرف عام (Super Admin)</SelectItem>
-                          <SelectItem value="admin">مشرف محتوى (Admin)</SelectItem>
-                          <SelectItem value="student" className="text-rose-500">إزالة الصلاحيات</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+          {isOwnerOrSuper && (
+            <TabsContent value="admins">
+              <Card className="p-6 md:p-10 glass-card rounded-[40px] md:rounded-[50px] space-y-10 border-white/5">
+                <div className="flex flex-col md:flex-row justify-between items-center border-b border-white/5 pb-8 gap-6">
+                  <h2 className="text-2xl md:text-3xl font-black flex items-center gap-4"><Crown className="text-primary" /> إدارة المشرفين</h2>
+                  <div className="flex gap-4 w-full md:w-auto">
+                    <Input 
+                      placeholder="إيميل المستخدم لإضافته..." 
+                      value={adminSearchEmail} 
+                      onChange={(e) => setAdminSearchEmail(e.target.value)}
+                      className="h-14 rounded-2xl bg-black border-white/10 flex-1 md:w-64" 
+                    />
+                    <Button onClick={handleAddAdminByEmail} disabled={isSubmitting} className="h-14 px-8 bg-primary rounded-2xl font-black text-sm">ترقية مشرف 🚀</Button>
                   </div>
-                ))}
-              </div>
-            </Card>
-          </TabsContent>
+                </div>
+                
+                <div className="grid gap-6">
+                  {adminsList.map((admin) => (
+                    <div key={`admin-${admin.id}`} className="flex flex-col md:flex-row justify-between items-center p-6 md:p-8 bg-white/[0.02] border border-white/5 rounded-3xl gap-6">
+                      <div className="flex items-center gap-6 w-full">
+                        <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-primary/20 flex items-center justify-center shrink-0">
+                          {admin.role === 'owner' ? <Crown className="text-amber-500 w-6 h-6 md:w-8 md:h-8" /> : <ShieldCheck className="text-primary w-6 h-6 md:w-8 md:h-8" />}
+                        </div>
+                        <div className="overflow-hidden">
+                          <div className="flex items-center gap-2">
+                             <p className="font-black text-lg md:text-xl truncate">{admin.displayName || 'مشرف'}</p>
+                             {admin.role === 'owner' && <Badge className="bg-amber-500/20 text-amber-500 border-none text-[10px]">المالك</Badge>}
+                          </div>
+                          <p className="text-white/30 font-bold text-xs md:text-sm truncate">{admin.email}</p>
+                          <div className="flex items-center gap-2 mt-1 text-white/20 text-[10px] font-bold">
+                            <Calendar className="w-3 h-3" />
+                            <span>تاريخ التعيين: {admin.createdAt?.toDate ? admin.createdAt.toDate().toLocaleDateString('ar-SA') : 'غير معروف'}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex flex-col items-end gap-2 w-full md:w-auto">
+                        <label className="text-[10px] font-bold text-white/40 uppercase">الصلاحية الحالية</label>
+                        <Select 
+                          disabled={admin.role === 'owner' || (admin.role === 'superAdmin' && currentUserRole !== 'owner') || isSubmitting}
+                          value={admin.role} 
+                          onValueChange={(val) => handleRoleChange(admin.id, val)}
+                        >
+                          <SelectTrigger className="h-12 w-full md:w-48 bg-black border-white/10 text-white rounded-xl">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-black border-white/10 text-white">
+                            <SelectItem value="owner" disabled={currentUserRole !== 'owner'}>المالك (Owner)</SelectItem>
+                            <SelectItem value="superAdmin" disabled={currentUserRole !== 'owner'}>مشرف عام (Super Admin)</SelectItem>
+                            <SelectItem value="admin">مشرف محتوى (Admin)</SelectItem>
+                            <SelectItem value="student" className="text-rose-500">إزالة الصلاحيات</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </TabsContent>
+          )}
 
           <TabsContent value="content" className="space-y-10">
              <Tabs defaultValue="editor" className="space-y-6">
@@ -674,7 +676,7 @@ export default function AdminPage() {
                           </Button>
                         </div>
                         {newSection.readingPassages?.map((rp, i) => (
-                          <Card key={i} className="p-6 md:p-8 bg-white/[0.02] border-white/5 rounded-3xl space-y-4 relative group">
+                          <Card key={`rp-${i}`} className="p-6 md:p-8 bg-white/[0.02] border-white/5 rounded-3xl space-y-4 relative group">
                             <Button onClick={() => {
                                const rps = [...(newSection.readingPassages || [])];
                                rps.splice(i, 1);
@@ -703,7 +705,7 @@ export default function AdminPage() {
                         </div>
                         <div className="grid gap-6">
                           {newSection.questions?.map((q, i) => (
-                            <Card key={i} className="p-6 md:p-8 bg-black/50 border-white/5 rounded-[30px] space-y-6 relative group">
+                            <Card key={`q-edit-${i}`} className="p-6 md:p-8 bg-black/50 border-white/5 rounded-[30px] space-y-6 relative group">
                               <Button onClick={() => {
                                  const qs = [...(newSection.questions || [])];
                                  qs.splice(i, 1);
@@ -744,7 +746,7 @@ export default function AdminPage() {
                                       </SelectTrigger>
                                       <SelectContent className="bg-black border-white/10 text-white">
                                         {newSection.readingPassages?.map((rp, rpIdx) => (
-                                          <SelectItem key={rpIdx} value={rp.title}>{rp.title || `قطعة غير معنونة ${rpIdx+1}`}</SelectItem>
+                                          <SelectItem key={`sel-rp-${rpIdx}`} value={rp.title}>{rp.title || `قطعة غير معنونة ${rpIdx+1}`}</SelectItem>
                                         ))}
                                         {(!newSection.readingPassages || newSection.readingPassages.length === 0) && (
                                           <SelectItem value="none" disabled>يرجى إضافة قطعة أولاً</SelectItem>
@@ -763,7 +765,7 @@ export default function AdminPage() {
                               
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                  {q.options.map((opt, optIdx) => (
-                                   <div key={optIdx} className="flex gap-2">
+                                   <div key={`opt-${i}-${optIdx}`} className="flex gap-2">
                                       <Input placeholder={`خيار ${['أ', 'ب', 'ج', 'د'][optIdx]}`} value={opt} onChange={(e) => {
                                          const qs = [...(newSection.questions || [])];
                                          qs[i].options[optIdx] = e.target.value;
@@ -791,7 +793,7 @@ export default function AdminPage() {
                       <h2 className="text-2xl md:text-3xl font-black flex items-center gap-4"><Layers className="text-primary" /> قوالب الأقسام الجاهزة</h2>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                         {templates.map((t) => (
-                          <Card key={t.firebaseId} className="p-6 bg-white/[0.02] border-white/5 rounded-3xl space-y-4 hover:border-primary/40 transition-all">
+                          <Card key={`tpl-${t.firebaseId}`} className="p-6 bg-white/[0.02] border-white/5 rounded-3xl space-y-4 hover:border-primary/40 transition-all">
                              <div className="flex justify-between items-start">
                                <Badge className="bg-primary/20 text-primary border-none text-[10px]">Template</Badge>
                                <div className="flex gap-2">
@@ -819,7 +821,7 @@ export default function AdminPage() {
                        <h2 className="text-2xl md:text-3xl font-black">الأقسام النشطة</h2>
                        <div className="grid gap-4">
                           {sections.map((s) => (
-                            <div key={s.id} className="p-4 md:p-6 bg-white/[0.02] border border-white/5 rounded-2xl flex flex-col sm:flex-row justify-between items-center group gap-4">
+                            <div key={`live-sec-${s.firebaseId || s.id}`} className="p-4 md:p-6 bg-white/[0.02] border border-white/5 rounded-2xl flex flex-col sm:flex-row justify-between items-center group gap-4">
                                <div className="flex items-center gap-4 w-full">
                                   <Badge className="bg-primary/20 text-primary shrink-0">{s.id}</Badge>
                                   <div className="flex flex-col overflow-hidden">
@@ -844,7 +846,7 @@ export default function AdminPage() {
               <h2 className="text-2xl md:text-3xl font-black flex items-center gap-4"><History className="text-primary" /> سجل النشاط</h2>
               <div className="space-y-4">
                 {activityLogs.map((log, i) => (
-                  <div key={i} className="p-4 md:p-6 bg-white/[0.02] border border-white/5 rounded-3xl flex flex-col sm:flex-row justify-between items-center gap-4">
+                  <div key={`log-${i}`} className="p-4 md:p-6 bg-white/[0.02] border border-white/5 rounded-3xl flex flex-col sm:flex-row justify-between items-center gap-4">
                     <div className="flex items-center gap-3 w-full">
                       <Badge className={cn("text-white text-[10px]", 
                         log.action === 'BAN' ? "bg-rose-500" : 
@@ -858,65 +860,6 @@ export default function AdminPage() {
                       </div>
                     </div>
                     <p className="text-[10px] md:text-xs text-white/20 shrink-0 w-full sm:w-auto text-left sm:text-right">{log.timestamp?.toDate()?.toLocaleString('ar-SA')}</p>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="admins">
-            <Card className="p-6 md:p-10 glass-card rounded-[40px] md:rounded-[50px] space-y-10 border-white/5">
-              <div className="flex flex-col md:flex-row justify-between items-center border-b border-white/5 pb-8 gap-6">
-                <h2 className="text-2xl md:text-3xl font-black flex items-center gap-4"><Crown className="text-primary" /> إدارة المشرفين</h2>
-                <div className="flex gap-4 w-full md:w-auto">
-                  <Input 
-                    placeholder="إيميل المستخدم لإضافته..." 
-                    value={adminSearchEmail} 
-                    onChange={(e) => setAdminSearchEmail(e.target.value)}
-                    className="h-14 rounded-2xl bg-black border-white/10 flex-1 md:w-64" 
-                  />
-                  <Button onClick={handleAddAdminByEmail} disabled={isSubmitting} className="h-14 px-8 bg-primary rounded-2xl font-black">ترقية مشرف 🚀</Button>
-                </div>
-              </div>
-              
-              <div className="grid gap-6">
-                {adminsList.map((admin) => (
-                  <div key={admin.id} className="flex flex-col md:flex-row justify-between items-center p-6 md:p-8 bg-white/[0.02] border border-white/5 rounded-3xl gap-6">
-                    <div className="flex items-center gap-6 w-full">
-                      <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-primary/20 flex items-center justify-center shrink-0">
-                        {admin.role === 'owner' ? <Crown className="text-amber-500 w-6 h-6 md:w-8 md:h-8" /> : <ShieldCheck className="text-primary w-6 h-6 md:w-8 md:h-8" />}
-                      </div>
-                      <div className="overflow-hidden">
-                        <div className="flex items-center gap-2">
-                           <p className="font-black text-lg md:text-xl truncate">{admin.displayName || 'مشرف'}</p>
-                           {admin.role === 'owner' && <Badge className="bg-amber-500/20 text-amber-500 border-none text-[10px]">المالك</Badge>}
-                        </div>
-                        <p className="text-white/30 font-bold text-xs md:text-sm truncate">{admin.email}</p>
-                        <div className="flex items-center gap-2 mt-1 text-white/20 text-[10px] font-bold">
-                          <Calendar className="w-3 h-3" />
-                          <span>تاريخ التعيين: {admin.createdAt?.toDate ? admin.createdAt.toDate().toLocaleDateString('ar-SA') : 'غير معروف'}</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex flex-col items-end gap-2 w-full md:w-auto">
-                      <label className="text-[10px] font-bold text-white/40 uppercase">الصلاحية الحالية</label>
-                      <Select 
-                        disabled={admin.role === 'owner' || (admin.role === 'superAdmin' && currentUserRole !== 'owner') || isSubmitting}
-                        value={admin.role} 
-                        onValueChange={(val) => handleRoleChange(admin.id, val)}
-                      >
-                        <SelectTrigger className="h-12 w-full md:w-48 bg-black border-white/10 text-white rounded-xl">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-black border-white/10 text-white">
-                          <SelectItem value="owner" disabled={currentUserRole !== 'owner'}>المالك (Owner)</SelectItem>
-                          <SelectItem value="superAdmin" disabled={currentUserRole !== 'owner'}>مشرف عام (Super Admin)</SelectItem>
-                          <SelectItem value="admin">مشرف محتوى (Admin)</SelectItem>
-                          <SelectItem value="student" className="text-rose-500">إزالة الصلاحيات</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
                   </div>
                 ))}
               </div>
@@ -1005,4 +948,3 @@ export default function AdminPage() {
     </main>
   );
 }
-
