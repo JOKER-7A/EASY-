@@ -17,6 +17,7 @@ export interface Section {
   id: number;
   firebaseId?: string; // Optional field for database reference
   title: string;
+  description?: string; // New field for section subtitle
   readingPassages?: ReadingPassage[];
   questions: Question[];
   duration: number; // in minutes

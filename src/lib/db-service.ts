@@ -64,6 +64,23 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
 };
 
 /**
+ * تحديث قسم نشط في قاعدة البيانات
+ */
+export const updateSectionInDb = async (firebaseId: string, sectionData: any) => {
+  try {
+    const sectionRef = doc(db, "sections", firebaseId);
+    await updateDoc(sectionRef, {
+      ...sectionData,
+      updatedAt: serverTimestamp()
+    });
+    return true;
+  } catch (e) {
+    console.error("Error updating section:", e);
+    throw e;
+  }
+};
+
+/**
  * نظام الأقسام الجاهزة (Templates)
  */
 export const getTemplatesFromDb = async () => {
@@ -89,6 +106,23 @@ export const saveTemplateToDb = async (template: any) => {
     return docRef.id;
   } catch (e) {
     console.error("Error saving template:", e);
+    throw e;
+  }
+};
+
+/**
+ * تحديث قالب جاهز
+ */
+export const updateTemplateInDb = async (firebaseId: string, templateData: any) => {
+  try {
+    const templateRef = doc(db, "sectionTemplates", firebaseId);
+    await updateDoc(templateRef, {
+      ...templateData,
+      updatedAt: serverTimestamp()
+    });
+    return true;
+  } catch (e) {
+    console.error("Error updating template:", e);
     throw e;
   }
 };

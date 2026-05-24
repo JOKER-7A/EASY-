@@ -9,7 +9,9 @@ import {
   getTemplatesFromDb, 
   saveTemplateToDb, 
   deleteTemplateFromDb,
-  updateUserStatus 
+  updateUserStatus,
+  updateSectionInDb,
+  updateTemplateInDb
 } from '@/lib/db-service';
 import { 
   collection, getDocs, addDoc, doc, deleteDoc, updateDoc, serverTimestamp, query, orderBy, limit, where 
@@ -28,12 +30,14 @@ import {
 } from "@/components/ui/dialog";
 import { 
   Trash2, ShieldCheck, Database, Ban, AlertCircle, TrendingUp,
-  XCircle, Lock, Edit2, History, Copy, Layers, Loader2, Search, FileText, UserCheck, X as XIcon, CheckCircle
+  XCircle, Lock, Edit2, History, Copy, Layers, Loader2, Search, FileText, UserCheck, X as XIcon, CheckCircle, PlusCircle, Save
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const ADMIN_SECRET_CODE = "EASY77100";
 const AUTH_KEY = "easy_admin_authorized";
+
+type EditorMode = 'create' | 'edit-section' | 'edit-template';
 
 export default function AdminPage() {
   const [isAuthorized, setIsAuthorized] = useState(false);
@@ -59,6 +63,18 @@ export default function AdminPage() {
   
   const { toast } = useToast();
 
+  // --- Editor State ---
+  const [editorMode, setEditorMode] = useState<EditorMode>('create');
+  const [activeFirebaseId, setActiveFirebaseId] = useState<string | null>(null);
+  const [newSection, setNewSection] = useState<Partial<Section>>({
+    id: 0,
+    title: '',
+    description: '',
+    questions: [],
+    readingPassages: [],
+    duration: 13
+  });
+
   // --- Modals State ---
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [banModalOpen, setBanModalOpen] = useState(false);
@@ -68,14 +84,6 @@ export default function AdminPage() {
   const [editNameModalOpen, setEditNameModalOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [nameChangeReason, setNameChangeReason] = useState('');
-
-  const [newSection, setNewSection] = useState<Partial<Section>>({
-    id: 0,
-    title: '',
-    questions: [],
-    readingPassages: [],
-    duration: 13
-  });
 
   const fetchData = useCallback(async () => {
     try {
@@ -163,20 +171,28 @@ export default function AdminPage() {
 
   const handleSaveSection = async () => {
     if (!newSection.title || !newSection.id) {
-      toast({ title: "يرجى إكمال البيانات", variant: "destructive" });
+      toast({ title: "يرجى إكمال البيانات الأساسية", variant: "destructive" });
       return;
     }
     setIsSubmitting(true);
     try {
-      await addDoc(collection(db, "sections"), {
-        ...newSection,
-        createdAt: serverTimestamp()
-      });
-      setNewSection({ id: 0, title: '', questions: [], readingPassages: [], duration: 13 });
+      if (editorMode === 'edit-section' && activeFirebaseId) {
+        await updateSectionInDb(activeFirebaseId, newSection);
+        toast({ title: "تم تحديث القسم بنجاح! ✏️" });
+      } else if (editorMode === 'edit-template' && activeFirebaseId) {
+        await updateTemplateInDb(activeFirebaseId, newSection);
+        toast({ title: "تم تحديث القالب بنجاح! 💾" });
+      } else {
+        await addDoc(collection(db, "sections"), {
+          ...newSection,
+          createdAt: serverTimestamp()
+        });
+        toast({ title: "تم نشر القسم الجديد بنجاح! 🚀" });
+      }
+      resetEditor();
       fetchData();
-      toast({ title: "تم النشر بنجاح! 🚀" });
     } catch (error) {
-      toast({ title: "حدث خطأ", variant: "destructive" });
+      toast({ title: "حدث خطأ أثناء الحفظ", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -199,15 +215,52 @@ export default function AdminPage() {
     }
   };
 
+  const resetEditor = () => {
+    setNewSection({ id: 0, title: '', description: '', questions: [], readingPassages: [], duration: 13 });
+    setEditorMode('create');
+    setActiveFirebaseId(null);
+  };
+
+  const editSection = (section: Section) => {
+    setNewSection({
+      id: section.id,
+      title: section.title,
+      description: section.description || '',
+      questions: section.questions || [],
+      readingPassages: section.readingPassages || [],
+      duration: section.duration || 13
+    });
+    setEditorMode('edit-section');
+    setActiveFirebaseId(section.firebaseId || null);
+    toast({ title: "تم تحميل بيانات القسم للتعديل" });
+  };
+
   const useTemplate = (template: any) => {
     setNewSection({
       id: sections.length > 0 ? Math.max(...sections.map(s => Number(s.id))) + 1 : 1,
       title: template.title,
+      description: template.description || '',
       questions: template.questions || [],
       readingPassages: template.readingPassages || [],
       duration: template.duration || 13
     });
+    setEditorMode('create');
+    setActiveFirebaseId(null);
     toast({ title: "تم تحميل بيانات القالب بنجاح" });
+  };
+
+  const editTemplate = (template: any) => {
+    setNewSection({
+      id: template.id || 0,
+      title: template.title,
+      description: template.description || '',
+      questions: template.questions || [],
+      readingPassages: template.readingPassages || [],
+      duration: template.duration || 13
+    });
+    setEditorMode('edit-template');
+    setActiveFirebaseId(template.firebaseId);
+    toast({ title: "محرر القوالب نشط الآن" });
   };
 
   const handleDeleteTemplate = async (id: string) => {
@@ -362,7 +415,7 @@ export default function AdminPage() {
         </div>
 
         <Tabs defaultValue="requests" className="space-y-10">
-          <TabsList className="bg-white/5 border border-white/5 p-2 h-20 rounded-[30px] w-full md:w-auto">
+          <TabsList className="bg-white/5 border border-white/5 p-2 h-20 rounded-[30px] w-full md:w-auto overflow-x-auto">
             <TabsTrigger value="requests" className="px-12 font-black rounded-[20px] h-full text-lg flex gap-2">طلبات الانضمام {stats.requests > 0 && <Badge className="bg-amber-500">{stats.requests}</Badge>}</TabsTrigger>
             <TabsTrigger value="users" className="px-12 font-black rounded-[20px] h-full text-lg">الطلاب</TabsTrigger>
             <TabsTrigger value="content" className="px-12 font-black rounded-[20px] h-full text-lg">إدارة المحتوى</TabsTrigger>
@@ -435,18 +488,26 @@ export default function AdminPage() {
           <TabsContent value="content" className="space-y-10">
              <Tabs defaultValue="editor" className="space-y-6">
                 <TabsList className="bg-white/5 p-1 rounded-2xl">
-                   <TabsTrigger value="editor" className="px-8 rounded-xl font-bold">المحرر الأساسي</TabsTrigger>
+                   <TabsTrigger value="editor" className="px-8 rounded-xl font-bold">المحرر (Editor)</TabsTrigger>
                    <TabsTrigger value="templates" className="px-8 rounded-xl font-bold">الأقسام الجاهزة (Templates)</TabsTrigger>
                    <TabsTrigger value="all" className="px-8 rounded-xl font-bold">كل الأقسام الحالية</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="editor">
                    <Card className="p-10 glass-card rounded-[50px] space-y-10 border-white/5">
-                      <div className="flex justify-between items-center border-b border-white/5 pb-8">
-                        <h2 className="text-3xl font-black">بناء قسم جديد</h2>
+                      <div className="flex flex-col md:flex-row justify-between items-center border-b border-white/5 pb-8 gap-4">
+                        <div className="space-y-1">
+                          <h2 className="text-3xl font-black">
+                            {editorMode === 'edit-section' ? 'تعديل قسم نشط' : editorMode === 'edit-template' ? 'تعديل قالب جاهز' : 'بناء قسم جديد'}
+                          </h2>
+                          {editorMode !== 'create' && <Button onClick={resetEditor} variant="link" className="text-xs text-primary p-0">إلغاء التعديل والبدء من جديد</Button>}
+                        </div>
                         <div className="flex gap-4">
                           <Button variant="outline" onClick={handleSaveAsTemplate} disabled={isSubmitting} className="h-14 px-8 rounded-2xl font-bold border-white/10">حفظ كقالب جاهز 💾</Button>
-                          <Button onClick={handleSaveSection} disabled={isSubmitting} className="h-14 px-12 bg-primary text-white font-black rounded-2xl">نشر القسم 🚀</Button>
+                          <Button onClick={handleSaveSection} disabled={isSubmitting} className="h-14 px-12 bg-primary text-white font-black rounded-2xl flex gap-2">
+                             {editorMode === 'create' ? <PlusCircle /> : <Save />}
+                             {editorMode === 'create' ? 'نشر القسم 🚀' : 'تحديث البيانات ✅'}
+                          </Button>
                         </div>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -458,19 +519,50 @@ export default function AdminPage() {
                           <label className="text-xs font-bold uppercase text-primary">عنوان القسم</label>
                           <Input value={newSection.title || ''} onChange={(e) => setNewSection(p => ({ ...p, title: e.target.value }))} className="h-14 bg-black border-white/10" />
                         </div>
+                        <div className="md:col-span-3 space-y-3">
+                          <label className="text-xs font-bold uppercase text-primary">وصف القسم (Subtitle)</label>
+                          <Input placeholder="نص توضيحي يظهر تحت العنوان..." value={newSection.description || ''} onChange={(e) => setNewSection(p => ({ ...p, description: e.target.value }))} className="h-14 bg-black border-white/10" />
+                        </div>
                       </div>
                       <div className="space-y-8">
                         <div className="flex justify-between items-center">
-                          <h3 className="text-xl font-black flex items-center gap-3"><AlertCircle className="text-primary" /> الأسئلة</h3>
-                          <Button onClick={() => setNewSection(prev => ({ ...prev, questions: [...(prev.questions || []), { id: `q-${Date.now()}`, question: '', options: ['', '', '', ''], correct: '', type: 'analogy' }] }))} variant="secondary" className="bg-primary/10 text-primary">إضافة سؤال</Button>
+                          <h3 className="text-xl font-black flex items-center gap-3"><AlertCircle className="text-primary" /> الأسئلة ({newSection.questions?.length || 0})</h3>
+                          <Button onClick={() => setNewSection(prev => ({ ...prev, questions: [...(prev.questions || []), { id: `q-${Date.now()}`, question: '', options: ['', '', '', ''], correct: '', type: 'analogy' }] }))} variant="secondary" className="bg-primary/10 text-primary">
+                            <PlusCircle className="ml-2 w-4 h-4" /> إضافة سؤال جديد
+                          </Button>
                         </div>
                         {newSection.questions?.map((q, i) => (
-                          <Card key={i} className="p-8 bg-black/50 border-white/5 rounded-[30px] space-y-6">
-                            <Input placeholder="نص السؤال" value={q.question} onChange={(e) => {
+                          <Card key={i} className="p-8 bg-black/50 border-white/5 rounded-[30px] space-y-6 relative group">
+                            <Button onClick={() => {
+                               const qs = [...(newSection.questions || [])];
+                               qs.splice(i, 1);
+                               setNewSection(p => ({ ...p, questions: qs }));
+                            }} size="icon" variant="ghost" className="absolute left-4 top-4 text-white/10 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="w-4 h-4" /></Button>
+                            
+                            <Input placeholder={`السؤال رقم ${i+1}`} value={q.question} onChange={(e) => {
                                const qs = [...(newSection.questions || [])];
                                qs[i].question = e.target.value;
                                setNewSection(p => ({ ...p, questions: qs }));
                             }} className="text-xl font-black h-14 bg-black border-white/10" />
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                               {q.options.map((opt, optIdx) => (
+                                 <div key={optIdx} className="flex gap-2">
+                                    <Input placeholder={`خيار ${['أ', 'ب', 'ج', 'د'][optIdx]}`} value={opt} onChange={(e) => {
+                                       const qs = [...(newSection.questions || [])];
+                                       qs[i].options[optIdx] = e.target.value;
+                                       setNewSection(p => ({ ...p, questions: qs }));
+                                    }} className="h-12 bg-black border-white/5" />
+                                    <Button onClick={() => {
+                                       const qs = [...(newSection.questions || [])];
+                                       qs[i].correct = opt;
+                                       setNewSection(p => ({ ...p, questions: qs }));
+                                    }} variant={q.correct === opt && opt !== '' ? 'default' : 'ghost'} className={cn("px-4", q.correct === opt && opt !== '' && "bg-emerald-500 hover:bg-emerald-600")}>
+                                      {q.correct === opt && opt !== '' ? 'صح' : 'ص?'}
+                                    </Button>
+                                 </div>
+                               ))}
+                            </div>
                           </Card>
                         ))}
                       </div>
@@ -486,13 +578,18 @@ export default function AdminPage() {
                              <div className="flex justify-between items-start">
                                <Badge className="bg-primary/20 text-primary border-none">Template</Badge>
                                <div className="flex gap-2">
-                                  <Button onClick={() => useTemplate(t)} size="icon" variant="ghost" className="text-blue-500"><Copy className="w-4 h-4" /></Button>
+                                  <Button onClick={() => useTemplate(t)} size="icon" variant="ghost" className="text-blue-500" title="نسخ لإنشاء قسم"><Copy className="w-4 h-4" /></Button>
+                                  <Button onClick={() => editTemplate(t)} size="icon" variant="ghost" className="text-emerald-500" title="تعديل القالب"><Edit2 className="w-4 h-4" /></Button>
                                   <Button onClick={() => handleDeleteTemplate(t.firebaseId)} size="icon" variant="ghost" className="text-rose-500"><Trash2 className="w-4 h-4" /></Button>
                                </div>
                              </div>
                              <h3 className="text-xl font-black">{t.title}</h3>
+                             {t.description && <p className="text-xs text-white/30 line-clamp-1">{t.description}</p>}
                              <p className="text-sm text-white/40">{t.questions?.length || 0} سؤال جاهز</p>
-                             <Button onClick={() => useTemplate(t)} className="w-full bg-primary/10 text-primary hover:bg-primary hover:text-white font-bold h-12 rounded-xl">استخدام القالب</Button>
+                             <div className="flex gap-2">
+                               <Button onClick={() => useTemplate(t)} className="flex-1 bg-primary text-white font-bold h-12 rounded-xl">استخدام القسم</Button>
+                               <Button onClick={() => editTemplate(t)} variant="outline" className="h-12 border-white/10 rounded-xl px-4"><Edit2 className="w-4 h-4" /></Button>
+                             </div>
                           </Card>
                         ))}
                         {templates.length === 0 && <div className="col-span-full py-20 text-center text-white/20 font-black">لا توجد قوالب جاهزة حالياً</div>}
@@ -505,12 +602,16 @@ export default function AdminPage() {
                        <h2 className="text-3xl font-black">الأقسام النشطة</h2>
                        <div className="grid gap-4">
                           {sections.map((s) => (
-                            <div key={s.id} className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl flex justify-between items-center">
+                            <div key={s.id} className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl flex justify-between items-center group">
                                <div className="flex items-center gap-4">
                                   <Badge className="bg-primary/20 text-primary">{s.id}</Badge>
-                                  <span className="font-black text-lg">{s.title}</span>
+                                  <div className="flex flex-col">
+                                    <span className="font-black text-lg">{s.title}</span>
+                                    {s.description && <span className="text-xs text-white/30">{s.description}</span>}
+                                  </div>
                                </div>
-                               <div className="flex gap-2">
+                               <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Button onClick={() => editSection(s)} variant="ghost" size="icon" className="text-emerald-400 hover:bg-emerald-400/10"><Edit2 className="w-4 h-4" /></Button>
                                   <Button variant="ghost" size="icon" onClick={() => deleteDoc(doc(db, "sections", s.firebaseId || '')).then(() => fetchData())} className="text-white/20 hover:text-destructive"><Trash2 className="w-4 h-4" /></Button>
                                </div>
                             </div>

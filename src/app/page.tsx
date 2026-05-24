@@ -108,7 +108,11 @@ export default function Home() {
   const filteredSections = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return sections;
-    return sections.filter(s => s.title.toLowerCase().includes(q) || s.id.toString().includes(q));
+    return sections.filter(s => 
+      s.title.toLowerCase().includes(q) || 
+      s.id.toString().includes(q) ||
+      (s.description && s.description.toLowerCase().includes(q))
+    );
   }, [searchQuery, sections]);
 
   const isNewSection = (section: Section) => {
@@ -371,13 +375,16 @@ export default function Home() {
                   <Badge className="bg-primary/20 text-primary border-none font-black text-[10px]">نموذج {section.id}</Badge>
                   {isNewSection(section) && <Badge className="bg-amber-500/20 text-amber-500 border-none animate-pulse text-[10px]">جديد ✨</Badge>}
                 </div>
-                <h2 className="text-xl md:text-3xl font-black group-hover:text-primary transition-colors">{section.title}</h2>
+                <div className="flex flex-col">
+                  <h2 className="text-xl md:text-3xl font-black group-hover:text-primary transition-colors">{section.title}</h2>
+                  {section.description && <p className="text-white/40 text-xs font-bold mt-1 line-clamp-1">{section.description}</p>}
+                </div>
                 <div className="flex justify-center sm:justify-start items-center gap-4 text-white/20 text-xs font-bold">
                   <span className="flex items-center gap-1.5"><Zap className="w-3.5 h-3.5" /> {section.questions?.length || 0} سؤال</span>
                   <span className="flex items-center gap-1.5"><History className="w-3.5 h-3.5" /> {section.duration} دقيقة</span>
                 </div>
               </div>
-              <Button onClick={() => { setSelectedSection(section); setActiveView('practice'); }} className="w-full sm:w-auto h-16 px-8 rounded-2xl text-xl font-black bg-primary text-white shadow-xl hover:scale-105 transition-all">
+              <Button onClick={() => { setSelectedSection(section); setActiveView('landing'); setTimeout(() => setActiveView('practice'), 50); }} className="w-full sm:w-auto h-16 px-8 rounded-2xl text-xl font-black bg-primary text-white shadow-xl hover:scale-105 transition-all">
                 ابدأ <ArrowRight className="mr-2 w-6 h-6" />
               </Button>
             </div>
