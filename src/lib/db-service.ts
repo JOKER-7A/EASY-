@@ -263,22 +263,22 @@ export const saveAttemptToDb = async (userId: string | undefined, attempt: any) 
 };
 
 /**
- * إعادة بناء نظام تسجيل الأخطاء لضمان الدقة ومنع أخطاء العرض
+ * تسجيل الأخطاء لضمان الدقة ومنع أخطاء العرض
  */
 export const saveErrorLogToDb = async (userId: string, question: Question, sectionTitle: string, userAnswer: string) => {
+  if (!userId || !question?.id) return;
   try {
-    // معرف فريد يجمع بين المستخدم والسؤال لضمان التحديث وليس التكرار العشوائي
     const errorId = `${userId}_${question.id}`.replace(/\s/g, '_');
     const errorRef = doc(db, "errorLogs", errorId);
 
     const errorData = {
-      userId,
+      userId: String(userId),
       questionId: String(question.id),
       userAnswer: String(userAnswer),
       questionData: { 
         id: String(question.id),
         question: String(question.question),
-        options: question.options,
+        options: question.options.map(String),
         correct: String(question.correct),
         type: String(question.type),
         sectionTitle: String(sectionTitle)
@@ -294,6 +294,7 @@ export const saveErrorLogToDb = async (userId: string, question: Question, secti
 };
 
 export const getErrorLogs = async (userId: string) => {
+  if (!userId) return [];
   try {
     const q = query(
       collection(db, "errorLogs"), 
@@ -320,15 +321,17 @@ export const deleteErrorLog = async (logId: string) => {
 };
 
 export const toggleFavoriteInDb = async (userId: string, question: Question, sectionTitle: string) => {
+  if (!userId || !question?.id) return false;
   try {
     const userRef = doc(db, "userProfiles", userId);
     const userSnap = await getDoc(userRef);
     if (!userSnap.exists()) return false;
     
     const favorites = userSnap.data().favorites || [];
-    const existing = favorites.find((f: any) => f.id === String(question.id));
+    const existing = favorites.find((f: any) => String(f.id) === String(question.id));
     
     if (existing) {
+      // إزالة دقيقة باستخدام الكائن المخزن فعلياً
       await updateDoc(userRef, {
         favorites: arrayRemove(existing)
       });
@@ -337,10 +340,10 @@ export const toggleFavoriteInDb = async (userId: string, question: Question, sec
       const newFav = {
         id: String(question.id),
         question: String(question.question),
-        options: question.options.map(String),
+        options: (question.options || []).map(String),
         correct: String(question.correct),
-        type: String(question.type),
-        sectionTitle: String(sectionTitle),
+        type: String(question.type || 'analogy'),
+        sectionTitle: String(sectionTitle || 'قسم تدريبي'),
         addedAt: new Date().toISOString()
       };
       await updateDoc(userRef, {
@@ -376,4 +379,4 @@ export const getGlobalSettings = async () => {
     const snap = await getDoc(settingsRef);
     return snap.exists() ? snap.data() : {};
   } catch (e) { return {}; }
-};
+}

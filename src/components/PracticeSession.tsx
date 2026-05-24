@@ -110,6 +110,8 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
 
   const handleAnswer = async (opt: string) => {
     const q = section.questions[currentQuestionIndex];
+    if (!q) return;
+
     setUserAnswers(p => ({ ...p, [q.id]: opt }));
     
     if (auth.currentUser) {
@@ -117,7 +119,6 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
       updateUserXP(auth.currentUser.uid, isCorrect);
       
       if (!isCorrect) {
-        // تسجيل الخطأ فورياً في قاعدة البيانات مع كامل التفاصيل
         saveErrorLogToDb(auth.currentUser.uid, q, section.title, opt);
       }
     }
@@ -272,17 +273,17 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
             <div className="flex justify-between items-start gap-6">
               <div className="space-y-3">
                 <Badge variant="secondary" className="bg-primary/10 text-primary border-none font-black px-3 rounded-lg uppercase text-[10px] tracking-widest">
-                  {q.type === 'reading' ? 'استيعاب مقروء' : q.type.toUpperCase()}
+                  {q?.type === 'reading' ? 'استيعاب مقروء' : q?.type?.toUpperCase() || 'تدريب'}
                 </Badge>
-                <h2 className="text-2xl md:text-4xl font-black leading-[1.4] tracking-tight">{q.question}</h2>
+                <h2 className="text-2xl md:text-4xl font-black leading-[1.4] tracking-tight">{q?.question}</h2>
               </div>
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className={cn("rounded-[20px] h-12 w-12 md:h-14 md:w-14 border transition-all active:scale-90 shrink-0", favorites.includes(String(q.id)) ? "text-rose-500 border-rose-500/20 bg-rose-500/5 shadow-[0_0_20px_rgba(244,63,94,0.1)]" : "opacity-20 hover:opacity-100 hover:bg-muted")}
-                onClick={() => toggleFavorite(q)}
+                className={cn("rounded-[20px] h-12 w-12 md:h-14 md:w-14 border transition-all active:scale-90 shrink-0", q && favorites.includes(String(q.id)) ? "text-rose-500 border-rose-500/20 bg-rose-500/5 shadow-[0_0_20px_rgba(244,63,94,0.1)]" : "opacity-20 hover:opacity-100 hover:bg-muted")}
+                onClick={() => q && toggleFavorite(q)}
               >
-                <Heart className="w-6 h-6" fill={favorites.includes(String(q.id)) ? "currentColor" : "none"} />
+                <Heart className="w-6 h-6" fill={q && favorites.includes(String(q.id)) ? "currentColor" : "none"} />
               </Button>
             </div>
 
@@ -305,7 +306,7 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {q.options.map((opt, i) => (
+              {q?.options?.map((opt, i) => (
                 <button 
                   key={i} 
                   onClick={() => handleAnswer(opt)}

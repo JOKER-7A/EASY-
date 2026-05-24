@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Section } from '@/lib/practice-data';
 import { 
   getSectionsFromDb, 
@@ -100,6 +100,20 @@ export default function Home() {
 
   const { toast } = useToast();
 
+  const applyTheme = useCallback((t: 'light' | 'dark' | 'auto', color: string) => {
+    const root = document.documentElement;
+    root.style.setProperty('--primary', color);
+    
+    if (t === 'auto') {
+      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      isDark ? root.classList.add('dark') : root.classList.remove('dark');
+    } else if (t === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+  }, []);
+
   useEffect(() => {
     setHasMounted(true);
     const savedTheme = (localStorage.getItem('theme') as 'light' | 'dark' | 'auto') || 'auto';
@@ -115,7 +129,14 @@ export default function Home() {
         const unsubProfile = onSnapshot(userRef, (docSnap) => {
           if (docSnap.exists()) {
             const data = docSnap.data();
-            setProfile({ id: docSnap.id, ...data });
+            const updatedProfile = { id: docSnap.id, ...data };
+            setProfile(updatedProfile);
+            
+            // تحديث واجهة المفضلة تلقائياً إذا كانت مفتوحة
+            if (activeOverlay === 'favorites') {
+              setOverlayData(data.favorites || []);
+            }
+            
             if (data.theme && data.theme !== primaryColor) {
                setPrimaryColor(data.theme);
                applyTheme(theme, data.theme);
@@ -140,21 +161,7 @@ export default function Home() {
     });
     
     return () => unsubAuth();
-  }, []);
-
-  const applyTheme = (t: 'light' | 'dark' | 'auto', color: string) => {
-    const root = document.documentElement;
-    root.style.setProperty('--primary', color);
-    
-    if (t === 'auto') {
-      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      isDark ? root.classList.add('dark') : root.classList.remove('dark');
-    } else if (t === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-  };
+  }, [applyTheme, primaryColor, theme, activeOverlay]);
 
   const handleThemeChange = (t: 'light' | 'dark' | 'auto') => {
     setTheme(t);
@@ -484,7 +491,6 @@ export default function Home() {
                     <div className="text-center py-32 opacity-10 font-black italic text-4xl">فارغ...</div>
                   ) : (
                     overlayData.map((item, idx) => {
-                      // الحماية من عرض الكائنات كأطفال لـ React عبر تحويلها لنصوص آمنة
                       const rawTitle = item.questionData?.question || item.question || item.displayName || 'بدون عنوان';
                       const questionText = typeof rawTitle === 'string' ? rawTitle : 'عنوان غير صالح';
                       
@@ -518,6 +524,11 @@ export default function Home() {
                                  </p>
                                )}
                             </div>
+                          )}
+                          {!item.questionData && item.correct && (
+                            <p className="text-sm font-bold text-emerald-500 flex items-center gap-2 pt-3 border-t border-white/5">
+                              <CheckCircle2 className="w-4 h-4" /> الإجابة: {item.correct}
+                            </p>
                           )}
                           {typeof item.xp === 'number' && <p className="text-lg font-black text-amber-500">{item.xp} <span className="text-xs opacity-40 uppercase">XP</span></p>}
                         </div>
