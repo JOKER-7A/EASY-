@@ -103,7 +103,6 @@ export default function AdminPage() {
       const usersSnap = await getDocs(collection(db, "userProfiles"));
       const allUsers = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       
-      // الطلاب: أي شخص رتبته طالب أو لم تحدد رتبته بعد ولم يتم حظره
       setUsersList(allUsers.filter((u: any) => u.status === 'approved' && (u.role === 'student' || !u.role)));
       setPendingUsers(allUsers.filter((u: any) => u.status === 'pending'));
 
@@ -276,6 +275,27 @@ export default function AdminPage() {
       fetchData();
     } catch (error) {
       toast({ title: "حدث خطأ أثناء الحفظ", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSaveAsTemplate = async () => {
+    if (!newSection.title) {
+      toast({ title: "يرجى إدخال عنوان للقالب", variant: "destructive" });
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const templateData = { ...newSection };
+      // حذف المعرفات القديمة لإنشاء قالب جديد نظيف
+      delete (templateData as any).firebaseId;
+      
+      await saveTemplateToDb(templateData);
+      toast({ title: "تم حفظ القالب بنجاح! 💾" });
+      fetchData();
+    } catch (error) {
+      toast({ title: "حدث خطأ أثناء حفظ القالب", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
