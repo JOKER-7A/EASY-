@@ -40,6 +40,19 @@ const THEMES = [
   { name: 'Red', value: '0 95% 60%', color: '#dc2626' },
 ];
 
+// مكون الوسام البصري للرتب
+const RoleBadgeUI = ({ role }: { role: string }) => {
+  const badges: Record<string, string> = {
+    'rootOwner': '👑⚔️⚔️',
+    'owner': '👑',
+    'superAdmin': '🛡️⚔️',
+    'admin': '🛡️',
+    'editor': '✏️',
+    'helper': '🧩',
+  };
+  return badges[role] ? <span className="mr-1 drop-shadow-sm select-none" title={role}>{badges[role]}</span> : null;
+};
+
 export default function Home() {
   const [hasMounted, setHasMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -331,7 +344,9 @@ export default function Home() {
               <AvatarFallback className="bg-primary/20 text-primary font-black">{profile?.displayName?.[0] || 'U'}</AvatarFallback>
             </Avatar>
             <div className="hidden sm:block">
-              <p className="font-black text-white/90 text-sm">{profile?.displayName || 'طالب EASY'}</p>
+              <p className="font-black text-white/90 text-sm flex items-center gap-1">
+                {profile?.displayName || 'طالب EASY'} <RoleBadgeUI role={profile?.role || 'user'} />
+              </p>
               <div className="flex items-center gap-2">
                  <Badge className="bg-primary text-white text-[9px] px-1.5 py-0">LVL {profile?.level || 1}</Badge>
                  <span className="text-[9px] text-white/30">{profile?.xp || 0} XP</span>
@@ -429,8 +444,9 @@ export default function Home() {
                           <div className="flex gap-4">
                              <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-black text-xs">{idx + 1}</div>
                              <div>
-                                <p className="font-black text-lg leading-tight">
+                                <p className="font-black text-lg leading-tight flex items-center gap-1">
                                   {item.displayName || item.questionData?.question || item.question}
+                                  {item.role && <RoleBadgeUI role={item.role} />}
                                 </p>
                                 <p className="text-white/20 text-[10px] mt-1">{item.xp ? `${item.xp} XP` : item.questionData?.sectionTitle || "مراجعة"}</p>
                              </div>

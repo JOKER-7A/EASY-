@@ -42,6 +42,19 @@ import { cn } from '@/lib/utils';
 
 type EditorMode = 'create' | 'edit-section' | 'edit-template';
 
+// مكون الوسام البصري للرتب
+const RoleBadgeUI = ({ role }: { role: string }) => {
+  const badges: Record<string, string> = {
+    'rootOwner': '👑⚔️⚔️',
+    'owner': '👑',
+    'superAdmin': '🛡️⚔️',
+    'admin': '🛡️',
+    'editor': '✏️',
+    'helper': '🧩',
+  };
+  return badges[role] ? <span className="mr-2 drop-shadow-sm select-none" title={role}>{badges[role]}</span> : null;
+};
+
 export default function AdminPage() {
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
@@ -137,7 +150,6 @@ export default function AdminPage() {
         const role = profile?.role || 'user';
         setCurrentUserRole(role);
         
-        // التحقق من الصلاحيات الإدارية
         const adminRoles = ['rootOwner', 'owner', 'superAdmin', 'admin', 'editor', 'helper'];
         setIsAuthorized(adminRoles.includes(role));
         
@@ -181,7 +193,6 @@ export default function AdminPage() {
   const handleRoleChange = async (userId: string, newRole: string) => {
     const userToChange = adminsList.find(a => a.id === userId) || usersList.find(u => u.id === userId);
     
-    // فحص صلاحية التغيير حسب الهرم
     if (!canManageRole(currentUserRole, userToChange?.role || 'user')) {
       toast({ title: "لا تملك صلاحية تعديل رتبة هذا المستخدم", variant: "destructive" });
       return;
@@ -216,9 +227,7 @@ export default function AdminPage() {
       if (snap.empty) {
         toast({ title: "المستخدم غير موجود", variant: "destructive" });
       } else {
-        const userData = snap.docs[0].data();
         const userId = snap.docs[0].id;
-        
         await handleRoleChange(userId, 'admin');
         setAdminSearchEmail('');
       }
@@ -452,7 +461,7 @@ export default function AdminPage() {
             <div>
               <h1 className="text-2xl md:text-4xl font-black tracking-tight">لوحة القيادة</h1>
               <p className="text-primary font-bold uppercase tracking-widest text-[10px] md:text-xs opacity-60">
-                {currentUserRole.toUpperCase()} PANEL
+                {currentUserRole.toUpperCase()} PANEL <RoleBadgeUI role={currentUserRole} />
               </p>
             </div>
           </div>
@@ -501,7 +510,7 @@ export default function AdminPage() {
                  <div className="w-24 h-24 md:w-32 md:h-32 bg-primary/10 rounded-[40px] flex items-center justify-center mx-auto ring-4 ring-primary/20 animate-float-soft">
                    <Crown className="w-12 h-12 md:w-16 md:h-16 text-primary" />
                  </div>
-                 <h2 className="text-3xl md:text-6xl font-black text-white">أهلاً بك يا دكتور محمود 👋</h2>
+                 <h2 className="text-3xl md:text-6xl font-black text-white">أهلاً بك يا دكتور محمود <RoleBadgeUI role="rootOwner" /></h2>
                  <p className="text-lg md:text-2xl text-white/40 max-w-3xl mx-auto font-bold leading-relaxed">
                    أنت الآن في قلب نظام EASY كـ {currentUserRole.toUpperCase()}.
                  </p>
@@ -571,7 +580,7 @@ export default function AdminPage() {
                       <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-primary/10 flex items-center justify-center font-black text-xl md:text-2xl text-primary shrink-0">{u.displayName?.[0] || 'U'}</div>
                       <div className="overflow-hidden">
                         <div className="font-black text-lg md:text-xl flex flex-wrap items-center gap-3">
-                          <span className="truncate max-w-[150px] md:max-w-none">{u.displayName || 'بدون اسم'}</span>
+                          <span className="truncate max-w-[150px] md:max-w-none">{u.displayName || 'بدون اسم'} <RoleBadgeUI role={u.role || 'user'} /></span>
                           {u.isBanned && <Badge className="bg-destructive text-white border-none text-[10px]">محظور</Badge>}
                           <Badge className="bg-primary/20 text-primary border-none text-[10px]">{u.role || 'user'}</Badge>
                         </div>
@@ -615,7 +624,7 @@ export default function AdminPage() {
                           </div>
                           <div className="overflow-hidden">
                             <div className="flex items-center gap-2">
-                               <p className="font-black text-lg md:text-xl truncate">{admin.displayName || 'مشرف'}</p>
+                               <p className="font-black text-lg md:text-xl truncate">{admin.displayName || 'مشرف'} <RoleBadgeUI role={admin.role} /></p>
                                <Badge className="bg-primary/20 text-primary border-none text-[10px]">{admin.role}</Badge>
                             </div>
                             <p className="text-white/30 font-bold text-xs md:text-sm truncate">{admin.email}</p>
