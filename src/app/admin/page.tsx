@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { auth, db } from '@/lib/firebase';
-import { signOut } from 'firebase/auth';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { 
   getSectionsFromDb, 
   getTemplatesFromDb, 
@@ -26,7 +26,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/select";
 import { Badge } from "@/components/ui/badge";
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription 
@@ -138,7 +138,17 @@ export default function AdminPage() {
       setIsAuthorized(true);
       fetchData();
     }
+    
+    // مستمع لحالة الـ Auth لضمان جلب الرتبة فوراً
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        const profile = await getUserProfile(user.uid);
+        setCurrentUserRole(profile?.role || 'student');
+      }
+    });
+
     setLoading(false);
+    return () => unsub();
   }, [fetchData]);
 
   const handleAdminLogin = (e: React.FormEvent) => {
@@ -186,7 +196,6 @@ export default function AdminPage() {
   const handleRoleChange = async (userId: string, newRole: string) => {
     const userToChange = adminsList.find(a => a.id === userId) || usersList.find(u => u.id === userId);
     
-    // منع تغيير رتبة الـ Owner إلا من قبل نفسه (أو سياسة معينة)
     if (userToChange?.role === 'owner' && currentUserRole !== 'owner') {
       toast({ title: "لا تملك صلاحية تعديل رتبة المالك", variant: "destructive" });
       return;
@@ -486,7 +495,11 @@ export default function AdminPage() {
             <TabsTrigger value="requests" className="px-4 md:px-8 py-2 md:py-4 font-black rounded-[15px] md:rounded-[20px] text-sm md:text-lg flex gap-2">الطلبات {stats.requests > 0 && <Badge className="bg-amber-500 text-[10px]">{stats.requests}</Badge>}</TabsTrigger>
             <TabsTrigger value="users" className="px-4 md:px-8 py-2 md:py-4 font-black rounded-[15px] md:rounded-[20px] text-sm md:text-lg">الطلاب</TabsTrigger>
             <TabsTrigger value="content" className="px-4 md:px-8 py-2 md:py-4 font-black rounded-[15px] md:rounded-[20px] text-sm md:text-lg">إدارة المحتوى</TabsTrigger>
-            {isOwnerOrSuper && <TabsTrigger value="admins" className="px-4 md:px-8 py-2 md:py-4 font-black rounded-[15px] md:rounded-[20px] text-sm md:text-lg">المشرفين</TabsTrigger>}
+            {isOwnerOrSuper && (
+              <TabsTrigger value="admins" className="px-4 md:px-8 py-2 md:py-4 font-black rounded-[15px] md:rounded-[20px] text-sm md:text-lg flex gap-2">
+                إدارة المشرفين <ShieldCheck className="w-4 h-4" />
+              </TabsTrigger>
+            )}
             <TabsTrigger value="logs" className="px-4 md:px-8 py-2 md:py-4 font-black rounded-[15px] md:rounded-[20px] text-sm md:text-lg">النشاط</TabsTrigger>
           </TabsList>
 
@@ -563,7 +576,7 @@ export default function AdminPage() {
                     onChange={(e) => setAdminSearchEmail(e.target.value)}
                     className="h-14 rounded-2xl bg-black border-white/10 flex-1 md:w-64" 
                   />
-                  <Button onClick={handleAddAdminByEmail} disabled={isSubmitting} className="h-14 px-8 bg-primary rounded-2xl font-black">إضافة</Button>
+                  <Button onClick={handleAddAdminByEmail} disabled={isSubmitting} className="h-14 px-8 bg-primary rounded-2xl font-black">ترقية مشرف 🚀</Button>
                 </div>
               </div>
               
@@ -575,17 +588,20 @@ export default function AdminPage() {
                         {admin.role === 'owner' ? <Crown className="text-amber-500 w-6 h-6 md:w-8 md:h-8" /> : <ShieldCheck className="text-primary w-6 h-6 md:w-8 md:h-8" />}
                       </div>
                       <div className="overflow-hidden">
-                        <p className="font-black text-lg md:text-xl truncate">{admin.displayName || 'مشرف'}</p>
+                        <div className="flex items-center gap-2">
+                           <p className="font-black text-lg md:text-xl truncate">{admin.displayName || 'مشرف'}</p>
+                           {admin.role === 'owner' && <Badge className="bg-amber-500/20 text-amber-500 border-none text-[10px]">المالك</Badge>}
+                        </div>
                         <p className="text-white/30 font-bold text-xs md:text-sm truncate">{admin.email}</p>
                         <div className="flex items-center gap-2 mt-1 text-white/20 text-[10px] font-bold">
                           <Calendar className="w-3 h-3" />
-                          <span>منذ: {admin.createdAt?.toDate ? admin.createdAt.toDate().toLocaleDateString('ar-SA') : 'غير معروف'}</span>
+                          <span>تاريخ التعيين: {admin.createdAt?.toDate ? admin.createdAt.toDate().toLocaleDateString('ar-SA') : 'غير معروف'}</span>
                         </div>
                       </div>
                     </div>
                     
                     <div className="flex flex-col items-end gap-2 w-full md:w-auto">
-                      <label className="text-[10px] font-bold text-white/40 uppercase">الرتبة الحالية</label>
+                      <label className="text-[10px] font-bold text-white/40 uppercase">الصلاحية الحالية</label>
                       <Select 
                         disabled={admin.role === 'owner' || (admin.role === 'superAdmin' && currentUserRole !== 'owner') || isSubmitting}
                         value={admin.role} 
@@ -595,10 +611,10 @@ export default function AdminPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="bg-black border-white/10 text-white">
-                          <SelectItem value="owner" disabled={currentUserRole !== 'owner'}>Owner</SelectItem>
-                          <SelectItem value="superAdmin" disabled={currentUserRole !== 'owner'}>Super Admin</SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
-                          <SelectItem value="student">إزالة من الإدارة</SelectItem>
+                          <SelectItem value="owner" disabled={currentUserRole !== 'owner'}>المالك (Owner)</SelectItem>
+                          <SelectItem value="superAdmin" disabled={currentUserRole !== 'owner'}>مشرف عام (Super Admin)</SelectItem>
+                          <SelectItem value="admin">مشرف محتوى (Admin)</SelectItem>
+                          <SelectItem value="student" className="text-rose-500">إزالة الصلاحيات</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
