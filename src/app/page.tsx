@@ -9,19 +9,16 @@ import {
   deleteErrorLog,
   getUserProfile,
   updateOnboardingData,
-  getGlobalSettings,
-  updateGlobalSetting
+  getGlobalSettings
 } from '@/lib/db-service';
 import PracticeSession from '@/components/PracticeSession';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Progress } from "@/components/ui/progress";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
-  Zap, Search, Trophy, History, X, Loader2, Palette, LogOut, ArrowRight, Heart, Trash2, ShieldCheck, Settings, Star, Ban, Clock, UserCheck, Phone, User, MessageCircle, Crown, Info, Moon, Sun, Monitor, Check
+  Zap, Search, Trophy, History, X, Loader2, Palette, LogOut, ArrowRight, Heart, Trash2, ShieldCheck, Ban, Clock, UserCheck, Moon, Sun, Monitor, Check, CheckCircle2, XCircle
 } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
 import { 
@@ -211,7 +208,7 @@ export default function Home() {
     try {
       if (type === 'leaderboard') setOverlayData(await getLeaderboard());
       else if (type === 'errors' && user) setOverlayData(await getErrorLogs(user.uid));
-      else if (type === 'favorites' && user) setOverlayData(profile?.favorites || []);
+      else if (type === 'favorites' && profile) setOverlayData(profile.favorites || []);
     } catch (e) { console.error(e); }
   };
 
@@ -258,7 +255,6 @@ export default function Home() {
     );
   }
 
-  // Onboarding Logic
   if (profile?.status === 'onboarding') {
     return (
       <main className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
@@ -277,7 +273,7 @@ export default function Home() {
               <Input placeholder="الاسم كما في الهوية" value={onboardingName} onChange={(e) => setOnboardingName(e.target.value)} className="h-14 rounded-2xl bg-muted/50 border-none" />
             </div>
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-primary uppercase mr-2">رقم الواتساب</label>
+              <label className="text-[10px] font-black text-primary uppercase mr-2">رقام الواتساب</label>
               <Input placeholder="05xxxxxxxx" value={onboardingPhone} onChange={(e) => setOnboardingPhone(e.target.value)} className="h-14 rounded-2xl bg-muted/50 border-none" />
             </div>
             <Button type="submit" disabled={isOnboardingSubmitting} className="w-full h-14 rounded-2xl bg-primary font-black text-lg shadow-xl shadow-primary/20">
@@ -337,7 +333,6 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-background text-foreground flex flex-col" dir="rtl">
-      {/* Navigation */}
       <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border px-4 py-3">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -375,7 +370,6 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* Hero Section */}
       <div className="container mx-auto px-4 pt-20 pb-16 text-center space-y-10 relative">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-primary/5 blur-[120px] rounded-full pointer-events-none" />
         <div className="space-y-4 animate-in fade-in slide-in-from-top-10 duration-1000">
@@ -394,7 +388,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Grid */}
       <section className="container mx-auto px-4 pb-32 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {filteredSections.map((section) => (
           <Card key={section.firebaseId || section.id} className="group glass-card rounded-[40px] p-8 border-transparent hover:border-primary/30 transition-all duration-500 relative overflow-hidden">
@@ -417,7 +410,6 @@ export default function Home() {
         ))}
       </section>
 
-      {/* Overlays */}
       {activeOverlay && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-background/90 backdrop-blur-xl" onClick={() => setActiveOverlay(null)} />
@@ -510,7 +502,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* Footer */}
       <footer className="text-center py-20 border-t border-white/5 mt-auto relative overflow-hidden">
         <div className="absolute inset-0 bg-primary/5 blur-[80px] -bottom-40 pointer-events-none" />
         <p className="text-dr-mahmoud text-2xl md:text-4xl">DR. MAHMOUD ABD EL RAZEK</p>
@@ -518,10 +509,4 @@ export default function Home() {
       </footer>
     </main>
   );
-}
-
-function CheckCircle2(props: any) {
-  return (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
-  )
 }

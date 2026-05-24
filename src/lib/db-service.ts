@@ -14,7 +14,9 @@ import {
   increment,
   deleteDoc,
   addDoc,
-  Timestamp
+  Timestamp,
+  arrayUnion,
+  arrayRemove
 } from "firebase/firestore";
 import { Section, Question, sections as staticSections } from "./practice-data";
 
@@ -71,7 +73,6 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
       }
     });
     
-    // ترتيب تنازلي حقيقي حسب المعرف لضمان ظهور الأحدث دائماً في المقدمة
     return combined
       .filter(s => !archivedIds.includes(Number(s.id)))
       .sort((a, b) => Number(b.id) - Number(a.id));
@@ -189,7 +190,7 @@ export const getUserProfile = async (userId: string, email?: string) => {
         role: isRootOwner ? 'rootOwner' : 'user',
         favorites: [],
         isBanned: false,
-        theme: '270 95% 60%'
+        theme: '262.1 83.3% 57.8%'
       };
       await setDoc(userRef, initialProfile);
       return { id: userId, ...initialProfile };
@@ -288,11 +289,17 @@ export const getErrorLogs = async (userId: string) => {
   try {
     const q = query(
       collection(db, "errorLogs"), 
-      where("userId", "==", userId),
-      orderBy("lastOccurred", "desc")
+      where("userId", "==", userId)
     );
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // Sort in memory to avoid index requirements for simple deployments
+    return snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .sort((a: any, b: any) => {
+        const timeA = a.lastOccurred?.toMillis?.() || 0;
+        const timeB = b.lastOccurred?.toMillis?.() || 0;
+        return timeB - timeA;
+      });
   } catch (e) { 
     return []; 
   }
@@ -312,11 +319,12 @@ export const toggleFavoriteInDb = async (userId: string, question: Question, sec
     if (!userSnap.exists()) return false;
     
     const favorites = userSnap.data().favorites || [];
-    const existsIndex = favorites.findIndex((f: any) => f.id === question.id);
+    const existing = favorites.find((f: any) => f.id === question.id);
     
-    if (existsIndex > -1) {
-      const updated = favorites.filter((f: any) => f.id !== question.id);
-      await updateDoc(userRef, { favorites: updated });
+    if (existing) {
+      await updateDoc(userRef, {
+        favorites: arrayRemove(existing)
+      });
       return false;
     } else {
       const newFav = {
@@ -328,11 +336,13 @@ export const toggleFavoriteInDb = async (userId: string, question: Question, sec
         sectionTitle,
         addedAt: new Date().toISOString()
       };
-      const updated = [...favorites, newFav];
-      await updateDoc(userRef, { favorites: updated });
+      await updateDoc(userRef, {
+        favorites: arrayUnion(newFav)
+      });
       return true;
     }
   } catch (e) { 
+    console.error("Favorite error:", e);
     return false; 
   }
 };

@@ -8,8 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
-  ChevronLeft, ChevronRight, Timer, Star, Trophy, RotateCcw, PartyPopper, BookOpen, Clock, Zap, 
-  Play, XCircle, Moon, Sparkles, Flower, CheckCircle2, Crown, StarIcon, Flame, Heart, BookText, Eye, ArrowLeft, ArrowRight
+  Timer, Zap, Play, XCircle, Moon, CheckCircle2, Crown, StarIcon, Flame, Heart, BookText, Eye, ArrowLeft, ArrowRight
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -101,10 +100,8 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
     
     if (auth.currentUser) {
       const isCorrect = opt === q.correct;
-      // تحديث الـ XP فوراً
       updateUserXP(auth.currentUser.uid, isCorrect);
       
-      // تسجيل الخطأ فوراً في قاعدة البيانات إذا كانت الإجابة خاطئة
       if (!isCorrect) {
         saveErrorLogToDb(auth.currentUser.uid, q, section.title, opt);
       }
@@ -226,7 +223,6 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col" dir="rtl">
-      {/* Quiz Header */}
       <div className="p-5 border-b border-border bg-background/80 backdrop-blur-md flex items-center justify-between sticky top-0 z-50">
         <Button onClick={onExit} variant="ghost" size="sm" className="font-black gap-2 text-rose-500 hover:bg-rose-500/10 rounded-xl"><ArrowRight className="w-5 h-5" /> انسحاب</Button>
         <div className="flex items-center gap-6">
@@ -244,7 +240,6 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
       <Progress value={progress} className="h-1.5 rounded-none bg-border" />
 
       <main className="flex-1 container mx-auto px-4 py-10 grid grid-cols-1 lg:grid-cols-2 gap-10 max-w-7xl">
-        {/* Reading Section (Split View) */}
         {currentPassage && (
           <Card className="hidden lg:flex flex-col p-8 glass-card rounded-[40px] border-primary/10 h-[calc(100vh-220px)] sticky top-28 shadow-2xl shadow-primary/5">
             <div className="flex items-center justify-between mb-6">
@@ -257,7 +252,6 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
           </Card>
         )}
 
-        {/* Question Area */}
         <div className={cn("space-y-8 animate-in fade-in slide-in-from-bottom-5 duration-500", !currentPassage && "lg:col-span-2 max-w-3xl mx-auto w-full")}>
           <Card className="p-10 glass-card rounded-[50px] space-y-10 relative overflow-hidden border-white/5 shadow-2xl">
             <div className="flex justify-between items-start gap-6">
@@ -331,10 +325,4 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
       </main>
     </div>
   );
-}
-
-function CheckCircle2(props: any) {
-  return (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
-  )
 }
