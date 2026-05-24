@@ -56,7 +56,7 @@ export default function AdminPage() {
   const [pendingUsers, setPendingUsers] = useState<any[]>([]);
   const [adminsList, setAdminsList] = useState<any[]>([]);
   const [activityLogs, setActivityLogs] = useState<any[]>([]);
-  const [currentUserRole, setCurrentUserRole] = useState<string>('student');
+  const [currentUserRole, setCurrentUserRole] = useState<string>('user');
   const [adminSearchEmail, setAdminSearchEmail] = useState('');
   const [whatsappLink, setWhatsappLink] = useState('');
   
@@ -103,7 +103,7 @@ export default function AdminPage() {
       const usersSnap = await getDocs(collection(db, "userProfiles"));
       const allUsers = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       
-      setUsersList(allUsers.filter((u: any) => u.status === 'approved' && (u.role === 'student' || !u.role)));
+      setUsersList(allUsers.filter((u: any) => u.status === 'approved' && (u.role === 'user' || !u.role)));
       setPendingUsers(allUsers.filter((u: any) => u.status === 'pending'));
 
       const adminsData = await getAdminsFromDb();
@@ -120,11 +120,11 @@ export default function AdminPage() {
 
       if (auth.currentUser) {
         const profile = await getUserProfile(auth.currentUser.uid);
-        setCurrentUserRole(profile?.role || 'student');
+        setCurrentUserRole(profile?.role || 'user');
       }
 
       setStats({
-        students: allUsers.filter((u: any) => (u.role === 'student' || !u.role) && u.status === 'approved').length,
+        students: allUsers.filter((u: any) => (u.role === 'user' || !u.role) && u.status === 'approved').length,
         sections: sectionsData.length,
         questions: sectionsData.reduce((acc, s) => acc + (s.questions?.length || 0), 0),
         errors: errorsData.length,
@@ -147,8 +147,8 @@ export default function AdminPage() {
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (user) {
         const profile = await getUserProfile(user.uid);
-        setCurrentUserRole(profile?.role || 'student');
-        if (profile?.role === 'student' && !isAuthorized) {
+        setCurrentUserRole(profile?.role || 'user');
+        if (profile?.role === 'user' && !isAuthorized) {
           setIsAuthorized(false);
           localStorage.removeItem(AUTH_KEY);
         }
@@ -288,9 +288,7 @@ export default function AdminPage() {
     setIsSubmitting(true);
     try {
       const templateData = { ...newSection };
-      // حذف المعرفات القديمة لإنشاء قالب جديد نظيف
       delete (templateData as any).firebaseId;
-      
       await saveTemplateToDb(templateData);
       toast({ title: "تم حفظ القالب بنجاح! 💾" });
       fetchData();
@@ -575,7 +573,7 @@ export default function AdminPage() {
               <h2 className="text-2xl md:text-3xl font-black flex items-center gap-4">المستخدمين الجدد ⏳</h2>
               <div className="grid gap-6">
                 {pendingUsers.map((u) => (
-                  <div key={`req-${u.id}`} className="flex flex-col md:flex-row justify-between items-center p-6 md:p-8 bg-white/[0.02] border border-white/5 rounded-3xl gap-6">
+                  <div key={u.id} className="flex flex-col md:flex-row justify-between items-center p-6 md:p-8 bg-white/[0.02] border border-white/5 rounded-3xl gap-6">
                     <div className="flex items-center gap-6 w-full">
                       <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center font-black text-xl md:text-2xl text-amber-500 shrink-0">{u.displayName?.[0] || '?' }</div>
                       <div className="overflow-hidden">
@@ -606,14 +604,14 @@ export default function AdminPage() {
               </div>
               <div className="grid gap-6">
                 {usersList.map((u) => (
-                  <div key={`user-${u.id}`} className="flex flex-col md:flex-row justify-between items-center p-6 md:p-8 bg-white/[0.02] border border-white/5 rounded-3xl gap-6">
+                  <div key={u.id} className="flex flex-col md:flex-row justify-between items-center p-6 md:p-8 bg-white/[0.02] border border-white/5 rounded-3xl gap-6">
                     <div className="flex items-center gap-6 w-full">
                       <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-primary/10 flex items-center justify-center font-black text-xl md:text-2xl text-primary shrink-0">{u.displayName?.[0] || 'U'}</div>
                       <div className="overflow-hidden">
                         <div className="font-black text-lg md:text-xl flex flex-wrap items-center gap-3">
                           <span className="truncate max-w-[150px] md:max-w-none">{u.displayName || 'بدون اسم'}</span>
                           {u.isBanned && <Badge className="bg-destructive text-white border-none text-[10px]">محظور</Badge>}
-                          <Badge className="bg-primary/20 text-primary border-none text-[10px]">{u.role || 'student'}</Badge>
+                          <Badge className="bg-primary/20 text-primary border-none text-[10px]">{u.role || 'user'}</Badge>
                         </div>
                         <p className="text-white/30 font-bold text-xs md:text-sm truncate">{u.email} | {u.phoneNumber}</p>
                         <div className="flex gap-4 mt-2">
@@ -650,7 +648,7 @@ export default function AdminPage() {
                 
                 <div className="grid gap-6">
                   {adminsList.map((admin) => (
-                    <div key={`admin-${admin.id}`} className="flex flex-col md:flex-row justify-between items-center p-6 md:p-8 bg-white/[0.02] border border-white/5 rounded-3xl gap-6">
+                    <div key={admin.id} className="flex flex-col md:flex-row justify-between items-center p-6 md:p-8 bg-white/[0.02] border border-white/5 rounded-3xl gap-6">
                       <div className="flex items-center gap-6 w-full">
                         <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-primary/20 flex items-center justify-center shrink-0">
                           {admin.role === 'owner' ? <Crown className="text-amber-500 w-6 h-6 md:w-8 md:h-8" /> : <ShieldCheck className="text-primary w-6 h-6 md:w-8 md:h-8" />}
@@ -678,7 +676,9 @@ export default function AdminPage() {
                             <SelectItem value="owner" disabled={currentUserRole !== 'owner'}>المالك (Owner)</SelectItem>
                             <SelectItem value="superAdmin" disabled={currentUserRole !== 'owner'}>مشرف عام (Super Admin)</SelectItem>
                             <SelectItem value="admin">مشرف محتوى (Admin)</SelectItem>
-                            <SelectItem value="student" className="text-rose-500">إزالة الصلاحيات</SelectItem>
+                            <SelectItem value="editor">محرر (Editor)</SelectItem>
+                            <SelectItem value="helper">مساعد (Helper)</SelectItem>
+                            <SelectItem value="user" className="text-rose-500">إزالة الصلاحيات</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>

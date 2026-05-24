@@ -167,7 +167,7 @@ export default function Home() {
 
   const isAdmin = useMemo(() => {
     if (!profile) return false;
-    return ['owner', 'superAdmin', 'admin'].includes(profile.role);
+    return ['owner', 'superAdmin', 'admin', 'editor', 'helper'].includes(profile.role);
   }, [profile]);
 
   const isApproved = useMemo(() => {

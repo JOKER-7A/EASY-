@@ -20,7 +20,7 @@ import {
 import { Section, Question, sections as staticSections } from "./practice-data";
 
 /**
- * جلب الأقسام مع دمج البيانات واستبعاد الأقسام المؤرشفة
+ * جلب الأقسام مع الترتيب التنازلي التلقائي حسب المعرف (ID)
  */
 export const getSectionsFromDb = async (): Promise<Section[]> => {
   try {
@@ -48,6 +48,7 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
       }
     });
     
+    // الترتيب التنازلي التلقائي (من الأكبر للأصغر)
     return combined
       .filter(s => !archivedIds.includes(Number(s.id)))
       .sort((a, b) => Number(b.id) - Number(a.id));
@@ -56,7 +57,8 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
     const archivedIds = [216, 217, 218, 219];
     return staticSections
       .filter(s => !archivedIds.includes(Number(s.id)))
-      .map(s => ({ ...s, createdAt: Timestamp.fromDate(new Date('2024-01-01')) }));
+      .map(s => ({ ...s, createdAt: Timestamp.fromDate(new Date('2024-01-01')) }))
+      .sort((a, b) => Number(b.id) - Number(a.id));
   }
 };
 
@@ -153,7 +155,7 @@ export const getUserProfile = async (userId: string, email?: string) => {
         email: email || '',
         createdAt: serverTimestamp(),
         status: 'pending', 
-        role: email === 'admin@easy.com' ? 'owner' : 'student',
+        role: email === 'admin@easy.com' ? 'owner' : 'user', // تم تغيير الافتراضي إلى user
         favorites: [],
         isBanned: false,
         theme: '270 95% 60%'
@@ -205,7 +207,7 @@ export const updateUserRole = async (userId: string, role: string) => {
 
 export const getAdminsFromDb = async () => {
   try {
-    const q = query(collection(db, "userProfiles"), where("role", "in", ["owner", "superAdmin", "admin"]));
+    const q = query(collection(db, "userProfiles"), where("role", "in", ["owner", "superAdmin", "admin", "editor", "helper"]));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (e) {
