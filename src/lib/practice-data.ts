@@ -20,6 +20,7 @@ export interface Section {
   readingPassages?: ReadingPassage[];
   questions: Question[];
   duration: number; // in minutes
+  createdAt?: any; // Firestore Timestamp
 }
 
 export const sections: Section[] = [

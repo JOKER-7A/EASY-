@@ -1,3 +1,4 @@
+
 import { db } from "./firebase";
 import { 
   collection, 
@@ -12,7 +13,8 @@ import {
   limit,
   updateDoc,
   increment,
-  deleteDoc
+  deleteDoc,
+  Timestamp
 } from "firebase/firestore";
 import { Section, Question, sections as staticSections } from "./practice-data";
 
@@ -28,21 +30,51 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
     if (!querySnapshot.empty) {
       dbSections = querySnapshot.docs.map(doc => ({
         firebaseId: doc.id,
-        ...doc.data()
+        ...doc.data(),
+        // تحويل تاريخ الإنشاء إذا كان موجوداً أو وضع تاريخ افتراضي قديم للبيانات الثابتة
+        createdAt: doc.data().createdAt || Timestamp.now()
       } as any));
     }
     
     const combined = [...dbSections];
     staticSections.forEach(s => {
       if (!combined.find(c => Number(c.id) === Number(s.id))) {
-        combined.push(s);
+        combined.push({
+          ...s,
+          createdAt: Timestamp.fromDate(new Date('2024-01-01')) // تاريخ قديم للأقسام الثابتة
+        });
       }
     });
     
     return combined.sort((a, b) => Number(b.id) - Number(a.id));
   } catch (error) {
     console.warn("Firestore error, falling back to static data", error);
-    return [...staticSections];
+    return staticSections.map(s => ({ ...s, createdAt: Timestamp.fromDate(new Date('2024-01-01')) }));
+  }
+};
+
+/**
+ * تحديث XP المستخدم فوراً عند الإجابة
+ * +10 للصواب، +5 للخطأ
+ */
+export const updateUserXP = async (userId: string, isCorrect: boolean) => {
+  try {
+    const userRef = doc(db, "userProfiles", userId);
+    const xpGain = isCorrect ? 10 : 5;
+    
+    const userSnap = await getDoc(userRef);
+    if (userSnap.exists()) {
+      const currentXp = (userSnap.data().xp || 0) + xpGain;
+      const newLevel = Math.floor(currentXp / 500) + 1; // كل 500 نقطة مستوى جديد
+      
+      await updateDoc(userRef, {
+        xp: currentXp,
+        level: newLevel
+      });
+      return { xp: currentXp, level: newLevel };
+    }
+  } catch (e) {
+    console.error("Error updating XP:", e);
   }
 };
 
@@ -78,21 +110,12 @@ export const getUserProfile = async (userId: string, email?: string) => {
 };
 
 /**
- * تسجيل المحاولات وتحديث المستوى
+ * تسجيل المحاولات
  */
 export const saveAttemptToDb = async (userId: string | undefined, attempt: any) => {
   try {
     const data = { ...attempt, userId: userId || 'anonymous', createdAt: serverTimestamp() };
     await setDoc(doc(collection(db, "attempts")), data);
-    
-    if (userId) {
-      const userRef = doc(db, "userProfiles", userId);
-      const xpGain = attempt.score >= 80 ? 150 : 50;
-      await updateDoc(userRef, {
-        xp: increment(xpGain),
-        level: increment(attempt.score === 100 ? 1 : 0)
-      });
-    }
   } catch (e) {
     console.error("Error saving attempt:", e);
   }
@@ -166,9 +189,9 @@ export const toggleFavoriteInDb = async (userId: string, question: Question, sec
       const newFav = {
         id: question.id,
         question: question.question,
-        options: q.options,
-        correct: q.correct,
-        type: q.type,
+        options: question.options,
+        correct: question.correct,
+        type: question.type,
         sectionTitle,
         addedAt: new Date().toISOString()
       };
