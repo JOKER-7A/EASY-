@@ -135,6 +135,7 @@ export default function AdminPage() {
         const role = profile?.role || 'user';
         setCurrentUserRole(role);
         
+        // التحقق من الصلاحيات للدخول (owner, superAdmin, admin)
         if (['owner', 'superAdmin', 'admin'].includes(role)) {
           setIsAuthorized(true);
           fetchData();
@@ -260,6 +261,7 @@ export default function AdminPage() {
     setIsSubmitting(true);
     try {
       const templateData = { ...newSection };
+      // تنظيف البيانات لضمان عدم تكرار المعرفات
       delete (templateData as any).firebaseId;
       await saveTemplateToDb(templateData);
       toast({ title: "تم حفظ القالب بنجاح! 💾" });
@@ -405,6 +407,7 @@ export default function AdminPage() {
     }
   };
 
+  // صلاحية إدارة المشرفين تظهر للمالك والمشرف العام فقط
   const isOwnerOrSuper = useMemo(() => {
     return currentUserRole === 'owner' || currentUserRole === 'superAdmin';
   }, [currentUserRole]);
@@ -757,7 +760,7 @@ export default function AdminPage() {
                                     <Select value={q.passageTitle} onValueChange={(val: any) => {
                                       const qs = [...(newSection.questions || [])];
                                       qs[i].passageTitle = val;
-                                      setNewSection(p => ({ ...p, questions: qs }));
+                                      setNewSection(p => ({ ...p, passageTitle: val }));
                                     }}>
                                       <SelectTrigger className="h-12 bg-black border-white/10">
                                         <SelectValue placeholder="اختر القطعة" />
