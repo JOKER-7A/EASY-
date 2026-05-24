@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
-  Zap, Search, Trophy, History, X, Loader2, Palette, LogOut, ArrowRight, Heart, Trash2, ShieldCheck 
+  Zap, Search, Trophy, History, X, Loader2, Palette, LogOut, ArrowRight, Heart, Trash2, ShieldCheck, Settings, Star
 } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
 import { 
@@ -126,13 +126,13 @@ export default function Home() {
 
   // صلاحيات الأدمن الدقيقة كما طلب الدكتور
   const isAdmin = useMemo(() => {
+    if (user?.email === 'admin@easy.com') return true;
     if (!profile) return false;
     return (
       profile.role === 'admin' || 
       profile.role === 'superAdmin' || 
       profile.status === 'admin' || 
-      profile.isAdmin === true ||
-      user?.email === 'admin@easy.com' // Fallback لإيميل الأدمن الأساسي
+      profile.isAdmin === true
     );
   }, [profile, user]);
 
@@ -288,7 +288,9 @@ export default function Home() {
                         <div className="flex items-center gap-4">
                            <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center font-black text-xs">{idx + 1}</div>
                            <div>
-                              <p className="font-black text-base">{item.displayName || item.questionData?.question || item.question}</p>
+                              <p className="font-black text-base">
+                                {item.displayName || item.questionData?.question || item.question}
+                              </p>
                               <p className="text-white/20 text-[10px]">{item.xp ? `${item.xp} XP` : item.questionData?.sectionTitle || "مراجعة"}</p>
                            </div>
                         </div>
@@ -305,7 +307,7 @@ export default function Home() {
 
       <footer className="text-center py-24 opacity-60 space-y-6">
         <div className="flex flex-col items-center gap-2">
-          <p className="text-dr-mahmoud text-2xl">DR. MAHMOUD ABD EL RAZEK</p>
+          <p className="text-dr-mahmoud">DR. MAHMOUD ABD EL RAZEK</p>
           <div className="h-0.5 w-20 bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
         </div>
         <p className="text-[10px] font-bold uppercase tracking-[0.5em] text-white/30">Easy Prep Master &copy; 2024</p>

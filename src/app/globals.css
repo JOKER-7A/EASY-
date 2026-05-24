@@ -42,22 +42,23 @@
 /* شعار EASY المطور - وضوح تام وتأثيرات احترافية */
 .text-easy-premium {
   @apply font-black tracking-tighter text-center block w-full select-none relative;
+  color: white; /* Fallback if clip fails */
   background: linear-gradient(
     to bottom,
-    #ffffff 20%,
-    #ffffff 40%,
+    #ffffff 0%,
+    #ffffff 50%,
     hsl(var(--primary)) 100%
   );
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 15px hsla(var(--primary), 0.4));
+  filter: drop-shadow(0 0 20px hsla(var(--primary), 0.5));
   line-height: 1;
 }
 
-/* اسم الدكتور محمود - ذهبي ملكي */
+/* اسم الدكتور محمود - ذهبي ملكي فاخر جداً */
 .text-dr-mahmoud {
-  @apply font-black tracking-widest uppercase relative inline-block;
+  @apply font-black tracking-widest uppercase relative inline-block text-2xl md:text-3xl;
   background: linear-gradient(
     45deg,
     #ffd700 0%,
@@ -67,14 +68,19 @@
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.5));
-  animation: gold-shimmer 3s infinite linear;
+  filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.6));
+  animation: gold-pulse 3s infinite ease-in-out;
 }
 
-@keyframes gold-shimmer {
-  0% { filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.3)); }
-  50% { filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.7)); }
-  100% { filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.3)); }
+@keyframes gold-pulse {
+  0%, 100% { 
+    filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.4));
+    transform: scale(1);
+  }
+  50% { 
+    filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.8));
+    transform: scale(1.02);
+  }
 }
 
 .glow-text {
