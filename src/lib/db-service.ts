@@ -19,13 +19,11 @@ import {
 } from "firebase/firestore";
 import { Section, Question, sections as staticSections } from "./practice-data";
 
-// قائمة الإيميلات التي يتم تعيينها كـ owner تلقائياً عند أول دخول
+// المالك الرسمي والوحيد للمنصة
 const MASTER_ADMINS = [
+  'joker7a10@gmail.com', // المالك الأساسي الجديد
   'admin@easy.com', 
-  'easy@easy.com', 
-  'mahmoud@easy.com', 
-  'mahmoudabd898@gmail.com',
-  'mahmoud@gmail.com'
+  'mahmoudabd898@gmail.com'
 ];
 
 /**
@@ -153,15 +151,19 @@ export const getUserProfile = async (userId: string, email?: string) => {
     const userSnap = await getDoc(userRef);
     
     const lowerEmail = email?.toLowerCase() || '';
-    const isMasterEmail = MASTER_ADMINS.some(m => m.toLowerCase() === lowerEmail) || 
-                         lowerEmail.includes('mahmoud') || 
-                         lowerEmail.includes('admin@easy.com');
+    const isMasterEmail = MASTER_ADMINS.some(m => m.toLowerCase() === lowerEmail);
 
     if (userSnap.exists()) {
       const userData = userSnap.data();
+      // تحديث الرتبة إذا كان إيميل المالك الأساسي
       if (isMasterEmail && userData.role !== 'owner') {
         await updateDoc(userRef, { role: 'owner', status: 'approved' });
         return { id: userSnap.id, ...userData, role: 'owner', status: 'approved' };
+      }
+      // تحويل أي صاحب رتبة owner قديم ليس في القائمة الأساسية إلى superAdmin
+      if (!isMasterEmail && userData.role === 'owner') {
+        await updateDoc(userRef, { role: 'superAdmin' });
+        return { id: userSnap.id, ...userData, role: 'superAdmin' };
       }
       return { id: userSnap.id, ...userData };
     } else {
@@ -170,7 +172,7 @@ export const getUserProfile = async (userId: string, email?: string) => {
         xp: 0,
         displayName: '', 
         phoneNumber: '', 
-        email: email || '',
+        email: lowerEmail,
         createdAt: serverTimestamp(),
         status: isMasterEmail ? 'approved' : 'pending', 
         role: isMasterEmail ? 'owner' : 'user',

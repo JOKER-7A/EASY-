@@ -136,9 +136,13 @@ export default function AdminPage() {
         const role = profile?.role || 'user';
         setCurrentUserRole(role);
         
-        // TEMPORARY BYPASS: Allow access to any authenticated user for testing
-        setIsAuthorized(true);
-        await fetchData();
+        // التحقق من الصلاحيات الإدارية
+        const adminRoles = ['owner', 'superAdmin', 'admin', 'editor', 'helper'];
+        setIsAuthorized(adminRoles.includes(role));
+        
+        if (adminRoles.includes(role)) {
+          await fetchData();
+        }
       } else {
         setIsAuthorized(false);
         setCurrentUserRole('user');
@@ -204,7 +208,7 @@ export default function AdminPage() {
     if (!adminSearchEmail.trim()) return;
     setIsSubmitting(true);
     try {
-      const q = query(collection(db, "userProfiles"), where("email", "==", adminSearchEmail.trim()));
+      const q = query(collection(db, "userProfiles"), where("email", "==", adminSearchEmail.trim().toLowerCase()));
       const snap = await getDocs(q);
       if (snap.empty) {
         toast({ title: "المستخدم غير موجود", variant: "destructive" });
@@ -258,7 +262,6 @@ export default function AdminPage() {
     setIsSubmitting(true);
     try {
       const templateData = { ...newSection };
-      // إزالة أي معرفات فريدة خاصة بـ Firebase لضمان كونه قالباً نظيفاً
       delete (templateData as any).firebaseId;
       await saveTemplateToDb(templateData);
       toast({ title: "تم حفظ القالب بنجاح! 💾" });
@@ -405,9 +408,7 @@ export default function AdminPage() {
   };
 
   const isOwnerOrSuper = useMemo(() => {
-    // TEMPORARY BYPASS: Show for everyone for debugging
-    return true; 
-    // return currentUserRole === 'owner' || currentUserRole === 'superAdmin';
+    return currentUserRole === 'owner' || currentUserRole === 'superAdmin';
   }, [currentUserRole]);
 
   if (loading) return (
@@ -843,7 +844,7 @@ export default function AdminPage() {
                        <h2 className="text-2xl md:text-3xl font-black">الأقسام النشطة</h2>
                        <div className="grid gap-4">
                           {sections.map((s) => (
-                            <div key={s.id} className="p-4 md:p-6 bg-white/[0.02] border border-white/5 rounded-2xl flex flex-col sm:flex-row justify-between items-center group gap-4">
+                            <div key={s.firebaseId || s.id} className="p-4 md:p-6 bg-white/[0.02] border border-white/5 rounded-2xl flex flex-col sm:flex-row justify-between items-center group gap-4">
                                <div className="flex items-center gap-4 w-full">
                                   <Badge className="bg-primary/20 text-primary shrink-0">{s.id}</Badge>
                                   <div className="flex flex-col overflow-hidden">
