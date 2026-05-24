@@ -262,6 +262,7 @@ export default function AdminPage() {
     setIsSubmitting(true);
     try {
       const templateData = { ...newSection };
+      // إزالة أي معرفات فريدة خاصة بـ Firebase لضمان كونه قالباً نظيفاً
       delete (templateData as any).firebaseId;
       await saveTemplateToDb(templateData);
       toast({ title: "تم حفظ القالب بنجاح! 💾" });
