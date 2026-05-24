@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -21,9 +20,8 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription 
 } from "@/components/ui/dialog";
 import { 
-  Trash2, Settings, FileText, HelpCircle, Loader2, Users, 
-  Search, ShieldCheck, Database, Ban, AlertCircle, TrendingUp,
-  XCircle, Lock, Edit2, History, Copy, Layers, CheckCircle2
+  Trash2, ShieldCheck, Database, Ban, AlertCircle, TrendingUp,
+  XCircle, Lock, Edit2, History, Copy, Layers, Loader2, Search, FileText
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -134,7 +132,6 @@ export default function AdminPage() {
     toast({ title: "تم تسجيل الخروج" });
   };
 
-  // --- Actions ---
   const handleSaveSection = async () => {
     if (!newSection.title || !newSection.id) {
       toast({ title: "يرجى إكمال البيانات", variant: "destructive" });
@@ -267,11 +264,11 @@ export default function AdminPage() {
 
   if (!isAuthorized) {
     return (
-      <main className="min-h-screen bg-black flex items-center justify-center p-4 bg-mesh overflow-hidden">
-        <Card className="w-full max-w-md p-10 glass-card rounded-[40px] border-primary/20 animate-in fade-in zoom-in duration-500">
+      <main className="min-h-screen bg-black flex items-center justify-center p-4 overflow-hidden">
+        <Card className="w-full max-w-md p-10 glass-card rounded-[40px] border-primary/20">
           <div className="text-center mb-10">
             <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mx-auto mb-6 ring-2 ring-primary/20">
-              <Lock className="w-10 h-10 text-primary text-glow" />
+              <Lock className="w-10 h-10 text-primary" />
             </div>
             <h1 className="text-4xl font-black text-white">بوابة الإدارة 🔐</h1>
             <p className="text-primary/60 font-bold mt-2 uppercase tracking-widest text-[10px]">EASY Administrative Access</p>
@@ -318,7 +315,7 @@ export default function AdminPage() {
 
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
           {[
-            { label: 'الطلاب', val: stats.students, icon: Users, color: 'text-blue-500' },
+            { label: 'الطلاب', val: stats.students, icon: Search, color: 'text-blue-500' },
             { label: 'الأقسام', val: stats.sections, icon: Database, color: 'text-purple-500' },
             { label: 'الأسئلة', val: stats.questions, icon: FileText, color: 'text-emerald-500' },
             { label: 'الأخطاء', val: stats.errors, icon: AlertCircle, color: 'text-rose-500' },
@@ -406,7 +403,7 @@ export default function AdminPage() {
                       </div>
                       <div className="space-y-8">
                         <div className="flex justify-between items-center">
-                          <h3 className="text-xl font-black flex items-center gap-3"><HelpCircle className="text-primary" /> الأسئلة</h3>
+                          <h3 className="text-xl font-black flex items-center gap-3"><AlertCircle className="text-primary" /> الأسئلة</h3>
                           <Button onClick={() => setNewSection(prev => ({ ...prev, questions: [...(prev.questions || []), { id: `q-${Date.now()}`, question: '', options: ['', '', '', ''], correct: '', type: 'analogy' }] }))} variant="secondary" className="bg-primary/10 text-primary">إضافة سؤال</Button>
                         </div>
                         {newSection.questions?.map((q, i) => (
@@ -488,7 +485,10 @@ export default function AdminPage() {
 
       {/* --- Ban Modal --- */}
       <Dialog open={banModalOpen} onOpenChange={setBanModalOpen}>
-        <DialogContent className="glass-card border-rose-500/20 text-white rounded-[35px] max-w-lg p-10 outline-none">
+        <DialogContent 
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          className="glass-card border-rose-500/20 text-white rounded-[35px] max-w-lg p-10 outline-none fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] shadow-[0_0_100px_rgba(244,63,94,0.15)] focus:outline-none"
+        >
           <DialogHeader className="text-center space-y-4">
             <DialogTitle className="text-3xl font-black">حظر طالب 🚫</DialogTitle>
             <DialogDescription className="text-white/40 font-bold">حظر: {selectedUser?.displayName}</DialogDescription>
@@ -497,8 +497,8 @@ export default function AdminPage() {
             <div className="space-y-2">
               <label className="text-xs font-bold text-primary mr-2">مدة الحظر</label>
               <Select value={banDuration} onValueChange={setBanDuration}>
-                <SelectTrigger className="h-14 bg-black/40 border-white/10 rounded-2xl"><SelectValue /></SelectTrigger>
-                <SelectContent>
+                <SelectTrigger className="h-14 bg-black/40 border-white/10 rounded-2xl focus:ring-0"><SelectValue /></SelectTrigger>
+                <SelectContent className="glass-card border-white/10 bg-black/90 text-white">
                   <SelectItem value="1h">1 ساعة</SelectItem>
                   <SelectItem value="1d">1 يوم</SelectItem>
                   <SelectItem value="7d">7 أيام</SelectItem>
@@ -512,7 +512,7 @@ export default function AdminPage() {
                 placeholder="سبب الحظر..." 
                 value={banReason} 
                 onChange={(e) => setBanReason(e.target.value)} 
-                className="min-h-[120px] bg-black/40 border-white/10 rounded-2xl focus:border-primary/50" 
+                className="min-h-[120px] bg-black/40 border-white/10 rounded-2xl focus:border-primary/50 resize-none" 
               />
             </div>
           </div>
@@ -526,7 +526,10 @@ export default function AdminPage() {
 
       {/* --- Edit Name Modal --- */}
       <Dialog open={editNameModalOpen} onOpenChange={setEditNameModalOpen}>
-        <DialogContent className="glass-card border-primary/20 text-white rounded-[35px] max-w-lg p-10 outline-none">
+        <DialogContent 
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          className="glass-card border-primary/20 text-white rounded-[35px] max-w-lg p-10 outline-none fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] focus:outline-none"
+        >
           <DialogHeader className="text-center space-y-4">
             <DialogTitle className="text-3xl font-black">تعديل اسم الطالب ✏️</DialogTitle>
             <DialogDescription className="text-white/40 font-bold">تعديل: {selectedUser?.displayName}</DialogDescription>
@@ -546,7 +549,7 @@ export default function AdminPage() {
                 placeholder="لماذا يتم تغيير الاسم؟" 
                 value={nameChangeReason} 
                 onChange={(e) => setNameChangeReason(e.target.value)} 
-                className="min-h-[100px] bg-black/40 border-white/10 rounded-2xl focus:border-primary/50" 
+                className="min-h-[100px] bg-black/40 border-white/10 rounded-2xl focus:border-primary/50 resize-none" 
               />
             </div>
           </div>
