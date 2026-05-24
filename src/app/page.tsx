@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -84,12 +83,11 @@ export default function Home() {
 
   useEffect(() => {
     setHasMounted(true);
-    const safetyTimer = setTimeout(() => setIsLoading(false), 2500);
+    const safetyTimer = setTimeout(() => setIsLoading(false), 2000);
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
-        // الاستماع للتغييرات اللحظية في البروفايل (XP و Level)
         const userRef = doc(db, "userProfiles", u.uid);
         const unsubProfile = onSnapshot(userRef, (docSnap) => {
           if (docSnap.exists()) {
@@ -132,7 +130,6 @@ export default function Home() {
     );
   }, [searchQuery, sections]);
 
-  // منطق علامة "جديد" - تظهر إذا كان القسم مضافاً قبل أقل من 72 ساعة
   const isNewSection = (section: Section) => {
     if (!section.createdAt) return false;
     const createdAt = section.createdAt.toDate ? section.createdAt.toDate() : new Date(section.createdAt);
@@ -142,7 +139,7 @@ export default function Home() {
 
   const xpProgress = useMemo(() => {
     if (!profile?.xp) return 0;
-    return (profile.xp % 500) / 5; // التقدم للمستوى التالي (كل 500 نقطة)
+    return (profile.xp % 500) / 5;
   }, [profile?.xp]);
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -238,7 +235,6 @@ export default function Home() {
                   </p>
                   <Badge className="bg-primary text-white font-black text-xs px-3 py-0.5 rounded-lg border-none shadow-glow">LVL {profile?.level || 1}</Badge>
                 </div>
-                {/* XP Progress Bar Improved */}
                 <div className="relative pt-1">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-[10px] font-black text-primary uppercase tracking-widest">{profile?.xp || 0} XP</span>
@@ -265,11 +261,19 @@ export default function Home() {
                   <btn.icon className="w-6 h-6" />
                 </Button>
               ))}
+              
+              {/* زر الأدمن الملكي المصلح */}
               {profile?.status === 'admin' && (
-                <Button onClick={() => window.location.href = '/admin'} variant="ghost" size="icon" className="w-11 h-11 md:w-12 md:h-12 rounded-2xl hover:bg-white/5 text-emerald-500">
-                  <LayoutDashboard className="w-6 h-6" />
+                <Button 
+                  onClick={() => window.location.href = '/admin'} 
+                  variant="ghost" 
+                  size="icon" 
+                  className="w-11 h-11 md:w-12 md:h-12 rounded-2xl hover:bg-primary/10 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.2)] border border-emerald-500/20"
+                >
+                  <ShieldCheck className="w-6 h-6 drop-shadow-glow" />
                 </Button>
               )}
+
               <Button onClick={() => signOut(auth)} variant="ghost" size="icon" className="w-11 h-11 md:w-12 md:h-12 rounded-2xl hover:bg-destructive/10 text-destructive">
                 <LogOut className="w-6 h-6" />
               </Button>
@@ -278,13 +282,15 @@ export default function Home() {
         </nav>
       )}
 
-      {/* Hero Section */}
+      {/* Hero Section - Logo FIXED */}
       <div className="container mx-auto px-4 pt-32 md:pt-48 pb-10 max-w-7xl relative z-10 text-center space-y-10">
         <div className="inline-flex items-center gap-3 px-8 py-3 rounded-full glass-card border-primary/20 text-primary font-black text-sm animate-float-soft shadow-xl shadow-primary/5">
           <Zap className="w-5 h-5 fill-primary" /> EASY PREP ELITE V2
         </div>
         <div className="space-y-4">
-          <h1 className="text-8xl sm:text-9xl md:text-[15rem] text-easy-premium animate-in fade-in zoom-in duration-1000">EASY</h1>
+          <h1 className="text-8xl sm:text-9xl md:text-[15rem] text-easy-premium animate-in fade-in zoom-in duration-1000 relative">
+            EASY
+          </h1>
           <p className="text-2xl md:text-4xl font-black text-white/40 max-w-3xl mx-auto tracking-wide leading-relaxed">تغلّب على نفسك <span className="text-white glow-text italic">كل يوم</span> 💎</p>
         </div>
         <div className="max-w-2xl mx-auto pt-6 relative group">

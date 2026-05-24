@@ -44,13 +44,15 @@
   @apply font-black tracking-tighter text-center block w-full select-none relative py-2;
   background: linear-gradient(
     180deg, 
-    #ffffff 10%, 
+    #ffffff 20%, 
     hsla(var(--primary), 1) 100%
   );
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 15px hsla(var(--primary), 0.4));
-  line-height: 0.9;
+  filter: drop-shadow(0 0 20px hsla(var(--primary), 0.6));
+  line-height: 0.85;
+  z-index: 50;
+  text-shadow: 0 0 30px hsla(var(--primary), 0.3);
 }
 
 .glow-text {
