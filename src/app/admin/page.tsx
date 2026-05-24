@@ -22,7 +22,7 @@ import {
 import { 
   collection, getDocs, addDoc, doc, deleteDoc, updateDoc, serverTimestamp, query, orderBy, limit, where 
 } from 'firebase/firestore';
-import { Section } from '@/lib/practice-data';
+import { Section, Question, ReadingPassage } from '@/lib/practice-data';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -36,13 +36,12 @@ import {
 } from "@/components/ui/dialog";
 import { 
   Trash2, ShieldCheck, Database, Ban, AlertCircle, TrendingUp,
-  XCircle, Lock, Edit2, History, Copy, Layers, Loader2, Search, FileText, UserCheck, X as XIcon, CheckCircle, PlusCircle, Save, BookOpen, ListTree, Crown, Users, Calendar, MessageCircle, Home
+  XCircle, Lock, Edit2, History, Copy, Layers, Loader2, Search, FileText, UserCheck, X as XIcon, CheckCircle, PlusCircle, Save, BookOpen, ListTree, Crown, Users, Calendar, MessageCircle, Home, FilePlus, HelpCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type EditorMode = 'create' | 'edit-section' | 'edit-template';
 
-// مكون الوسام البصري المطور (Visual Role Badge UI)
 const RoleBadgeUI = ({ role }: { role: string }) => {
   const badges: Record<string, React.ReactNode> = {
     'rootOwner': (
@@ -463,6 +462,59 @@ export default function AdminPage() {
     return currentUserRole === 'rootOwner' || currentUserRole === 'owner' || currentUserRole === 'superAdmin';
   }, [currentUserRole]);
 
+  // وظائف إدارة الأسئلة والنصوص داخل المحرر
+  const addQuestion = () => {
+    const newQ: Question = {
+      id: `q-${Date.now()}`,
+      question: '',
+      options: ['', '', '', ''],
+      correct: '',
+      type: 'analogy'
+    };
+    setNewSection(prev => ({
+      ...prev,
+      questions: [...(prev.questions || []), newQ]
+    }));
+  };
+
+  const removeQuestion = (index: number) => {
+    setNewSection(prev => ({
+      ...prev,
+      questions: (prev.questions || []).filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateQuestion = (index: number, updates: Partial<Question>) => {
+    setNewSection(prev => {
+      const qs = [...(prev.questions || [])];
+      qs[index] = { ...qs[index], ...updates };
+      return { ...prev, questions: qs };
+    });
+  };
+
+  const addPassage = () => {
+    const newP: ReadingPassage = { title: '', text: '' };
+    setNewSection(prev => ({
+      ...prev,
+      readingPassages: [...(prev.readingPassages || []), newP]
+    }));
+  };
+
+  const removePassage = (index: number) => {
+    setNewSection(prev => ({
+      ...prev,
+      readingPassages: (prev.readingPassages || []).filter((_, i) => i !== index)
+    }));
+  };
+
+  const updatePassage = (index: number, updates: Partial<ReadingPassage>) => {
+    setNewSection(prev => {
+      const ps = [...(prev.readingPassages || [])];
+      ps[index] = { ...ps[index], ...updates };
+      return { ...prev, readingPassages: ps };
+    });
+  };
+
   if (loading) return (
     <div className="min-h-screen bg-black flex items-center justify-center">
       <div className="text-center space-y-6">
@@ -730,14 +782,122 @@ export default function AdminPage() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        <div className="space-y-3">
-                          <label className="text-[10px] md:text-xs font-bold uppercase text-primary">رقم القسم</label>
-                          <input type="number" value={newSection.id || ''} onChange={(e) => setNewSection(p => ({ ...p, id: parseInt(e.target.value) }))} className="h-14 bg-black border-white/10 rounded-xl px-4 outline-none w-full" />
+                      <div className="space-y-8">
+                        {/* البيانات الأساسية */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                          <div className="space-y-3">
+                            <label className="text-[10px] md:text-xs font-bold uppercase text-primary">رقم القسم</label>
+                            <input type="number" value={newSection.id || ''} onChange={(e) => setNewSection(p => ({ ...p, id: parseInt(e.target.value) }))} className="h-14 bg-black border-white/10 rounded-xl px-4 outline-none w-full" />
+                          </div>
+                          <div className="md:col-span-2 space-y-3">
+                            <label className="text-[10px] md:text-xs font-bold uppercase text-primary">عنوان القسم</label>
+                            <input value={newSection.title || ''} onChange={(e) => setNewSection(p => ({ ...p, title: e.target.value }))} className="h-14 bg-black border-white/10 rounded-xl px-4 outline-none w-full" />
+                          </div>
                         </div>
-                        <div className="md:col-span-2 space-y-3">
-                          <label className="text-[10px] md:text-xs font-bold uppercase text-primary">عنوان القسم</label>
-                          <input value={newSection.title || ''} onChange={(e) => setNewSection(p => ({ ...p, title: e.target.value }))} className="h-14 bg-black border-white/10 rounded-xl px-4 outline-none w-full" />
+
+                        {/* قسم استيعاب المقروء (Passages) */}
+                        <div className="space-y-6">
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-xl font-black flex items-center gap-2"><BookOpen className="text-primary w-5 h-5" /> النصوص القرائية (Reading Passages)</h3>
+                            <Button onClick={addPassage} variant="outline" size="sm" className="rounded-xl border-primary/20 text-primary"><FilePlus className="w-4 h-4 ml-2" /> إضافة نص جديد</Button>
+                          </div>
+                          <div className="grid gap-6">
+                            {(newSection.readingPassages || []).map((p, idx) => (
+                              <Card key={`p-${idx}`} className="p-6 bg-white/[0.02] border-white/5 rounded-3xl space-y-4">
+                                <div className="flex justify-between items-center">
+                                  <Badge className="bg-primary/20 text-primary">نص #{idx + 1}</Badge>
+                                  <Button onClick={() => removePassage(idx)} variant="ghost" size="icon" className="text-rose-500"><Trash2 className="w-4 h-4" /></Button>
+                                </div>
+                                <Input placeholder="عنوان النص..." value={p.title} onChange={(e) => updatePassage(idx, { title: e.target.value })} className="h-12 bg-black/40 border-white/10" />
+                                <Textarea placeholder="محتوى النص القرائي..." value={p.text} onChange={(e) => updatePassage(idx, { text: e.target.value })} className="min-h-[150px] bg-black/40 border-white/10" />
+                              </Card>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* قسم الأسئلة */}
+                        <div className="space-y-6">
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-xl font-black flex items-center gap-2"><HelpCircle className="text-primary w-5 h-5" /> بنك الأسئلة (Questions)</h3>
+                            <Button onClick={addQuestion} variant="outline" size="sm" className="rounded-xl border-primary/20 text-primary"><PlusCircle className="w-4 h-4 ml-2" /> إضافة سؤال جديد</Button>
+                          </div>
+                          <div className="grid gap-6">
+                            {(newSection.questions || []).map((q, idx) => (
+                              <Card key={`q-${idx}`} className="p-6 bg-white/[0.02] border-white/5 rounded-3xl space-y-6">
+                                <div className="flex justify-between items-center">
+                                  <Badge className="bg-primary/10 text-primary">سؤال #{idx + 1}</Badge>
+                                  <Button onClick={() => removeQuestion(idx)} variant="ghost" size="icon" className="text-rose-500"><Trash2 className="w-4 h-4" /></Button>
+                                </div>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase opacity-40">نوع السؤال</label>
+                                    <Select value={q.type} onValueChange={(val: any) => updateQuestion(idx, { type: val })}>
+                                      <SelectTrigger className="h-12 bg-black border-white/10">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent className="bg-black border-white/10 text-white">
+                                        <SelectItem value="analogy">تناظر لفظي</SelectItem>
+                                        <SelectItem value="reading">استيعاب مقروء</SelectItem>
+                                        <SelectItem value="error">خطأ سياقي</SelectItem>
+                                        <SelectItem value="completion">إكمال جمل</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+
+                                  {q.type === 'reading' && (
+                                    <div className="space-y-2">
+                                      <label className="text-[10px] font-black uppercase opacity-40">النص المرتبط</label>
+                                      <Select value={q.passageTitle || ''} onValueChange={(val) => updateQuestion(idx, { passageTitle: val })}>
+                                        <SelectTrigger className="h-12 bg-black border-white/10">
+                                          <SelectValue placeholder="اختر النص..." />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-black border-white/10 text-white">
+                                          {(newSection.readingPassages || []).map((p, pIdx) => (
+                                            <SelectItem key={pIdx} value={p.title}>{p.title || `نص بدون عنوان #${pIdx+1}`}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  )}
+                                </div>
+
+                                <Input placeholder="نص السؤال..." value={q.question} onChange={(e) => updateQuestion(idx, { question: e.target.value })} className="h-12 bg-black/40 border-white/10" />
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  {q.options.map((opt, optIdx) => (
+                                    <div key={optIdx} className="flex gap-2 items-center">
+                                      <span className="text-xs font-black opacity-30">{['أ', 'ب', 'ج', 'د'][optIdx]}</span>
+                                      <Input 
+                                        placeholder={`خيار ${['أ', 'ب', 'ج', 'د'][optIdx]}`} 
+                                        value={opt} 
+                                        onChange={(e) => {
+                                          const newOpts = [...q.options];
+                                          newOpts[optIdx] = e.target.value;
+                                          updateQuestion(idx, { options: newOpts });
+                                        }} 
+                                        className="h-11 bg-black/40 border-white/10" 
+                                      />
+                                    </div>
+                                  ))}
+                                </div>
+
+                                <div className="space-y-2">
+                                  <label className="text-[10px] font-black uppercase text-emerald-500">الإجابة الصحيحة</label>
+                                  <Select value={q.correct} onValueChange={(val) => updateQuestion(idx, { correct: val })}>
+                                    <SelectTrigger className="h-12 bg-black border-emerald-500/20 text-emerald-500">
+                                      <SelectValue placeholder="اختر الإجابة الصحيحة..." />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-black border-white/10 text-white">
+                                      {q.options.map((opt, optIdx) => (
+                                        <SelectItem key={optIdx} value={opt || `خيار ${optIdx+1}`}>{opt || `خيار ${optIdx+1}`}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </Card>
+                            ))}
+                          </div>
                         </div>
                       </div>
                    </Card>
@@ -758,6 +918,10 @@ export default function AdminPage() {
                                </div>
                              </div>
                              <h3 className="text-lg md:text-xl font-black truncate">{t.title}</h3>
+                             <div className="flex gap-3 opacity-40 text-[10px] font-bold">
+                                <span>{t.questions?.length || 0} سؤال</span>
+                                <span>{t.readingPassages?.length || 0} نصوص</span>
+                             </div>
                           </Card>
                         ))}
                       </div>
@@ -772,7 +936,13 @@ export default function AdminPage() {
                             <div key={s.firebaseId || `section-${s.id}`} className="p-4 md:p-6 bg-white/[0.02] border border-white/5 rounded-2xl flex flex-col sm:flex-row justify-between items-center group gap-4">
                                <div className="flex items-center gap-4 w-full">
                                   <Badge className="bg-primary/20 text-primary shrink-0">{s.id}</Badge>
-                                  <span className="font-black text-base md:text-lg truncate">{s.title}</span>
+                                  <div className="overflow-hidden">
+                                     <span className="font-black text-base md:text-lg truncate block">{s.title}</span>
+                                     <div className="flex gap-3 opacity-40 text-[10px] font-bold mt-1">
+                                        <span>{s.questions?.length || 0} سؤال</span>
+                                        <span>{s.readingPassages?.length || 0} نصوص</span>
+                                     </div>
+                                  </div>
                                </div>
                                <div className="flex gap-2 w-full sm:w-auto md:opacity-0 md:group-hover:opacity-100 transition-opacity justify-end">
                                   <Button onClick={() => editSection(s)} variant="ghost" size="icon" className="text-emerald-400 hover:bg-emerald-400/10"><Edit2 className="w-4 h-4" /></Button>
@@ -871,3 +1041,4 @@ export default function AdminPage() {
     </main>
   );
 }
+
