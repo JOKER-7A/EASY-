@@ -138,7 +138,7 @@ export default function AdminPage() {
         setCurrentUserRole(role);
         
         // التحقق من الصلاحيات الإدارية
-        const adminRoles = ['owner', 'superAdmin', 'admin', 'editor', 'helper'];
+        const adminRoles = ['rootOwner', 'owner', 'superAdmin', 'admin', 'editor', 'helper'];
         setIsAuthorized(adminRoles.includes(role));
         
         if (adminRoles.includes(role)) {
@@ -219,7 +219,6 @@ export default function AdminPage() {
         const userData = snap.docs[0].data();
         const userId = snap.docs[0].id;
         
-        // منع أي شخص من ترقية أحد لرتبة أعلى منه
         await handleRoleChange(userId, 'admin');
         setAdminSearchEmail('');
       }
@@ -267,7 +266,6 @@ export default function AdminPage() {
     setIsSubmitting(true);
     try {
       const templateData = { ...newSection };
-      // تنظيف البيانات من أي معرفات قديمة
       delete (templateData as any).firebaseId;
       await saveTemplateToDb(templateData);
       toast({ title: "تم حفظ القالب بنجاح! 💾" });
@@ -414,7 +412,7 @@ export default function AdminPage() {
   };
 
   const isOwnerOrSuper = useMemo(() => {
-    return currentUserRole === 'owner' || currentUserRole === 'superAdmin';
+    return currentUserRole === 'rootOwner' || currentUserRole === 'owner' || currentUserRole === 'superAdmin';
   }, [currentUserRole]);
 
   if (loading) return (
@@ -435,7 +433,7 @@ export default function AdminPage() {
             <Lock className="w-10 h-10 text-rose-500" />
           </div>
           <h1 className="text-3xl font-black text-white">دخول غير مصرح ⛔</h1>
-          <p className="text-white/40 font-bold leading-relaxed">عذراً، لا تمتلك الصلاحيات الكافية لدخول لوحة الإدارة. إذا كنت تعتقد أن هذا خطأ، يرجى التواصل مع المالك.</p>
+          <p className="text-white/40 font-bold leading-relaxed">عذراً، لا تمتلك الصلاحيات الكافية لدخول لوحة الإدارة.</p>
           <Button onClick={() => window.location.href = '/'} className="w-full h-14 bg-primary rounded-2xl font-black">العودة للرئيسية</Button>
           <Button onClick={handleAdminLogout} variant="ghost" className="text-rose-500 text-xs font-bold">تسجيل الخروج</Button>
         </Card>
@@ -505,7 +503,7 @@ export default function AdminPage() {
                  </div>
                  <h2 className="text-3xl md:text-6xl font-black text-white">أهلاً بك يا دكتور محمود 👋</h2>
                  <p className="text-lg md:text-2xl text-white/40 max-w-3xl mx-auto font-bold leading-relaxed">
-                   أنت الآن في قلب نظام EASY. من هنا يمكنك التحكم في كل ذرة في المنصة، من قبول الطلاب إلى بناء أصعب التحديات اللفظية.
+                   أنت الآن في قلب نظام EASY كـ {currentUserRole.toUpperCase()}.
                  </p>
                </div>
                
@@ -528,8 +526,6 @@ export default function AdminPage() {
                        <Button onClick={handleUpdateWhatsapp} disabled={isSubmitting} className="h-14 bg-emerald-500 px-6 rounded-xl font-black">حفظ ✅</Button>
                      </div>
                    </div>
-
-                   <p className="text-white/40 font-bold text-sm text-center mt-6">هذا الرابط سيظهر للطلاب المقبولين فقط في الصفحة الرئيسية.</p>
                  </div>
                </div>
             </Card>
@@ -555,7 +551,6 @@ export default function AdminPage() {
                     </div>
                   </div>
                 ))}
-                {pendingUsers.length === 0 && <div className="py-20 text-center text-white/20 font-black text-xl">لا يوجد طلبات انضمام حالياً</div>}
               </div>
             </Card>
           </TabsContent>
@@ -581,10 +576,6 @@ export default function AdminPage() {
                           <Badge className="bg-primary/20 text-primary border-none text-[10px]">{u.role || 'user'}</Badge>
                         </div>
                         <p className="text-white/30 font-bold text-xs md:text-sm truncate">{u.email} | {u.phoneNumber}</p>
-                        <div className="flex gap-4 mt-2">
-                           <span className="text-[10px] text-primary font-bold">LVL {u.level || 1}</span>
-                           <span className="text-[10px] text-white/40">{u.xp || 0} XP</span>
-                        </div>
                       </div>
                     </div>
                     <div className="flex gap-3 w-full md:w-auto">
@@ -620,12 +611,12 @@ export default function AdminPage() {
                       <div key={admin.id} className="flex flex-col md:flex-row justify-between items-center p-6 md:p-8 bg-white/[0.02] border border-white/5 rounded-3xl gap-6">
                         <div className="flex items-center gap-6 w-full">
                           <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-primary/20 flex items-center justify-center shrink-0">
-                            {admin.role === 'owner' ? <Crown className="text-amber-500 w-6 h-6 md:w-8 md:h-8" /> : <ShieldCheck className="text-primary w-6 h-6 md:w-8 md:h-8" />}
+                            {admin.role === 'rootOwner' ? <Crown className="text-amber-500 w-6 h-6 md:w-8 md:h-8" /> : <ShieldCheck className="text-primary w-6 h-6 md:w-8 md:h-8" />}
                           </div>
                           <div className="overflow-hidden">
                             <div className="flex items-center gap-2">
                                <p className="font-black text-lg md:text-xl truncate">{admin.displayName || 'مشرف'}</p>
-                               {admin.role === 'owner' && <Badge className="bg-amber-500/20 text-amber-500 border-none text-[10px]">المالك</Badge>}
+                               <Badge className="bg-primary/20 text-primary border-none text-[10px]">{admin.role}</Badge>
                             </div>
                             <p className="text-white/30 font-bold text-xs md:text-sm truncate">{admin.email}</p>
                           </div>
@@ -634,7 +625,7 @@ export default function AdminPage() {
                         <div className="flex flex-col items-end gap-2 w-full md:w-auto">
                           <label className="text-[10px] font-bold text-white/40 uppercase">الصلاحية الحالية</label>
                           <Select 
-                            disabled={!canEditThisAdmin || admin.role === 'owner' || isSubmitting}
+                            disabled={!canEditThisAdmin || isSubmitting}
                             value={admin.role} 
                             onValueChange={(val) => handleRoleChange(admin.id, val)}
                           >
@@ -642,8 +633,9 @@ export default function AdminPage() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="bg-black border-white/10 text-white">
-                              <SelectItem value="owner" disabled={currentUserRole !== 'owner'}>المالك (Owner)</SelectItem>
-                              <SelectItem value="superAdmin" disabled={currentUserRole !== 'owner'}>مشرف عام (Super Admin)</SelectItem>
+                              {currentUserRole === 'rootOwner' && <SelectItem value="rootOwner">Root Owner (المؤسس)</SelectItem>}
+                              <SelectItem value="owner">المالك (Owner)</SelectItem>
+                              <SelectItem value="superAdmin">مشرف عام (Super Admin)</SelectItem>
                               <SelectItem value="admin">مشرف محتوى (Admin)</SelectItem>
                               <SelectItem value="editor">محرر (Editor)</SelectItem>
                               <SelectItem value="helper">مساعد (Helper)</SelectItem>
@@ -694,132 +686,10 @@ export default function AdminPage() {
                           <label className="text-[10px] md:text-xs font-bold uppercase text-primary">عنوان القسم</label>
                           <input value={newSection.title || ''} onChange={(e) => setNewSection(p => ({ ...p, title: e.target.value }))} className="h-14 bg-black border-white/10 rounded-xl px-4 outline-none w-full" />
                         </div>
-                        <div className="md:col-span-3 space-y-3">
-                          <label className="text-[10px] md:text-xs font-bold uppercase text-primary">وصف القسم (Subtitle)</label>
-                          <input placeholder="نص توضيحي يظهر تحت العنوان..." value={newSection.description || ''} onChange={(e) => setNewSection(p => ({ ...p, description: e.target.value }))} className="h-14 bg-black border-white/10 rounded-xl px-4 outline-none w-full" />
-                        </div>
-                      </div>
-
-                      <div className="space-y-6 pt-10 border-t border-white/5">
-                        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                          <h3 className="text-lg md:text-xl font-black flex items-center gap-3"><BookOpen className="text-primary" /> القطع القرائية ({newSection.readingPassages?.length || 0})</h3>
-                          <Button onClick={() => setNewSection(prev => ({ ...prev, readingPassages: [...(prev.readingPassages || []), { title: '', text: '' }] }))} variant="secondary" className="bg-primary/10 text-primary w-full sm:w-auto text-xs">
-                            <PlusCircle className="ml-2 w-4 h-4" /> إضافة قطعة جديدة
-                          </Button>
-                        </div>
-                        {newSection.readingPassages?.map((rp, i) => (
-                          <Card key={`rp-${i}`} className="p-6 md:p-8 bg-white/[0.02] border-white/5 rounded-3xl space-y-4 relative group">
-                            <Button onClick={() => {
-                               const rps = [...(newSection.readingPassages || [])];
-                               rps.splice(i, 1);
-                               setNewSection(p => ({ ...p, readingPassages: rps }));
-                            }} size="icon" variant="ghost" className="absolute left-4 top-4 text-white/10 hover:text-rose-500"><Trash2 className="w-4 h-4" /></Button>
-                            <input placeholder="عنوان القطعة" value={rp.title} onChange={(e) => {
-                               const rps = [...(newSection.readingPassages || [])];
-                               rps[i].title = e.target.value;
-                               setNewSection(p => ({ ...p, readingPassages: rps }));
-                            }} className="font-black h-12 bg-black border-white/10 rounded-xl px-4 outline-none w-full" />
-                            <textarea placeholder="نص القطعة..." value={rp.text} onChange={(e) => {
-                               const rps = [...(newSection.readingPassages || [])];
-                               rps[i].text = e.target.value;
-                               setNewSection(p => ({ ...p, readingPassages: rps }));
-                            }} className="min-h-[150px] bg-black border-white/10 rounded-xl p-4 outline-none w-full resize-none" />
-                          </Card>
-                        ))}
-                      </div>
-
-                      <div className="space-y-8 pt-10 border-t border-white/5">
-                        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                          <h3 className="text-lg md:text-xl font-black flex items-center gap-3"><ListTree className="text-primary" /> الأسئلة ({newSection.questions?.length || 0})</h3>
-                          <Button onClick={() => setNewSection(prev => ({ ...prev, questions: [...(prev.questions || []), { id: `q-${Date.now()}`, question: '', options: ['', '', '', ''], correct: '', type: 'analogy' }] }))} variant="secondary" className="bg-primary/10 text-primary w-full sm:w-auto text-xs">
-                            <PlusCircle className="ml-2 w-4 h-4" /> إضافة سؤال جديد
-                          </Button>
-                        </div>
-                        <div className="grid gap-6">
-                          {newSection.questions?.map((q, i) => (
-                            <Card key={q.id || `q-edit-${i}`} className="p-6 md:p-8 bg-black/50 border-white/5 rounded-[30px] space-y-6 relative group">
-                              <Button onClick={() => {
-                                 const qs = [...(newSection.questions || [])];
-                                 qs.splice(i, 1);
-                                 setNewSection(p => ({ ...p, questions: qs }));
-                              }} size="icon" variant="ghost" className="absolute left-4 top-4 text-white/10 hover:text-rose-500 md:opacity-0 md:group-hover:opacity-100 transition-opacity"><Trash2 className="w-4 h-4" /></Button>
-                              
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                  <label className="text-[10px] md:text-xs font-bold text-primary">نوع السؤال</label>
-                                  <Select value={q.type} onValueChange={(val: any) => {
-                                    const qs = [...(newSection.questions || [])];
-                                    qs[i].type = val;
-                                    setNewSection(p => ({ ...p, questions: qs }));
-                                  }}>
-                                    <SelectTrigger className="h-12 bg-black border-white/10">
-                                      <SelectValue placeholder="اختر نوع السؤال" />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-black border-white/10 text-white">
-                                      <SelectItem value="reading">استيعاب مقروء (Reading)</SelectItem>
-                                      <SelectItem value="fill">إكمال كلام (Fill in blanks)</SelectItem>
-                                      <SelectItem value="error">خطأ سياقي (Context Error)</SelectItem>
-                                      <SelectItem value="analogy">تناظر لفظي (Analogy)</SelectItem>
-                                      <SelectItem value="vocabulary">مفردة (Vocabulary)</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-
-                                {q.type === 'reading' && (
-                                  <div className="space-y-2">
-                                    <label className="text-[10px] md:text-xs font-bold text-primary">القطعة المرتبطة</label>
-                                    <Select value={q.passageTitle} onValueChange={(val: any) => {
-                                      const qs = [...(newSection.questions || [])];
-                                      qs[i].passageTitle = val;
-                                      setNewSection(p => ({ ...p, questions: qs }));
-                                    }}>
-                                      <SelectTrigger className="h-12 bg-black border-white/10">
-                                        <SelectValue placeholder="اختر القطعة" />
-                                      </SelectTrigger>
-                                      <SelectContent className="bg-black border-white/10 text-white">
-                                        {newSection.readingPassages?.map((rp, rpIdx) => (
-                                          <SelectItem key={`sel-rp-${rpIdx}`} value={rp.title}>{rp.title || `قطعة غير معنونة ${rpIdx+1}`}</SelectItem>
-                                        ))}
-                                        {(!newSection.readingPassages || newSection.readingPassages.length === 0) && (
-                                          <SelectItem value="none" disabled>يرجى إضافة قطعة أولاً</SelectItem>
-                                        )}
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-                                )}
-                              </div>
-
-                              <input placeholder={`نص السؤال رقم ${i+1}`} value={q.question} onChange={(e) => {
-                                 const qs = [...(newSection.questions || [])];
-                                 qs[i].question = e.target.value;
-                                 setNewSection(p => ({ ...p, questions: qs }));
-                              }} className="text-lg md:text-xl font-black h-14 bg-black border-white/10 rounded-xl px-4 outline-none w-full" />
-                              
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                 {q.options.map((opt, optIdx) => (
-                                   <div key={`opt-${i}-${optIdx}`} className="flex gap-2">
-                                      <input placeholder={`خيار ${['أ', 'ب', 'ج', 'د'][optIdx]}`} value={opt} onChange={(e) => {
-                                         const qs = [...(newSection.questions || [])];
-                                         qs[i].options[optIdx] = e.target.value;
-                                         setNewSection(p => ({ ...p, questions: qs }));
-                                      }} className="h-12 bg-black border-white/5 rounded-xl px-4 outline-none flex-1" />
-                                      <Button onClick={() => {
-                                         const qs = [...(newSection.questions || [])];
-                                         qs[i].correct = opt;
-                                         setNewSection(p => ({ ...p, questions: qs }));
-                                      }} variant={q.correct === opt && opt !== '' ? 'default' : 'ghost'} className={cn("px-4", q.correct === opt && opt !== '' && "bg-emerald-500 hover:bg-emerald-600")}>
-                                        {q.correct === opt && opt !== '' ? 'صح' : 'ص?'}
-                                      </Button>
-                                   </div>
-                                 ))}
-                              </div>
-                            </Card>
-                          ))}
-                        </div>
                       </div>
                    </Card>
                 </TabsContent>
-
+                
                 <TabsContent value="templates">
                    <Card className="p-6 md:p-10 glass-card rounded-[40px] md:rounded-[50px] space-y-10 border-white/5">
                       <h2 className="text-2xl md:text-3xl font-black flex items-center gap-4"><Layers className="text-primary" /> قوالب الأقسام الجاهزة</h2>
@@ -835,15 +705,8 @@ export default function AdminPage() {
                                </div>
                              </div>
                              <h3 className="text-lg md:text-xl font-black truncate">{t.title}</h3>
-                             {t.description && <p className="text-[10px] md:text-xs text-white/30 line-clamp-1">{t.description}</p>}
-                             <p className="text-xs md:text-sm text-white/40">{t.questions?.length || 0} سؤال جاهز</p>
-                             <div className="flex gap-2">
-                               <Button onClick={() => useTemplate(t)} className="flex-1 bg-primary text-white font-bold h-12 rounded-xl text-xs md:text-sm">استخدام القسم</Button>
-                               <Button onClick={() => editTemplate(t)} variant="outline" className="h-12 border-white/10 rounded-xl px-4"><Edit2 className="w-4 h-4" /></Button>
-                             </div>
                           </Card>
                         ))}
-                        {templates.length === 0 && <div className="col-span-full py-20 text-center text-white/20 font-black">لا توجد قوالب جاهزة حالياً</div>}
                       </div>
                    </Card>
                 </TabsContent>
@@ -856,10 +719,7 @@ export default function AdminPage() {
                             <div key={s.firebaseId || `section-${s.id}`} className="p-4 md:p-6 bg-white/[0.02] border border-white/5 rounded-2xl flex flex-col sm:flex-row justify-between items-center group gap-4">
                                <div className="flex items-center gap-4 w-full">
                                   <Badge className="bg-primary/20 text-primary shrink-0">{s.id}</Badge>
-                                  <div className="flex flex-col overflow-hidden">
-                                    <span className="font-black text-base md:text-lg truncate">{s.title}</span>
-                                    {s.description && <span className="text-[10px] md:text-xs text-white/30 truncate">{s.description}</span>}
-                                  </div>
+                                  <span className="font-black text-base md:text-lg truncate">{s.title}</span>
                                </div>
                                <div className="flex gap-2 w-full sm:w-auto md:opacity-0 md:group-hover:opacity-100 transition-opacity justify-end">
                                   <Button onClick={() => editSection(s)} variant="ghost" size="icon" className="text-emerald-400 hover:bg-emerald-400/10"><Edit2 className="w-4 h-4" /></Button>
@@ -886,15 +746,11 @@ export default function AdminPage() {
                         log.action === 'NAME_CHANGE' ? "bg-emerald-500" : "bg-blue-500")}>
                         {log.action}
                       </Badge>
-                      <div className="overflow-hidden">
-                        <span className="font-black truncate block">{log.userName || log.userId}</span>
-                        <span className="text-white/40 text-xs line-clamp-1"> {log.reason || log.action} {log.newRole && `(${log.newRole})`}</span>
-                      </div>
+                      <span className="font-black truncate block">{log.userName || log.userId}</span>
                     </div>
                     <p className="text-[10px] md:text-xs text-white/20 shrink-0 w-full sm:w-auto text-left sm:text-right">{log.timestamp?.toDate()?.toLocaleString('ar-SA')}</p>
                   </div>
                 ))}
-                {activityLogs.length === 0 && <div className="py-20 text-center text-white/20 font-black">لا يوجد نشاط مسجل حالياً</div>}
               </div>
             </Card>
           </TabsContent>
@@ -902,10 +758,7 @@ export default function AdminPage() {
       </div>
 
       <Dialog open={banModalOpen} onOpenChange={setBanModalOpen}>
-        <DialogContent 
-          onOpenAutoFocus={(e) => e.preventDefault()}
-          className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] glass-card border-rose-500/20 text-white rounded-[35px] max-w-lg w-[90vw] md:w-full p-6 md:p-10 outline-none z-[600] shadow-[0_0_100px_rgba(244,63,94,0.15)]"
-        >
+        <DialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] glass-card border-rose-500/20 text-white rounded-[35px] max-w-lg w-[90vw] md:w-full p-6 md:p-10 outline-none z-[600]">
           <DialogHeader className="text-center space-y-4">
             <DialogTitle className="text-2xl md:text-3xl font-black">حظر طالب 🚫</DialogTitle>
             <DialogDescription className="text-white/40 font-bold">حظر: {selectedUser?.displayName}</DialogDescription>
@@ -914,7 +767,7 @@ export default function AdminPage() {
             <div className="space-y-2">
               <label className="text-xs font-bold text-primary mr-2">مدة الحظر</label>
               <Select value={banDuration} onValueChange={setBanDuration}>
-                <SelectTrigger className="h-14 bg-black/40 border-white/10 rounded-2xl focus:ring-0"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-14 bg-black/40 border-white/10 rounded-2xl"><SelectValue /></SelectTrigger>
                 <SelectContent className="glass-card border-white/10 bg-black/90 text-white">
                   <SelectItem value="1h">1 ساعة</SelectItem>
                   <SelectItem value="1d">1 يوم</SelectItem>
@@ -923,56 +776,39 @@ export default function AdminPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-primary mr-2">سبب الحظر (إجباري)</label>
-              <textarea 
-                placeholder="سبب الحظر..." 
-                value={banReason} 
-                onChange={(e) => setBanReason(e.target.value)} 
-                className="min-h-[120px] bg-black/40 border-white/10 rounded-2xl p-4 outline-none w-full focus:border-primary/50 resize-none" 
-              />
-            </div>
+            <textarea 
+              placeholder="سبب الحظر..." 
+              value={banReason} 
+              onChange={(e) => setBanReason(e.target.value)} 
+              className="min-h-[120px] bg-black/40 border-white/10 rounded-2xl p-4 outline-none w-full" 
+            />
           </div>
           <DialogFooter>
-            <Button onClick={handleBanUser} disabled={isSubmitting} className="w-full h-14 bg-rose-500 text-white font-black rounded-2xl shadow-xl hover:bg-rose-600 transition-all">
-              {isSubmitting ? <Loader2 className="animate-spin" /> : "تأكيد الحظر"}
-            </Button>
+            <Button onClick={handleBanUser} disabled={isSubmitting} className="w-full h-14 bg-rose-500 text-white font-black rounded-2xl shadow-xl hover:bg-rose-600 transition-all">تأكيد الحظر</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={editNameModalOpen} onOpenChange={setEditNameModalOpen}>
-        <DialogContent 
-          onOpenAutoFocus={(e) => e.preventDefault()}
-          className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] glass-card border-primary/20 text-white rounded-[35px] max-w-lg w-[90vw] md:w-full p-6 md:p-10 outline-none z-[600]"
-        >
+        <DialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] glass-card border-primary/20 text-white rounded-[35px] max-w-lg w-[90vw] md:w-full p-6 md:p-10 outline-none z-[600]">
           <DialogHeader className="text-center space-y-4">
             <DialogTitle className="text-2xl md:text-3xl font-black">تعديل اسم الطالب ✏️</DialogTitle>
-            <DialogDescription className="text-white/40 font-bold">تعديل: {selectedUser?.displayName}</DialogDescription>
           </DialogHeader>
           <div className="space-y-6 py-6 md:py-8">
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-primary mr-2">الاسم الجديد</label>
-              <input 
-                value={newName} 
-                onChange={(e) => setNewName(e.target.value)} 
-                className="h-14 bg-black/40 border-white/10 rounded-2xl px-4 outline-none w-full focus:border-primary/50" 
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-primary mr-2">سبب التعديل (إجباري)</label>
-              <textarea 
-                placeholder="لماذا يتم تغيير الاسم؟" 
-                value={nameChangeReason} 
-                onChange={(e) => setNameChangeReason(e.target.value)} 
-                className="min-h-[100px] bg-black/40 border-white/10 rounded-2xl p-4 outline-none w-full focus:border-primary/50 resize-none" 
-              />
-            </div>
+            <input 
+              value={newName} 
+              onChange={(e) => setNewName(e.target.value)} 
+              className="h-14 bg-black/40 border-white/10 rounded-2xl px-4 outline-none w-full" 
+            />
+            <textarea 
+              placeholder="لماذا يتم تغيير الاسم؟" 
+              value={nameChangeReason} 
+              onChange={(e) => setNameChangeReason(e.target.value)} 
+              className="min-h-[100px] bg-black/40 border-white/10 rounded-2xl p-4 outline-none w-full" 
+            />
           </div>
           <DialogFooter>
-            <Button onClick={handleEditName} disabled={isSubmitting} className="w-full h-14 bg-primary text-white font-black rounded-2xl shadow-xl hover:scale-[1.02] transition-all">
-              {isSubmitting ? <Loader2 className="animate-spin" /> : "حفظ التعديلات"}
-            </Button>
+            <Button onClick={handleEditName} disabled={isSubmitting} className="w-full h-14 bg-primary text-white font-black rounded-2xl shadow-xl">حفظ التعديلات</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

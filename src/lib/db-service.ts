@@ -19,11 +19,12 @@ import {
 } from "firebase/firestore";
 import { Section, Question, sections as staticSections } from "./practice-data";
 
-// المالك الرسمي والوحيد للمنصة - أعلى سلطة في الهرم
-const MASTER_OWNER_EMAIL = 'joker7a10@gmail.com';
+// المالك الجذري للمنصة - أعلى سلطة تقنية وإدارية لا يمكن المساس بها
+const ROOT_OWNER_EMAIL = 'joker7a10@gmail.com';
 
 /**
  * ترتيب الرتب تصاعدياً من الأقل للأعلى
+ * تم إضافة Root Owner كأعلى سلطة
  */
 const ROLE_HIERARCHY: Record<string, number> = {
   'user': 0,
@@ -31,17 +32,18 @@ const ROLE_HIERARCHY: Record<string, number> = {
   'editor': 2,
   'admin': 3,
   'superAdmin': 4,
-  'owner': 5
+  'owner': 5,
+  'rootOwner': 6
 };
 
 export const canManageRole = (currentUserRole: string, targetUserRole: string) => {
+  // الـ Root Owner يدير الجميع بلا استثناء
+  if (currentUserRole === 'rootOwner') return true;
+  
   const currentPower = ROLE_HIERARCHY[currentUserRole] || 0;
   const targetPower = ROLE_HIERARCHY[targetUserRole] || 0;
   
-  // المالك يمكنه إدارة الجميع
-  if (currentUserRole === 'owner') return true;
-  
-  // لا يمكن لأي رتبة أخرى إدارة المالك أو من هم في نفس رتبتها أو أعلى
+  // لا يمكن لأي رتبة أخرى إدارة من هم في نفس مستواها أو أعلى
   return currentPower > targetPower;
 };
 
@@ -170,19 +172,19 @@ export const getUserProfile = async (userId: string, email?: string) => {
     const userSnap = await getDoc(userRef);
     
     const lowerEmail = email?.toLowerCase() || '';
-    const isMasterOwner = lowerEmail === MASTER_OWNER_EMAIL.toLowerCase();
+    const isRootOwner = lowerEmail === ROOT_OWNER_EMAIL.toLowerCase();
 
     if (userSnap.exists()) {
       const userData = userSnap.data();
       
-      // تأكيد ملكية الإيميل المختار ومنع أي تلاعب
-      if (isMasterOwner && userData.role !== 'owner') {
-        await updateDoc(userRef, { role: 'owner', status: 'approved' });
-        return { id: userSnap.id, ...userData, role: 'owner', status: 'approved' };
+      // تأكيد سلطة الـ Root Owner المطلقة ومنع انتحال الشخصية
+      if (isRootOwner && userData.role !== 'rootOwner') {
+        await updateDoc(userRef, { role: 'rootOwner', status: 'approved' });
+        return { id: userSnap.id, ...userData, role: 'rootOwner', status: 'approved' };
       }
       
-      // تحويل أي صاحب رتبة owner قديم ليس المالك الأساسي إلى superAdmin
-      if (!isMasterOwner && userData.role === 'owner') {
+      // تحويل أي صاحب رتبة rootOwner أو owner قديم ليس المالك الأساسي إلى رتبة أدنى
+      if (!isRootOwner && (userData.role === 'rootOwner' || userData.role === 'owner')) {
         await updateDoc(userRef, { role: 'superAdmin' });
         return { id: userSnap.id, ...userData, role: 'superAdmin' };
       }
@@ -196,8 +198,8 @@ export const getUserProfile = async (userId: string, email?: string) => {
         phoneNumber: '', 
         email: lowerEmail,
         createdAt: serverTimestamp(),
-        status: isMasterOwner ? 'approved' : 'pending', 
-        role: isMasterOwner ? 'owner' : 'user',
+        status: isRootOwner ? 'approved' : 'pending', 
+        role: isRootOwner ? 'rootOwner' : 'user',
         favorites: [],
         isBanned: false,
         theme: '270 95% 60%'
@@ -252,7 +254,7 @@ export const getAdminsFromDb = async () => {
   try {
     const q = query(
       collection(db, "userProfiles"), 
-      where("role", "in", ["owner", "superAdmin", "admin", "editor", "helper"])
+      where("role", "in", ["rootOwner", "owner", "superAdmin", "admin", "editor", "helper"])
     );
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
