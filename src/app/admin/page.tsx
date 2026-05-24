@@ -42,17 +42,43 @@ import { cn } from '@/lib/utils';
 
 type EditorMode = 'create' | 'edit-section' | 'edit-template';
 
-// مكون الوسام البصري للرتب
+// مكون الوسام البصري المطور (Visual Role Badge UI)
 const RoleBadgeUI = ({ role }: { role: string }) => {
-  const badges: Record<string, string> = {
-    'rootOwner': '👑⚔️⚔️',
-    'owner': '👑',
-    'superAdmin': '🛡️⚔️',
-    'admin': '🛡️',
-    'editor': '✏️',
-    'helper': '🧩',
+  const badges: Record<string, React.ReactNode> = {
+    'rootOwner': (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 shadow-[0_0_10px_rgba(245,158,11,0.2)]" title="Root Owner">
+        <span className="text-amber-500 drop-shadow-sm text-sm">👑</span>
+        <span className="text-[10px] text-amber-500/60 font-black tracking-tighter">⚔️⚔️</span>
+      </span>
+    ),
+    'owner': (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-amber-500/5 border border-amber-500/10" title="Owner">
+        <span className="text-amber-500 text-sm">👑</span>
+      </span>
+    ),
+    'superAdmin': (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20" title="Super Admin">
+        <span className="text-blue-500 text-sm">🛡️</span>
+        <span className="text-[10px] text-blue-500/60 font-black">⚔️</span>
+      </span>
+    ),
+    'admin': (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-blue-500/5 border border-blue-500/10" title="Admin">
+        <span className="text-blue-500 text-sm">🛡️</span>
+      </span>
+    ),
+    'editor': (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-emerald-500/5 border border-emerald-500/10" title="Editor">
+        <span className="text-emerald-500 text-sm">✏️</span>
+      </span>
+    ),
+    'helper': (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-purple-500/5 border border-purple-500/10" title="Helper">
+        <span className="text-purple-500 text-sm">🧩</span>
+      </span>
+    ),
   };
-  return badges[role] ? <span className="mr-2 drop-shadow-sm select-none" title={role}>{badges[role]}</span> : null;
+  return badges[role] ? <span className="mr-1 inline-block select-none">{badges[role]}</span> : null;
 };
 
 export default function AdminPage() {
@@ -459,9 +485,12 @@ export default function AdminPage() {
               <ShieldCheck className="text-primary w-8 h-8" />
             </div>
             <div>
-              <h1 className="text-2xl md:text-4xl font-black tracking-tight">لوحة القيادة</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl md:text-4xl font-black tracking-tight">لوحة القيادة</h1>
+                <RoleBadgeUI role={currentUserRole} />
+              </div>
               <p className="text-primary font-bold uppercase tracking-widest text-[10px] md:text-xs opacity-60">
-                {currentUserRole.toUpperCase()} PANEL <RoleBadgeUI role={currentUserRole} />
+                {currentUserRole.toUpperCase()} PANEL
               </p>
             </div>
           </div>
@@ -510,7 +539,7 @@ export default function AdminPage() {
                  <div className="w-24 h-24 md:w-32 md:h-32 bg-primary/10 rounded-[40px] flex items-center justify-center mx-auto ring-4 ring-primary/20 animate-float-soft">
                    <Crown className="w-12 h-12 md:w-16 md:h-16 text-primary" />
                  </div>
-                 <h2 className="text-3xl md:text-6xl font-black text-white">أهلاً بك يا دكتور محمود <RoleBadgeUI role="rootOwner" /></h2>
+                 <h2 className="text-3xl md:text-6xl font-black text-white flex items-center justify-center gap-4">أهلاً بك يا دكتور محمود <RoleBadgeUI role="rootOwner" /></h2>
                  <p className="text-lg md:text-2xl text-white/40 max-w-3xl mx-auto font-bold leading-relaxed">
                    أنت الآن في قلب نظام EASY كـ {currentUserRole.toUpperCase()}.
                  </p>
@@ -582,7 +611,6 @@ export default function AdminPage() {
                         <div className="font-black text-lg md:text-xl flex flex-wrap items-center gap-3">
                           <span className="truncate max-w-[150px] md:max-w-none">{u.displayName || 'بدون اسم'} <RoleBadgeUI role={u.role || 'user'} /></span>
                           {u.isBanned && <Badge className="bg-destructive text-white border-none text-[10px]">محظور</Badge>}
-                          <Badge className="bg-primary/20 text-primary border-none text-[10px]">{u.role || 'user'}</Badge>
                         </div>
                         <p className="text-white/30 font-bold text-xs md:text-sm truncate">{u.email} | {u.phoneNumber}</p>
                       </div>
@@ -625,7 +653,6 @@ export default function AdminPage() {
                           <div className="overflow-hidden">
                             <div className="flex items-center gap-2">
                                <p className="font-black text-lg md:text-xl truncate">{admin.displayName || 'مشرف'} <RoleBadgeUI role={admin.role} /></p>
-                               <Badge className="bg-primary/20 text-primary border-none text-[10px]">{admin.role}</Badge>
                             </div>
                             <p className="text-white/30 font-bold text-xs md:text-sm truncate">{admin.email}</p>
                           </div>
@@ -755,7 +782,10 @@ export default function AdminPage() {
                         log.action === 'NAME_CHANGE' ? "bg-emerald-500" : "bg-blue-500")}>
                         {log.action}
                       </Badge>
-                      <span className="font-black truncate block">{log.userName || log.userId}</span>
+                      <span className="font-black truncate flex items-center gap-2">
+                        {log.userName || log.userId}
+                        {log.userRole && <RoleBadgeUI role={log.userRole} />}
+                      </span>
                     </div>
                     <p className="text-[10px] md:text-xs text-white/20 shrink-0 w-full sm:w-auto text-left sm:text-right">{log.timestamp?.toDate()?.toLocaleString('ar-SA')}</p>
                   </div>

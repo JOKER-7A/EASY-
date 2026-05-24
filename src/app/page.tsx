@@ -40,17 +40,43 @@ const THEMES = [
   { name: 'Red', value: '0 95% 60%', color: '#dc2626' },
 ];
 
-// مكون الوسام البصري للرتب
+// مكون الوسام البصري المطور (Visual Role Badge UI)
 const RoleBadgeUI = ({ role }: { role: string }) => {
-  const badges: Record<string, string> = {
-    'rootOwner': '👑⚔️⚔️',
-    'owner': '👑',
-    'superAdmin': '🛡️⚔️',
-    'admin': '🛡️',
-    'editor': '✏️',
-    'helper': '🧩',
+  const badges: Record<string, React.ReactNode> = {
+    'rootOwner': (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 shadow-[0_0_10px_rgba(245,158,11,0.2)]" title="Root Owner">
+        <span className="text-amber-500 drop-shadow-sm text-sm">👑</span>
+        <span className="text-[10px] text-amber-500/60 font-black tracking-tighter">⚔️⚔️</span>
+      </span>
+    ),
+    'owner': (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-amber-500/5 border border-amber-500/10" title="Owner">
+        <span className="text-amber-500 text-sm">👑</span>
+      </span>
+    ),
+    'superAdmin': (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20" title="Super Admin">
+        <span className="text-blue-500 text-sm">🛡️</span>
+        <span className="text-[10px] text-blue-500/60 font-black">⚔️</span>
+      </span>
+    ),
+    'admin': (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-blue-500/5 border border-blue-500/10" title="Admin">
+        <span className="text-blue-500 text-sm">🛡️</span>
+      </span>
+    ),
+    'editor': (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-emerald-500/5 border border-emerald-500/10" title="Editor">
+        <span className="text-emerald-500 text-sm">✏️</span>
+      </span>
+    ),
+    'helper': (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-purple-500/5 border border-purple-500/10" title="Helper">
+        <span className="text-purple-500 text-sm">🧩</span>
+      </span>
+    ),
   };
-  return badges[role] ? <span className="mr-1 drop-shadow-sm select-none" title={role}>{badges[role]}</span> : null;
+  return badges[role] ? <span className="mr-1 inline-block select-none">{badges[role]}</span> : null;
 };
 
 export default function Home() {
@@ -344,7 +370,7 @@ export default function Home() {
               <AvatarFallback className="bg-primary/20 text-primary font-black">{profile?.displayName?.[0] || 'U'}</AvatarFallback>
             </Avatar>
             <div className="hidden sm:block">
-              <p className="font-black text-white/90 text-sm flex items-center gap-1">
+              <p className="font-black text-white/90 text-sm flex items-center gap-2">
                 {profile?.displayName || 'طالب EASY'} <RoleBadgeUI role={profile?.role || 'user'} />
               </p>
               <div className="flex items-center gap-2">
@@ -444,7 +470,7 @@ export default function Home() {
                           <div className="flex gap-4">
                              <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-black text-xs">{idx + 1}</div>
                              <div>
-                                <p className="font-black text-lg leading-tight flex items-center gap-1">
+                                <p className="font-black text-lg leading-tight flex items-center gap-2">
                                   {item.displayName || item.questionData?.question || item.question}
                                   {item.role && <RoleBadgeUI role={item.role} />}
                                 </p>
