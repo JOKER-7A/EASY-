@@ -16,7 +16,7 @@ import {
 import { 
   collection, getDocs, addDoc, doc, deleteDoc, updateDoc, serverTimestamp, query, orderBy, limit, where 
 } from 'firebase/firestore';
-import { Section } from '@/lib/practice-data';
+import { Section, ReadingPassage, Question } from '@/lib/practice-data';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { 
   Trash2, ShieldCheck, Database, Ban, AlertCircle, TrendingUp,
-  XCircle, Lock, Edit2, History, Copy, Layers, Loader2, Search, FileText, UserCheck, X as XIcon, CheckCircle, PlusCircle, Save
+  XCircle, Lock, Edit2, History, Copy, Layers, Loader2, Search, FileText, UserCheck, X as XIcon, CheckCircle, PlusCircle, Save, BookOpen, ListTree
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -49,7 +49,6 @@ export default function AdminPage() {
   const [templates, setTemplates] = useState<any[]>([]);
   const [usersList, setUsersList] = useState<any[]>([]);
   const [pendingUsers, setPendingUsers] = useState<any[]>([]);
-  const [errorLogs, setErrorLogs] = useState<any[]>([]);
   const [activityLogs, setActivityLogs] = useState<any[]>([]);
   const [stats, setStats] = useState({
     students: 0,
@@ -100,7 +99,6 @@ export default function AdminPage() {
 
       const errorsSnap = await getDocs(collection(db, "errorLogs"));
       const errorsData = errorsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setErrorLogs(errorsData);
 
       const logsSnap = await getDocs(query(collection(db, "userActivityLogs"), orderBy("timestamp", "desc"), limit(50)));
       setActivityLogs(logsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
@@ -510,6 +508,8 @@ export default function AdminPage() {
                           </Button>
                         </div>
                       </div>
+
+                      {/* Section Info */}
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         <div className="space-y-3">
                           <label className="text-xs font-bold uppercase text-primary">رقم القسم</label>
@@ -524,9 +524,40 @@ export default function AdminPage() {
                           <Input placeholder="نص توضيحي يظهر تحت العنوان..." value={newSection.description || ''} onChange={(e) => setNewSection(p => ({ ...p, description: e.target.value }))} className="h-14 bg-black border-white/10" />
                         </div>
                       </div>
-                      <div className="space-y-8">
+
+                      {/* Reading Passages Manager */}
+                      <div className="space-y-6 pt-10 border-t border-white/5">
                         <div className="flex justify-between items-center">
-                          <h3 className="text-xl font-black flex items-center gap-3"><AlertCircle className="text-primary" /> الأسئلة ({newSection.questions?.length || 0})</h3>
+                          <h3 className="text-xl font-black flex items-center gap-3"><BookOpen className="text-primary" /> القطع القرائية ({newSection.readingPassages?.length || 0})</h3>
+                          <Button onClick={() => setNewSection(prev => ({ ...prev, readingPassages: [...(prev.readingPassages || []), { title: '', text: '' }] }))} variant="secondary" className="bg-primary/10 text-primary">
+                            <PlusCircle className="ml-2 w-4 h-4" /> إضافة قطعة جديدة
+                          </Button>
+                        </div>
+                        {newSection.readingPassages?.map((rp, i) => (
+                          <Card key={i} className="p-8 bg-white/[0.02] border-white/5 rounded-3xl space-y-4 relative group">
+                            <Button onClick={() => {
+                               const rps = [...(newSection.readingPassages || [])];
+                               rps.splice(i, 1);
+                               setNewSection(p => ({ ...p, readingPassages: rps }));
+                            }} size="icon" variant="ghost" className="absolute left-4 top-4 text-white/10 hover:text-rose-500"><Trash2 className="w-4 h-4" /></Button>
+                            <Input placeholder="عنوان القطعة" value={rp.title} onChange={(e) => {
+                               const rps = [...(newSection.readingPassages || [])];
+                               rps[i].title = e.target.value;
+                               setNewSection(p => ({ ...p, readingPassages: rps }));
+                            }} className="font-black h-12 bg-black border-white/10" />
+                            <Textarea placeholder="نص القطعة..." value={rp.text} onChange={(e) => {
+                               const rps = [...(newSection.readingPassages || [])];
+                               rps[i].text = e.target.value;
+                               setNewSection(p => ({ ...p, readingPassages: rps }));
+                            }} className="min-h-[150px] bg-black border-white/10" />
+                          </Card>
+                        ))}
+                      </div>
+
+                      {/* Questions Manager */}
+                      <div className="space-y-8 pt-10 border-t border-white/5">
+                        <div className="flex justify-between items-center">
+                          <h3 className="text-xl font-black flex items-center gap-3"><ListTree className="text-primary" /> الأسئلة ({newSection.questions?.length || 0})</h3>
                           <Button onClick={() => setNewSection(prev => ({ ...prev, questions: [...(prev.questions || []), { id: `q-${Date.now()}`, question: '', options: ['', '', '', ''], correct: '', type: 'analogy' }] }))} variant="secondary" className="bg-primary/10 text-primary">
                             <PlusCircle className="ml-2 w-4 h-4" /> إضافة سؤال جديد
                           </Button>
@@ -539,7 +570,52 @@ export default function AdminPage() {
                                setNewSection(p => ({ ...p, questions: qs }));
                             }} size="icon" variant="ghost" className="absolute left-4 top-4 text-white/10 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="w-4 h-4" /></Button>
                             
-                            <Input placeholder={`السؤال رقم ${i+1}`} value={q.question} onChange={(e) => {
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              <div className="space-y-2">
+                                <label className="text-xs font-bold text-primary">نوع السؤال</label>
+                                <Select value={q.type} onValueChange={(val: any) => {
+                                  const qs = [...(newSection.questions || [])];
+                                  qs[i].type = val;
+                                  setNewSection(p => ({ ...p, questions: qs }));
+                                }}>
+                                  <SelectTrigger className="h-12 bg-black border-white/10">
+                                    <SelectValue placeholder="اختر نوع السؤال" />
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-black border-white/10 text-white">
+                                    <SelectItem value="reading">استيعاب مقروء (Reading)</SelectItem>
+                                    <SelectItem value="fill">إكمال كلام (Fill in blanks)</SelectItem>
+                                    <SelectItem value="error">خطأ سياقي (Context Error)</SelectItem>
+                                    <SelectItem value="analogy">تناظر لفظي (Analogy)</SelectItem>
+                                    <SelectItem value="vocabulary">مفردة (Vocabulary)</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              {q.type === 'reading' && (
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-primary">القطعة المرتبطة</label>
+                                  <Select value={q.passageTitle} onValueChange={(val: any) => {
+                                    const qs = [...(newSection.questions || [])];
+                                    qs[i].passageTitle = val;
+                                    setNewSection(p => ({ ...p, questions: qs }));
+                                  }}>
+                                    <SelectTrigger className="h-12 bg-black border-white/10">
+                                      <SelectValue placeholder="اختر القطعة" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-black border-white/10 text-white">
+                                      {newSection.readingPassages?.map((rp, rpIdx) => (
+                                        <SelectItem key={rpIdx} value={rp.title}>{rp.title || `قطعة غير معنونة ${rpIdx+1}`}</SelectItem>
+                                      ))}
+                                      {(!newSection.readingPassages || newSection.readingPassages.length === 0) && (
+                                        <SelectItem value="none" disabled>يرجى إضافة قطعة أولاً</SelectItem>
+                                      )}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              )}
+                            </div>
+
+                            <Input placeholder={`نص السؤال رقم ${i+1}`} value={q.question} onChange={(e) => {
                                const qs = [...(newSection.questions || [])];
                                qs[i].question = e.target.value;
                                setNewSection(p => ({ ...p, questions: qs }));
@@ -707,7 +783,7 @@ export default function AdminPage() {
               <Textarea 
                 placeholder="لماذا يتم تغيير الاسم؟" 
                 value={nameChangeReason} 
-                onChange={(e) => setNameChangeReason(e.target.value)} 
+                onChange={(e) => nameChangeReason(e.target.value)} 
                 className="min-h-[100px] bg-black/40 border-white/10 rounded-2xl focus:border-primary/50 resize-none" 
               />
             </div>
