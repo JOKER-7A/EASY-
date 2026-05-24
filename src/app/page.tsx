@@ -1,10 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Section, sections as staticSections } from '@/lib/practice-data';
+import { Section } from '@/lib/practice-data';
 import { 
   getSectionsFromDb, 
-  getUserProfile, 
   getLeaderboard, 
   getErrorLogs,
   deleteErrorLog
@@ -16,10 +15,8 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Progress } from "@/components/ui/progress";
 import { 
-  Zap, Search, Trophy, History, X, ChevronRight, Loader2, Settings, ShieldCheck, 
-  User as UserIcon, Crown, Palette, LogOut, ArrowRight, Heart, Trash2, Sparkles 
+  Zap, Search, Trophy, History, X, Loader2, Palette, LogOut, ArrowRight, Heart, Trash2, ShieldCheck 
 } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
 import { 
@@ -58,12 +55,11 @@ export default function Home() {
 
   useEffect(() => {
     setHasMounted(true);
-    const safetyTimer = setTimeout(() => setIsLoading(false), 2000);
     const unsubAuth = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
         const userRef = doc(db, "userProfiles", u.uid);
-        onSnapshot(userRef, (docSnap) => {
+        const unsubProfile = onSnapshot(userRef, (docSnap) => {
           if (docSnap.exists()) {
             const p = docSnap.data();
             setProfile({ id: docSnap.id, ...p });
@@ -73,11 +69,15 @@ export default function Home() {
             }
           }
         });
+        return () => unsubProfile();
       }
       setIsLoading(false);
     });
-    getSectionsFromDb().then(setSections);
-    return () => { clearTimeout(safetyTimer); unsubAuth(); };
+    getSectionsFromDb().then((data) => {
+      setSections(data);
+      setIsLoading(false);
+    });
+    return () => unsubAuth();
   }, []);
 
   const changeTheme = async (themeValue: string) => {
@@ -124,12 +124,19 @@ export default function Home() {
     } catch (e) { console.error(e); }
   };
 
+  // صلاحيات الأدمن الدقيقة كما طلب الدكتور
   const isAdmin = useMemo(() => {
-    return profile?.status === 'admin' || profile?.role === 'admin' || profile?.role === 'superAdmin' || profile?.isAdmin === true;
-  }, [profile]);
+    if (!profile) return false;
+    return (
+      profile.role === 'admin' || 
+      profile.role === 'superAdmin' || 
+      profile.status === 'admin' || 
+      profile.isAdmin === true ||
+      user?.email === 'admin@easy.com' // Fallback لإيميل الأدمن الأساسي
+    );
+  }, [profile, user]);
 
   if (!hasMounted) return null;
-  if (isLoading) return <div className="fixed inset-0 bg-background flex items-center justify-center z-[500]"><Loader2 className="w-12 h-12 text-primary animate-spin" /></div>;
 
   if (activeView === 'practice' && selectedSection) {
     return <PracticeSession section={selectedSection} onExit={() => setActiveView('landing')} />;
@@ -137,6 +144,15 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-background text-white flex flex-col relative overflow-x-hidden bg-mesh" dir="rtl">
+      {isLoading && (
+        <div className="fixed inset-0 z-[1000] bg-black flex items-center justify-center">
+          <div className="text-center space-y-6">
+            <h1 className="text-6xl text-easy-premium animate-pulse">EASY</h1>
+            <Loader2 className="w-10 h-10 text-primary animate-spin mx-auto" />
+          </div>
+        </div>
+      )}
+
       {!user && (
         <div className="fixed inset-0 z-[400] bg-black/95 backdrop-blur-3xl flex items-center justify-center p-4">
           <Card className="w-full max-w-lg p-10 glass-card rounded-[40px] border-primary/20">
@@ -199,7 +215,7 @@ export default function Home() {
         </div>
       </div>
 
-      <section className="container mx-auto px-4 md:px-8 pb-10 grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
+      <section className="container mx-auto px-4 md:px-8 pb-20 grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
         {filteredSections.map((section) => (
           <Card key={section.firebaseId || section.id} className="group glass-card rounded-[35px] p-6 md:p-8 relative overflow-hidden border-white/5">
             <div className="flex flex-col sm:flex-row justify-between items-center gap-6 relative z-10">
@@ -222,18 +238,23 @@ export default function Home() {
         ))}
       </section>
 
-      {/* Admin Panel Button Section - For Admins Only */}
+      {/* زر الأدمن الفاخر في أسفل الصفحة كما طلب الدكتور */}
       {user && isAdmin && (
-        <div className="container mx-auto px-4 py-12 flex justify-center border-t border-white/5 mt-10">
+        <div className="container mx-auto px-4 py-20 flex flex-col items-center gap-10 border-t border-white/5">
+          <div className="text-center space-y-2">
+            <p className="text-[10px] text-primary font-black uppercase tracking-[0.3em]">Restricted Access Area</p>
+            <h3 className="text-2xl font-black text-white/40 italic"> elite command center </h3>
+          </div>
+          
           <Button 
             onClick={() => window.location.href = '/admin'}
-            className="group relative h-16 px-12 rounded-[25px] bg-black border border-primary/20 hover:border-primary transition-all duration-500 overflow-hidden shadow-2xl"
+            className="group relative h-20 px-16 rounded-[30px] bg-black border-2 border-primary/20 hover:border-primary transition-all duration-700 overflow-hidden shadow-[0_0_50px_rgba(0,0,0,1)]"
           >
             <div className="absolute inset-0 bg-primary/5 group-hover:bg-primary/10 transition-colors" />
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity blur-2xl bg-primary/30" />
-            <div className="relative flex items-center gap-4 text-white">
-              <ShieldCheck className="w-7 h-7 text-primary group-hover:scale-110 transition-transform duration-300" />
-              <span className="text-xl font-black tracking-tight uppercase">Admin Panel</span>
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity blur-3xl bg-primary/40" />
+            <div className="relative flex items-center gap-6 text-white">
+              <ShieldCheck className="w-8 h-8 text-primary group-hover:rotate-12 transition-transform duration-500" />
+              <span className="text-2xl font-black tracking-tighter uppercase">Admin Panel</span>
             </div>
           </Button>
         </div>
@@ -282,9 +303,12 @@ export default function Home() {
         </div>
       )}
 
-      <footer className="text-center py-20 opacity-20 space-y-4">
-        <p className="text-xl tracking-[0.4em] font-black uppercase">DR.MAHMOUD ABD EL RAZEK</p>
-        <p className="text-[10px] font-bold uppercase tracking-widest">Easy Prep Master &copy; 2024</p>
+      <footer className="text-center py-24 opacity-60 space-y-6">
+        <div className="flex flex-col items-center gap-2">
+          <p className="text-dr-mahmoud text-2xl">DR. MAHMOUD ABD EL RAZEK</p>
+          <div className="h-0.5 w-20 bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
+        </div>
+        <p className="text-[10px] font-bold uppercase tracking-[0.5em] text-white/30">Easy Prep Master &copy; 2024</p>
       </footer>
     </main>
   );

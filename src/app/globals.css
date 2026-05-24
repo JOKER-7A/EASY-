@@ -39,10 +39,9 @@
   }
 }
 
-/* شعار EASY المطور - ضمان الظهور التام والوضوح الفائق */
+/* شعار EASY المطور - وضوح تام وتأثيرات احترافية */
 .text-easy-premium {
   @apply font-black tracking-tighter text-center block w-full select-none relative;
-  display: block;
   background: linear-gradient(
     to bottom,
     #ffffff 20%,
@@ -52,11 +51,30 @@
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  color: white; /* Fallback for transparency */
-  filter: drop-shadow(0 0 20px hsla(var(--primary), 0.5));
-  padding: 0.1em 0;
-  z-index: 50;
+  filter: drop-shadow(0 0 15px hsla(var(--primary), 0.4));
   line-height: 1;
+}
+
+/* اسم الدكتور محمود - ذهبي ملكي */
+.text-dr-mahmoud {
+  @apply font-black tracking-widest uppercase relative inline-block;
+  background: linear-gradient(
+    45deg,
+    #ffd700 0%,
+    #fff8dc 50%,
+    #ffb900 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.5));
+  animation: gold-shimmer 3s infinite linear;
+}
+
+@keyframes gold-shimmer {
+  0% { filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.3)); }
+  50% { filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.7)); }
+  100% { filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.3)); }
 }
 
 .glow-text {
