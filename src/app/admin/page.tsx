@@ -305,6 +305,23 @@ export default function AdminPage() {
     }
   };
 
+  const handleSaveAsTemplate = async () => {
+    if (!newSection.title) {
+      toast({ title: "يرجى إدخال عنوان للقالب", variant: "destructive" });
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await saveTemplateToDb(newSection);
+      toast({ title: "تم حفظ القالب بنجاح! 💾" });
+      fetchData();
+    } catch (error) {
+      toast({ title: "حدث خطأ أثناء حفظ القالب", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleUpdateWhatsapp = async () => {
     setIsSubmitting(true);
     const success = await updateGlobalSetting('whatsappLink', whatsappLink);
