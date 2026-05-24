@@ -16,7 +16,8 @@ import {
   updateUserRole,
   getUserProfile,
   updateGlobalSetting,
-  getGlobalSettings
+  getGlobalSettings,
+  canManageRole
 } from '@/lib/db-service';
 import { 
   collection, getDocs, addDoc, doc, deleteDoc, updateDoc, serverTimestamp, query, orderBy, limit, where 
@@ -180,8 +181,9 @@ export default function AdminPage() {
   const handleRoleChange = async (userId: string, newRole: string) => {
     const userToChange = adminsList.find(a => a.id === userId) || usersList.find(u => u.id === userId);
     
-    if (userToChange?.role === 'owner' && currentUserRole !== 'owner') {
-      toast({ title: "لا تملك صلاحية تعديل رتبة المالك", variant: "destructive" });
+    // فحص صلاحية التغيير حسب الهرم
+    if (!canManageRole(currentUserRole, userToChange?.role || 'user')) {
+      toast({ title: "لا تملك صلاحية تعديل رتبة هذا المستخدم", variant: "destructive" });
       return;
     }
 
@@ -190,6 +192,7 @@ export default function AdminPage() {
       await updateUserRole(userId, newRole);
       await addDoc(collection(db, "userActivityLogs"), {
         userId,
+        userName: userToChange?.displayName,
         adminId: auth.currentUser?.uid,
         action: 'ROLE_CHANGE',
         newRole,
@@ -213,10 +216,12 @@ export default function AdminPage() {
       if (snap.empty) {
         toast({ title: "المستخدم غير موجود", variant: "destructive" });
       } else {
+        const userData = snap.docs[0].data();
         const userId = snap.docs[0].id;
+        
+        // منع أي شخص من ترقية أحد لرتبة أعلى منه
         await handleRoleChange(userId, 'admin');
         setAdminSearchEmail('');
-        toast({ title: "تمت ترقية المستخدم إلى رتبة مشرف بنجاح ✅" });
       }
     } catch (e) {
       toast({ title: "خطأ في البحث", variant: "destructive" });
@@ -262,6 +267,7 @@ export default function AdminPage() {
     setIsSubmitting(true);
     try {
       const templateData = { ...newSection };
+      // تنظيف البيانات من أي معرفات قديمة
       delete (templateData as any).firebaseId;
       await saveTemplateToDb(templateData);
       toast({ title: "تم حفظ القالب بنجاح! 💾" });
@@ -608,43 +614,46 @@ export default function AdminPage() {
                 </div>
                 
                 <div className="grid gap-6">
-                  {adminsList.map((admin) => (
-                    <div key={admin.id} className="flex flex-col md:flex-row justify-between items-center p-6 md:p-8 bg-white/[0.02] border border-white/5 rounded-3xl gap-6">
-                      <div className="flex items-center gap-6 w-full">
-                        <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-primary/20 flex items-center justify-center shrink-0">
-                          {admin.role === 'owner' ? <Crown className="text-amber-500 w-6 h-6 md:w-8 md:h-8" /> : <ShieldCheck className="text-primary w-6 h-6 md:w-8 md:h-8" />}
-                        </div>
-                        <div className="overflow-hidden">
-                          <div className="flex items-center gap-2">
-                             <p className="font-black text-lg md:text-xl truncate">{admin.displayName || 'مشرف'}</p>
-                             {admin.role === 'owner' && <Badge className="bg-amber-500/20 text-amber-500 border-none text-[10px]">المالك</Badge>}
+                  {adminsList.map((admin) => {
+                    const canEditThisAdmin = canManageRole(currentUserRole, admin.role || 'user');
+                    return (
+                      <div key={admin.id} className="flex flex-col md:flex-row justify-between items-center p-6 md:p-8 bg-white/[0.02] border border-white/5 rounded-3xl gap-6">
+                        <div className="flex items-center gap-6 w-full">
+                          <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-primary/20 flex items-center justify-center shrink-0">
+                            {admin.role === 'owner' ? <Crown className="text-amber-500 w-6 h-6 md:w-8 md:h-8" /> : <ShieldCheck className="text-primary w-6 h-6 md:w-8 md:h-8" />}
                           </div>
-                          <p className="text-white/30 font-bold text-xs md:text-sm truncate">{admin.email}</p>
+                          <div className="overflow-hidden">
+                            <div className="flex items-center gap-2">
+                               <p className="font-black text-lg md:text-xl truncate">{admin.displayName || 'مشرف'}</p>
+                               {admin.role === 'owner' && <Badge className="bg-amber-500/20 text-amber-500 border-none text-[10px]">المالك</Badge>}
+                            </div>
+                            <p className="text-white/30 font-bold text-xs md:text-sm truncate">{admin.email}</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex flex-col items-end gap-2 w-full md:w-auto">
+                          <label className="text-[10px] font-bold text-white/40 uppercase">الصلاحية الحالية</label>
+                          <Select 
+                            disabled={!canEditThisAdmin || admin.role === 'owner' || isSubmitting}
+                            value={admin.role} 
+                            onValueChange={(val) => handleRoleChange(admin.id, val)}
+                          >
+                            <SelectTrigger className="h-12 w-full md:w-48 bg-black border-white/10 text-white rounded-xl">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-black border-white/10 text-white">
+                              <SelectItem value="owner" disabled={currentUserRole !== 'owner'}>المالك (Owner)</SelectItem>
+                              <SelectItem value="superAdmin" disabled={currentUserRole !== 'owner'}>مشرف عام (Super Admin)</SelectItem>
+                              <SelectItem value="admin">مشرف محتوى (Admin)</SelectItem>
+                              <SelectItem value="editor">محرر (Editor)</SelectItem>
+                              <SelectItem value="helper">مساعد (Helper)</SelectItem>
+                              <SelectItem value="user" className="text-rose-500">إزالة الصلاحيات</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
-                      
-                      <div className="flex flex-col items-end gap-2 w-full md:w-auto">
-                        <label className="text-[10px] font-bold text-white/40 uppercase">الصلاحية الحالية</label>
-                        <Select 
-                          disabled={admin.role === 'owner' || (admin.role === 'superAdmin' && currentUserRole !== 'owner') || isSubmitting}
-                          value={admin.role} 
-                          onValueChange={(val) => handleRoleChange(admin.id, val)}
-                        >
-                          <SelectTrigger className="h-12 w-full md:w-48 bg-black border-white/10 text-white rounded-xl">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="bg-black border-white/10 text-white">
-                            <SelectItem value="owner" disabled={currentUserRole !== 'owner'}>المالك (Owner)</SelectItem>
-                            <SelectItem value="superAdmin" disabled={currentUserRole !== 'owner'}>مشرف عام (Super Admin)</SelectItem>
-                            <SelectItem value="admin">مشرف محتوى (Admin)</SelectItem>
-                            <SelectItem value="editor">محرر (Editor)</SelectItem>
-                            <SelectItem value="helper">مساعد (Helper)</SelectItem>
-                            <SelectItem value="user" className="text-rose-500">إزالة الصلاحيات</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </Card>
             </TabsContent>
@@ -816,7 +825,7 @@ export default function AdminPage() {
                       <h2 className="text-2xl md:text-3xl font-black flex items-center gap-4"><Layers className="text-primary" /> قوالب الأقسام الجاهزة</h2>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                         {templates.map((t) => (
-                          <Card key={t.firebaseId} className="p-6 bg-white/[0.02] border-white/5 rounded-3xl space-y-4 hover:border-primary/40 transition-all">
+                          <Card key={t.firebaseId || `template-${t.title}`} className="p-6 bg-white/[0.02] border-white/5 rounded-3xl space-y-4 hover:border-primary/40 transition-all">
                              <div className="flex justify-between items-start">
                                <Badge className="bg-primary/20 text-primary border-none text-[10px]">Template</Badge>
                                <div className="flex gap-2">
@@ -844,7 +853,7 @@ export default function AdminPage() {
                        <h2 className="text-2xl md:text-3xl font-black">الأقسام النشطة</h2>
                        <div className="grid gap-4">
                           {sections.map((s) => (
-                            <div key={s.firebaseId || s.id} className="p-4 md:p-6 bg-white/[0.02] border border-white/5 rounded-2xl flex flex-col sm:flex-row justify-between items-center group gap-4">
+                            <div key={s.firebaseId || `section-${s.id}`} className="p-4 md:p-6 bg-white/[0.02] border border-white/5 rounded-2xl flex flex-col sm:flex-row justify-between items-center group gap-4">
                                <div className="flex items-center gap-4 w-full">
                                   <Badge className="bg-primary/20 text-primary shrink-0">{s.id}</Badge>
                                   <div className="flex flex-col overflow-hidden">

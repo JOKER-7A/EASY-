@@ -19,12 +19,31 @@ import {
 } from "firebase/firestore";
 import { Section, Question, sections as staticSections } from "./practice-data";
 
-// المالك الرسمي والوحيد للمنصة
-const MASTER_ADMINS = [
-  'joker7a10@gmail.com', // المالك الأساسي الجديد
-  'admin@easy.com', 
-  'mahmoudabd898@gmail.com'
-];
+// المالك الرسمي والوحيد للمنصة - أعلى سلطة في الهرم
+const MASTER_OWNER_EMAIL = 'joker7a10@gmail.com';
+
+/**
+ * ترتيب الرتب تصاعدياً من الأقل للأعلى
+ */
+const ROLE_HIERARCHY: Record<string, number> = {
+  'user': 0,
+  'helper': 1,
+  'editor': 2,
+  'admin': 3,
+  'superAdmin': 4,
+  'owner': 5
+};
+
+export const canManageRole = (currentUserRole: string, targetUserRole: string) => {
+  const currentPower = ROLE_HIERARCHY[currentUserRole] || 0;
+  const targetPower = ROLE_HIERARCHY[targetUserRole] || 0;
+  
+  // المالك يمكنه إدارة الجميع
+  if (currentUserRole === 'owner') return true;
+  
+  // لا يمكن لأي رتبة أخرى إدارة المالك أو من هم في نفس رتبتها أو أعلى
+  return currentPower > targetPower;
+};
 
 /**
  * جلب الأقسام مع الترتيب التنازلي التلقائي حسب المعرف (ID)
@@ -151,20 +170,23 @@ export const getUserProfile = async (userId: string, email?: string) => {
     const userSnap = await getDoc(userRef);
     
     const lowerEmail = email?.toLowerCase() || '';
-    const isMasterEmail = MASTER_ADMINS.some(m => m.toLowerCase() === lowerEmail);
+    const isMasterOwner = lowerEmail === MASTER_OWNER_EMAIL.toLowerCase();
 
     if (userSnap.exists()) {
       const userData = userSnap.data();
-      // تحديث الرتبة إذا كان إيميل المالك الأساسي
-      if (isMasterEmail && userData.role !== 'owner') {
+      
+      // تأكيد ملكية الإيميل المختار ومنع أي تلاعب
+      if (isMasterOwner && userData.role !== 'owner') {
         await updateDoc(userRef, { role: 'owner', status: 'approved' });
         return { id: userSnap.id, ...userData, role: 'owner', status: 'approved' };
       }
-      // تحويل أي صاحب رتبة owner قديم ليس في القائمة الأساسية إلى superAdmin
-      if (!isMasterEmail && userData.role === 'owner') {
+      
+      // تحويل أي صاحب رتبة owner قديم ليس المالك الأساسي إلى superAdmin
+      if (!isMasterOwner && userData.role === 'owner') {
         await updateDoc(userRef, { role: 'superAdmin' });
         return { id: userSnap.id, ...userData, role: 'superAdmin' };
       }
+      
       return { id: userSnap.id, ...userData };
     } else {
       const initialProfile = {
@@ -174,8 +196,8 @@ export const getUserProfile = async (userId: string, email?: string) => {
         phoneNumber: '', 
         email: lowerEmail,
         createdAt: serverTimestamp(),
-        status: isMasterEmail ? 'approved' : 'pending', 
-        role: isMasterEmail ? 'owner' : 'user',
+        status: isMasterOwner ? 'approved' : 'pending', 
+        role: isMasterOwner ? 'owner' : 'user',
         favorites: [],
         isBanned: false,
         theme: '270 95% 60%'
