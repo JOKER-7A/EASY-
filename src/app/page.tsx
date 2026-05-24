@@ -21,7 +21,7 @@ import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
-  Zap, Search, Trophy, History, X, Loader2, Palette, LogOut, ArrowRight, Heart, Trash2, ShieldCheck, Settings, Star, Ban, Clock, UserCheck, Phone, User, MessageCircle
+  Zap, Search, Trophy, History, X, Loader2, Palette, LogOut, ArrowRight, Heart, Trash2, ShieldCheck, Settings, Star, Ban, Clock, UserCheck, Phone, User, MessageCircle, Crown, Info
 } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
 import { 
@@ -41,7 +41,6 @@ const THEMES = [
   { name: 'Red', value: '0 95% 60%', color: '#dc2626' },
 ];
 
-// مكون الوسام البصري المطور (Visual Role Badge UI)
 const RoleBadgeUI = ({ role }: { role: string }) => {
   const badges: Record<string, React.ReactNode> = {
     'rootOwner': (
@@ -206,6 +205,14 @@ export default function Home() {
     } catch (e) { console.error(e); }
   };
 
+  const handleRemoveErrorLog = async (logId: string) => {
+    const success = await deleteErrorLog(logId);
+    if (success) {
+      setOverlayData(prev => prev.filter(item => item.id !== logId));
+      toast({ title: "تم حذف السجل بنجاح ✅" });
+    }
+  };
+
   const isAdmin = useMemo(() => {
     if (!profile) return false;
     return ['rootOwner', 'owner', 'superAdmin', 'admin', 'editor', 'helper'].includes(profile.role);
@@ -286,7 +293,6 @@ export default function Home() {
     );
   }
 
-  // شاشة الـ Onboarding الإجبارية
   if (user && (!profile?.displayName || !profile?.phoneNumber || profile?.status === 'onboarding')) {
     return (
       <main className="min-h-screen bg-black flex items-center justify-center p-4 relative overflow-hidden">
@@ -333,26 +339,6 @@ export default function Home() {
             <Button onClick={() => signOut(auth)} variant="outline" className="h-14 px-10 rounded-2xl border-white/10 text-white font-black">
               تسجيل الخروج
             </Button>
-          </div>
-        </Card>
-      </main>
-    );
-  }
-
-  if (user && profile?.status === 'rejected' && !isAdmin) {
-    return (
-      <main className="min-h-screen bg-black flex items-center justify-center p-4 text-center">
-        <Card className="max-w-lg w-full p-12 glass-card rounded-[50px] space-y-8 border-rose-500/20">
-          <div className="w-24 h-24 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto">
-            <X className="w-12 h-12 text-rose-500" />
-          </div>
-          <div className="space-y-4">
-            <h1 className="text-4xl font-black text-white">نعتذر منك ❌</h1>
-            <p className="text-xl text-white/60 leading-relaxed">تم رفض طلب انضمامك حالياً. يرجى التواصل مع الإدارة أو المحاولة مرة أخرى ببيانات صحيحة.</p>
-          </div>
-          <div className="flex flex-col gap-4">
-            <Button onClick={() => updateOnboardingData(user.uid, '', '')} className="h-16 rounded-2xl bg-primary text-white font-black">إعادة إرسال الطلب ✨</Button>
-            <Button onClick={() => signOut(auth)} variant="ghost" className="text-white/40">خروج</Button>
           </div>
         </Card>
       </main>
@@ -439,7 +425,7 @@ export default function Home() {
                   )}
                 </div>
                 <div className="space-y-1">
-                  <h2 className="text-2xl md:text-4xl font-black group-hover:text-primary transition-colors leading-tight">{section.title}</h2>
+                  <h2 className="text-2xl md:text-4xl font-black group-hover:text-primary transition-colors leading-tight">{section.title || `نموذج تدريبي ${section.id}`}</h2>
                   {section.description && <p className="text-white/30 text-sm font-bold mt-1 line-clamp-1">{section.description}</p>}
                 </div>
                 <div className="flex justify-center sm:justify-start items-center gap-6 text-white/20 text-sm font-black uppercase tracking-wider">
@@ -493,19 +479,26 @@ export default function Home() {
                                 </p>
                              </div>
                           </div>
-                          {activeOverlay === 'errors' && <Button variant="ghost" size="icon" onClick={() => deleteErrorLog(item.id)} className="text-destructive hover:bg-destructive/10 rounded-xl"><Trash2 className="w-5 h-5" /></Button>}
-                          {activeOverlay === 'favorites' && <Badge className="bg-primary/20 text-primary border-none text-lg">⭐</Badge>}
+                          {activeOverlay === 'errors' && <Button variant="ghost" size="icon" onClick={() => handleRemoveErrorLog(item.id)} className="text-destructive hover:bg-destructive/10 rounded-xl"><Trash2 className="w-5 h-5" /></Button>}
                         </div>
                         {(activeOverlay === 'errors' || activeOverlay === 'favorites') && (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
-                            {(item.questionData?.options || item.options)?.map((opt: string, i: number) => (
-                              <div key={i} className={cn(
-                                "p-4 rounded-2xl text-sm font-black border-2 transition-all",
-                                opt === (item.questionData?.correct || item.correct) ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : "bg-white/[0.02] border-white/5 text-white/30"
-                              )}>
-                                <span className="opacity-40 ml-3">{['أ', 'ب', 'ج', 'د'][i]}</span> {opt}
-                              </div>
-                            ))}
+                          <div className="space-y-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+                              {(item.questionData?.options || item.options)?.map((opt: string, i: number) => (
+                                <div key={i} className={cn(
+                                  "p-4 rounded-2xl text-sm font-black border-2 transition-all",
+                                  opt === (item.questionData?.correct || item.correct) ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : "bg-white/[0.02] border-white/5 text-white/30"
+                                )}>
+                                  <span className="opacity-40 ml-3">{['أ', 'ب', 'ج', 'د'][i]}</span> {opt}
+                                </div>
+                              ))}
+                            </div>
+                            <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 flex items-start gap-3">
+                               <Info className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                               <p className="text-xs font-bold text-white/60 leading-relaxed">
+                                 الإجابة الصحيحة هي: <span className="text-primary">{(item.questionData?.correct || item.correct)}</span>. مراجعة أخطائك تساعدك على تثبيت المعلومة وعدم تكرار الخطأ.
+                               </p>
+                            </div>
                           </div>
                         )}
                       </Card>

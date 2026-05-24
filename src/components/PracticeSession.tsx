@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   ChevronLeft, Timer, Star, Trophy, RotateCcw, PartyPopper, BookOpen, Clock, Zap, 
-  Play, XCircle, Moon, Sparkles, Flower, CheckCircle2
+  Play, XCircle, Moon, Sparkles, Flower, CheckCircle2, Crown, StarIcon, Flame, Heart
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -70,6 +70,7 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
       const isCorrect = userAnswers[q.id] === q.correct;
       if (isCorrect) correct++;
       else if (auth.currentUser) {
+        // تسجيل الخطأ تلقائياً في قاعدة البيانات
         saveErrorLogToDb(auth.currentUser.uid, q, section.title, userAnswers[q.id] || 'بدون إجابة');
       }
     });
@@ -99,7 +100,6 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
     const q = section.questions[currentQuestionIndex];
     setUserAnswers(p => ({ ...p, [q.id]: opt }));
     
-    // تحديث XP فوري
     if (auth.currentUser) {
       const isCorrect = opt === q.correct;
       await updateUserXP(auth.currentUser.uid, isCorrect);
@@ -123,7 +123,14 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
     if (!auth.currentUser) return toast({ title: "سجل دخولك أولاً" });
     const isAdded = await toggleFavoriteInDb(auth.currentUser.uid, question, section.title);
     setFavorites(prev => isAdded ? [...prev, question.id] : prev.filter(id => id !== question.id));
-    toast({ title: isAdded ? "تمت الإضافة ⭐" : "تمت الإزالة" });
+    toast({ title: isAdded ? "تمت الإضافة للمفضلة ⭐" : "تمت الإزالة من المفضلة" });
+  };
+
+  const getMotivation = (score: number) => {
+    if (score === 100) return { text: "ممتاز جداً! أداء أسطوري 👑", color: "text-amber-400", icon: Crown };
+    if (score >= 90) return { text: "أحسنت! أنت رائع ⭐", color: "text-primary", icon: StarIcon };
+    if (score >= 70) return { text: "أداء جيد، استمر 🔥", color: "text-emerald-400", icon: Flame };
+    return { text: "شد حيلك شوية 💪", color: "text-rose-400", icon: Zap };
   };
 
   if (phase === 'intro') return (
@@ -158,18 +165,24 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
     const errors: Question[] = [];
     section.questions.forEach(q => { if (userAnswers[q.id] === q.correct) correctCount++; else errors.push(q); });
     const score = Math.round((correctCount / section.questions.length) * 100);
+    const motivation = getMotivation(score);
 
     return (
       <ScrollArea className="h-screen bg-black" dir="rtl">
         <div className="max-w-6xl mx-auto py-20 px-6 space-y-16">
-          <div className="text-center space-y-10">
-            <div className="inline-block p-14 rounded-full bg-primary/10 border-4 border-primary/30 animate-bounce shadow-glow"><Trophy className="w-32 h-32 text-primary" /></div>
-            <h1 className="text-6xl md:text-[8rem] font-black tracking-tighter text-glow">{score === 100 ? "أنت أسطورة 🔥" : "أداء رائع ✨"}</h1>
+          <div className="text-center space-y-10 relative">
+            <div className={cn("inline-block p-14 rounded-full bg-primary/10 border-4 border-primary/30 animate-bounce shadow-glow", score === 100 && "shadow-[0_0_100px_rgba(234,179,8,0.4)]")}>
+               <motivation.icon className={cn("w-32 h-32", motivation.color)} />
+            </div>
+            <div className="space-y-4">
+               <h1 className="text-6xl md:text-8xl font-black tracking-tighter text-glow">{motivation.text}</h1>
+               {score === 100 && <p className="text-amber-500 font-black animate-pulse text-2xl">لقد حصلت على الدرجة الكاملة! 🎊</p>}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {[
-              { label: 'النسبة', val: score + '%', color: 'text-primary' },
+              { label: 'النسبة', val: score + '%', color: motivation.color },
               { label: 'صحيحة', val: correctCount, color: 'text-green-500' },
               { label: 'خاطئة', val: errors.length, color: 'text-rose-500' },
               { label: 'الأسئلة', val: section.questions.length, color: 'text-white' }
@@ -204,7 +217,7 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
             </div>
           )}
 
-          <div className="flex flex-col sm:flex-row gap-6">
+          <div className="flex flex-col sm:flex-row gap-6 pb-20">
             <Button onClick={() => window.location.reload()} className="flex-1 h-24 text-3xl font-black bg-primary rounded-[35px] shadow-2xl active:scale-95"><RotateCcw className="ml-3 w-8 h-8" /> إعادة المحاولة</Button>
             <Button onClick={onExit} variant="outline" className="flex-1 h-24 text-3xl font-black border-white/10 rounded-[35px] active:scale-95">الخروج</Button>
           </div>
@@ -232,8 +245,8 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
         <Card className="p-12 glass-card rounded-[60px] border-white/10 space-y-12 relative overflow-hidden shadow-2xl">
           <div className="flex justify-between items-start gap-8">
             <h2 className="text-4xl md:text-7xl font-black leading-tight text-white flex-1">{q.question}</h2>
-            <Button variant="ghost" size="icon" className={cn("w-24 h-24 rounded-full border-2 transition-all active:scale-90", favorites.includes(q.id) ? "bg-primary text-white border-white shadow-glow" : "border-white/5 text-white/20")} onClick={() => toggleFavorite(q)}>
-              <Star fill={favorites.includes(q.id) ? "currentColor" : "none"} className="w-12 h-12" />
+            <Button variant="ghost" size="icon" className={cn("w-24 h-24 rounded-full border-2 transition-all active:scale-90", favorites.includes(q.id) ? "bg-rose-500/20 text-rose-500 border-rose-500 shadow-glow" : "border-white/5 text-white/20")} onClick={() => toggleFavorite(q)}>
+              <Heart fill={favorites.includes(q.id) ? "currentColor" : "none"} className="w-12 h-12" />
             </Button>
           </div>
 

@@ -24,7 +24,6 @@ const ROOT_OWNER_EMAIL = 'joker7a10@gmail.com';
 
 /**
  * ترتيب الرتب تصاعدياً من الأقل للأعلى
- * تم إضافة Root Owner كأعلى سلطة
  */
 const ROLE_HIERARCHY: Record<string, number> = {
   'user': 0,
@@ -37,16 +36,10 @@ const ROLE_HIERARCHY: Record<string, number> = {
 };
 
 export const canManageRole = (currentUserRole: string, targetUserRole: string) => {
-  // الـ Root Owner يدير الجميع بلا استثناء
   if (currentUserRole === 'rootOwner') return true;
-  
   const currentPower = ROLE_HIERARCHY[currentUserRole] || 0;
   const targetPower = ROLE_HIERARCHY[targetUserRole] || 0;
-  
-  // حماية الـ Root Owner من أي محاولة تعديل من رتبة أدنى
   if (targetUserRole === 'rootOwner') return false;
-  
-  // لا يمكن لأي رتبة أخرى إدارة من هم في نفس مستواها أو أعلى
   return currentPower > targetPower;
 };
 
@@ -79,6 +72,7 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
       }
     });
     
+    // ترتيب تنازلي حقيقي حسب المعرف لضمان ظهور 220 قبل 206 وهكذا
     return combined
       .filter(s => !archivedIds.includes(Number(s.id)))
       .sort((a, b) => Number(b.id) - Number(a.id));
@@ -179,19 +173,14 @@ export const getUserProfile = async (userId: string, email?: string) => {
 
     if (userSnap.exists()) {
       const userData = userSnap.data();
-      
-      // تأكيد سلطة الـ Root Owner المطلقة ومنع انتحال الشخصية
       if (isRootOwner && userData.role !== 'rootOwner') {
         await updateDoc(userRef, { role: 'rootOwner', status: 'approved' });
         return { id: userSnap.id, ...userData, role: 'rootOwner', status: 'approved' };
       }
-      
-      // حماية الـ Root Owner من أي محاولة تغيير في بياناته
       if (!isRootOwner && (userData.role === 'rootOwner')) {
-        await updateDoc(userRef, { role: 'superAdmin' }); // تحويل أي رتبة rootOwner غير حقيقية
+        await updateDoc(userRef, { role: 'superAdmin' });
         return { id: userSnap.id, ...userData, role: 'superAdmin' };
       }
-      
       return { id: userSnap.id, ...userData };
     } else {
       const initialProfile = {
@@ -232,10 +221,8 @@ export const updateOnboardingData = async (userId: string, name: string, phone: 
 
 export const updateUserStatus = async (userId: string, status: 'approved' | 'rejected' | 'pending' | 'onboarding') => {
   try {
-    // التحقق من أن المستخدم المراد تعديل حالته ليس الـ Root Owner
     const userSnap = await getDoc(doc(db, "userProfiles", userId));
     if (userSnap.exists() && userSnap.data().role === 'rootOwner') return false;
-
     const userRef = doc(db, "userProfiles", userId);
     await updateDoc(userRef, { status });
     return true;
@@ -246,10 +233,8 @@ export const updateUserStatus = async (userId: string, status: 'approved' | 'rej
 
 export const updateUserRole = async (userId: string, role: string) => {
   try {
-    // حماية الـ Root Owner من تعديل رتبته
     const userSnap = await getDoc(doc(db, "userProfiles", userId));
     if (userSnap.exists() && userSnap.data().role === 'rootOwner') return false;
-
     const userRef = doc(db, "userProfiles", userId);
     await updateDoc(userRef, { 
       role,
@@ -277,7 +262,7 @@ export const getAdminsFromDb = async () => {
 export const saveAttemptToDb = async (userId: string | undefined, attempt: any) => {
   try {
     const data = { ...attempt, userId: userId || 'anonymous', createdAt: serverTimestamp() };
-    await setDoc(doc(collection(db, "attempts")), data);
+    await addDoc(collection(db, "attempts"), data);
   } catch (e) {}
 };
 
