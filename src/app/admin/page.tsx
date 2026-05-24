@@ -498,7 +498,7 @@ export default function AdminPage() {
             <TabsTrigger value="content" className="px-4 md:px-8 py-2 md:py-4 font-black rounded-[15px] md:rounded-[20px] text-sm md:text-lg">إدارة المحتوى</TabsTrigger>
             {isOwnerOrSuper && (
               <TabsTrigger value="admins" className="px-4 md:px-8 py-2 md:py-4 font-black rounded-[15px] md:rounded-[20px] text-sm md:text-lg flex gap-2">
-                إدارة المشرفين <ShieldCheck className="w-4 h-4" />
+                Admins <ShieldCheck className="w-4 h-4" />
               </TabsTrigger>
             )}
             <TabsTrigger value="logs" className="px-4 md:px-8 py-2 md:py-4 font-black rounded-[15px] md:rounded-[20px] text-sm md:text-lg">النشاط</TabsTrigger>
@@ -584,7 +584,7 @@ export default function AdminPage() {
                 
                 <div className="grid gap-6">
                   {adminsList.map((admin) => (
-                    <div key={`admin-${admin.id}`} className="flex flex-col md:flex-row justify-between items-center p-6 md:p-8 bg-white/[0.02] border border-white/5 rounded-3xl gap-6">
+                    <div key={admin.id} className="flex flex-col md:flex-row justify-between items-center p-6 md:p-8 bg-white/[0.02] border border-white/5 rounded-3xl gap-6">
                       <div className="flex items-center gap-6 w-full">
                         <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-primary/20 flex items-center justify-center shrink-0">
                           {admin.role === 'owner' ? <Crown className="text-amber-500 w-6 h-6 md:w-8 md:h-8" /> : <ShieldCheck className="text-primary w-6 h-6 md:w-8 md:h-8" />}
