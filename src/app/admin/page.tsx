@@ -1,11 +1,12 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { auth, db } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
-import { getSectionsFromDb } from '@/lib/db-service';
+import { getSectionsFromDb, getTemplatesFromDb, saveTemplateToDb, deleteTemplateFromDb } from '@/lib/db-service';
 import { 
-  collection, getDocs, addDoc, doc, deleteDoc, updateDoc, getDoc, serverTimestamp, query, orderBy, limit 
+  collection, getDocs, addDoc, doc, deleteDoc, updateDoc, serverTimestamp, query, orderBy, limit 
 } from 'firebase/firestore';
 import { Section } from '@/lib/practice-data';
 import { Button } from '@/components/ui/button';
@@ -16,14 +17,13 @@ import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription 
 } from "@/components/ui/dialog";
 import { 
   Trash2, Settings, FileText, HelpCircle, Loader2, Users, 
   Search, ShieldCheck, Database, Ban, AlertCircle, TrendingUp,
-  XCircle, Lock, Edit2, History
+  XCircle, Lock, Edit2, History, Copy, Layers
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -37,6 +37,7 @@ export default function AdminPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [sections, setSections] = useState<Section[]>([]);
+  const [templates, setTemplates] = useState<any[]>([]);
   const [usersList, setUsersList] = useState<any[]>([]);
   const [errorLogs, setErrorLogs] = useState<any[]>([]);
   const [activityLogs, setActivityLogs] = useState<any[]>([]);
@@ -82,6 +83,9 @@ export default function AdminPage() {
     try {
       const sectionsData = await getSectionsFromDb();
       setSections(sectionsData);
+      
+      const templatesData = await getTemplatesFromDb();
+      setTemplates(templatesData);
       
       const usersSnap = await getDocs(collection(db, "userProfiles"));
       const usersData = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -130,113 +134,7 @@ export default function AdminPage() {
     toast({ title: "تم تسجيل الخروج" });
   };
 
-  // --- Ban Logic ---
-  const handleBanUser = async () => {
-    if (!banReason.trim()) {
-      toast({ title: "يرجى إدخال سبب الحظر", variant: "destructive" });
-      return;
-    }
-
-    let expiresAt: Date | null = null;
-    const now = new Date();
-    if (banDuration === '1h') expiresAt = new Date(now.getTime() + 60 * 60 * 1000);
-    else if (banDuration === '1d') expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-    else if (banDuration === '7d') expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-    
-    try {
-      const updateData = {
-        isBanned: true,
-        banReason,
-        banDuration,
-        bannedAt: serverTimestamp(),
-        banExpiresAt: expiresAt ? expiresAt : null
-      };
-
-      await updateDoc(doc(db, "userProfiles", selectedUser.id), updateData);
-      
-      // Log Activity
-      await addDoc(collection(db, "userActivityLogs"), {
-        userId: selectedUser.id,
-        userName: selectedUser.displayName,
-        action: 'BAN',
-        reason: banReason,
-        duration: banDuration,
-        timestamp: serverTimestamp()
-      });
-
-      toast({ title: `تم حظر الطالب بنجاح (${banDuration})` });
-      setBanModalOpen(false);
-      setBanReason('');
-      fetchData();
-    } catch (e) {
-      toast({ title: "فشلت العملية", variant: "destructive" });
-    }
-  };
-
-  const handleUnbanUser = async (user: any) => {
-    try {
-      await updateDoc(doc(db, "userProfiles", user.id), {
-        isBanned: false,
-        banReason: null,
-        banExpiresAt: null
-      });
-
-      await addDoc(collection(db, "userActivityLogs"), {
-        userId: user.id,
-        userName: user.displayName,
-        action: 'UNBAN',
-        reason: 'إلغاء الحظر اليدوي',
-        timestamp: serverTimestamp()
-      });
-
-      toast({ title: "تم فك الحظر بنجاح ✅" });
-      fetchData();
-    } catch (e) {
-      toast({ title: "فشلت العملية", variant: "destructive" });
-    }
-  };
-
-  // --- Name Change Logic ---
-  const handleEditName = async () => {
-    if (!newName.trim() || !nameChangeReason.trim()) {
-      toast({ title: "يرجى إدخال الاسم الجديد والسبب", variant: "destructive" });
-      return;
-    }
-
-    try {
-      await updateDoc(doc(db, "userProfiles", selectedUser.id), {
-        displayName: newName
-      });
-
-      await addDoc(collection(db, "userActivityLogs"), {
-        userId: selectedUser.id,
-        userName: selectedUser.displayName,
-        action: 'NAME_CHANGE',
-        reason: nameChangeReason,
-        oldName: selectedUser.displayName,
-        newName: newName,
-        timestamp: serverTimestamp()
-      });
-
-      toast({ title: "تم تغيير الاسم بنجاح ✅" });
-      setEditNameModalOpen(false);
-      setNewName('');
-      setNameChangeReason('');
-      fetchData();
-    } catch (e) {
-      toast({ title: "فشلت العملية", variant: "destructive" });
-    }
-  };
-
-  const handleDeleteUser = async (userId: string) => {
-    if (!confirm("هل أنت متأكد من حذف هذا الطالب نهائياً؟")) return;
-    try {
-      await deleteDoc(doc(db, "userProfiles", userId));
-      toast({ title: "تم حذف الطالب بنجاح" });
-      fetchData();
-    } catch (e) { toast({ title: "فشلت العملية", variant: "destructive" }); }
-  };
-
+  // --- Actions ---
   const handleSaveSection = async () => {
     if (!newSection.title || !newSection.id) {
       toast({ title: "يرجى إكمال البيانات", variant: "destructive" });
@@ -246,7 +144,7 @@ export default function AdminPage() {
     try {
       await addDoc(collection(db, "sections"), {
         ...newSection,
-        createdAt: new Date()
+        createdAt: serverTimestamp()
       });
       setNewSection({ id: 0, title: '', questions: [], readingPassages: [], duration: 13 });
       fetchData();
@@ -256,6 +154,72 @@ export default function AdminPage() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleSaveAsTemplate = async () => {
+    if (!newSection.title) {
+      toast({ title: "يرجى كتابة عنوان للقالب", variant: "destructive" });
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await saveTemplateToDb(newSection);
+      fetchData();
+      toast({ title: "تم حفظ القالب بنجاح! 💾" });
+    } catch (error) {
+      toast({ title: "حدث خطأ", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const useTemplate = (template: any) => {
+    setNewSection({
+      id: sections.length > 0 ? Math.max(...sections.map(s => Number(s.id))) + 1 : 1,
+      title: template.title,
+      questions: template.questions || [],
+      readingPassages: template.readingPassages || [],
+      duration: template.duration || 13
+    });
+    toast({ title: "تم تحميل بيانات القالب بنجاح" });
+  };
+
+  const handleDeleteTemplate = async (id: string) => {
+    if (!confirm("هل تريد حذف هذا القالب؟")) return;
+    await deleteTemplateFromDb(id);
+    fetchData();
+    toast({ title: "تم حذف القالب" });
+  };
+
+  const handleBanUser = async () => {
+    if (!banReason.trim()) {
+      toast({ title: "يرجى إدخال سبب الحظر", variant: "destructive" });
+      return;
+    }
+    let expiresAt: Date | null = null;
+    const now = new Date();
+    if (banDuration === '1h') expiresAt = new Date(now.getTime() + 60 * 60 * 1000);
+    else if (banDuration === '1d') expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    else if (banDuration === '7d') expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    try {
+      await updateDoc(doc(db, "userProfiles", selectedUser.id), {
+        isBanned: true,
+        banReason,
+        banDuration,
+        bannedAt: serverTimestamp(),
+        banExpiresAt: expiresAt
+      });
+      await addDoc(collection(db, "userActivityLogs"), {
+        userId: selectedUser.id,
+        userName: selectedUser.displayName,
+        action: 'BAN',
+        reason: banReason,
+        timestamp: serverTimestamp()
+      });
+      toast({ title: `تم حظر الطالب بنجاح` });
+      setBanModalOpen(false);
+      fetchData();
+    } catch (e) { toast({ title: "فشلت العملية", variant: "destructive" }); }
   };
 
   if (loading) return (
@@ -291,9 +255,6 @@ export default function AdminPage() {
               تحقق 🚀
             </Button>
           </form>
-          <div className="mt-8 text-center">
-             <button onClick={() => window.location.href = '/'} className="text-xs text-white/20 hover:text-white transition-colors">العودة للموقع الرئيسي</button>
-          </div>
         </Card>
       </main>
     );
@@ -318,7 +279,6 @@ export default function AdminPage() {
           </div>
         </header>
 
-        {/* Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
           {[
             { label: 'الطلاب', val: stats.students, icon: Users, color: 'text-blue-500' },
@@ -328,8 +288,8 @@ export default function AdminPage() {
             { label: 'محظورين', val: stats.banned, icon: Ban, color: 'text-orange-500' },
             { label: 'نشطين', val: stats.active, icon: TrendingUp, color: 'text-cyan-500' },
           ].map((s, i) => (
-            <Card key={i} className="p-8 glass-card rounded-[35px] text-center space-y-3 group hover:border-primary/40 transition-all border-white/5">
-              <s.icon className={cn("w-10 h-10 mx-auto transition-transform group-hover:scale-110", s.color)} />
+            <Card key={i} className="p-8 glass-card rounded-[35px] text-center space-y-3 border-white/5">
+              <s.icon className={cn("w-10 h-10 mx-auto", s.color)} />
               <p className="text-4xl font-black">{s.val}</p>
               <p className="text-white/40 font-bold text-xs uppercase tracking-wider">{s.label}</p>
             </Card>
@@ -339,9 +299,8 @@ export default function AdminPage() {
         <Tabs defaultValue="users" className="space-y-10">
           <TabsList className="bg-white/5 border border-white/5 p-2 h-20 rounded-[30px] w-full md:w-auto">
             <TabsTrigger value="users" className="px-12 font-black rounded-[20px] h-full text-lg">الطلاب</TabsTrigger>
-            <TabsTrigger value="content" className="px-12 font-black rounded-[20px] h-full text-lg">المحتوى</TabsTrigger>
+            <TabsTrigger value="content" className="px-12 font-black rounded-[20px] h-full text-lg">إدارة المحتوى</TabsTrigger>
             <TabsTrigger value="logs" className="px-12 font-black rounded-[20px] h-full text-lg">النشاط</TabsTrigger>
-            <TabsTrigger value="errors" className="px-12 font-black rounded-[20px] h-full text-lg">الأخطاء</TabsTrigger>
           </TabsList>
 
           <TabsContent value="users">
@@ -353,14 +312,11 @@ export default function AdminPage() {
                   <Input placeholder="بحث عن طالب..." className="h-14 pr-12 rounded-2xl bg-black border-white/10" />
                 </div>
               </div>
-              
               <div className="grid gap-6">
                 {usersList.map((u) => (
-                  <div key={u.id} className="flex flex-col md:flex-row justify-between items-center p-8 bg-white/[0.02] border border-white/5 rounded-3xl hover:border-primary/20 transition-all">
+                  <div key={u.id} className="flex flex-col md:flex-row justify-between items-center p-8 bg-white/[0.02] border border-white/5 rounded-3xl">
                     <div className="flex items-center gap-6">
-                      <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center font-black text-2xl text-primary">
-                        {u.displayName?.[0] || 'U'}
-                      </div>
+                      <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center font-black text-2xl text-primary">{u.displayName?.[0] || 'U'}</div>
                       <div>
                         <p className="font-black text-xl flex items-center gap-3">
                           {u.displayName || 'بدون اسم'}
@@ -369,33 +325,9 @@ export default function AdminPage() {
                         <p className="text-white/30 font-bold text-sm">{u.email}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-6 mt-6 md:mt-0">
-                      <div className="text-center">
-                        <p className="text-xl font-black text-primary">LVL {u.level || 1}</p>
-                        <p className="text-[10px] text-white/20 font-bold uppercase tracking-widest">المستوى</p>
-                      </div>
-                      <div className="w-px h-10 bg-white/5" />
-                      <div className="text-center">
-                        <p className="text-xl font-black text-white">{u.xp || 0}</p>
-                        <p className="text-[10px] text-white/20 font-bold uppercase tracking-widest">XP</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button onClick={() => { setSelectedUser(u); setEditNameModalOpen(true); setNewName(u.displayName); }} variant="ghost" className="h-12 px-4 rounded-xl font-black text-blue-400">
-                          <Edit2 className="w-4 h-4 ml-2" /> تعديل
-                        </Button>
-                        <Button 
-                          onClick={() => { 
-                            if(u.isBanned) handleUnbanUser(u);
-                            else { setSelectedUser(u); setBanModalOpen(true); }
-                          }} 
-                          variant="ghost" 
-                          className={cn("h-12 px-6 rounded-xl font-black", u.isBanned ? "text-green-500" : "text-destructive")}
-                        >
-                          <Ban className="w-4 h-4 ml-2" />
-                          {u.isBanned ? "فك الحظر" : "حظر"}
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(u.id)} className="text-white/20 hover:text-destructive"><Trash2 className="w-5 h-5" /></Button>
-                      </div>
+                    <div className="flex gap-2">
+                       <Button onClick={() => { setSelectedUser(u); setBanModalOpen(true); }} variant="ghost" className="h-12 px-6 rounded-xl font-black text-destructive"><Ban className="w-4 h-4 ml-2" /> حظر</Button>
+                       <Button variant="ghost" size="icon" onClick={() => deleteDoc(doc(db, "userProfiles", u.id))} className="text-white/20 hover:text-destructive"><Trash2 className="w-5 h-5" /></Button>
                     </div>
                   </div>
                 ))}
@@ -403,26 +335,105 @@ export default function AdminPage() {
             </Card>
           </TabsContent>
 
+          <TabsContent value="content" className="space-y-10">
+             <Tabs defaultValue="editor" className="space-y-6">
+                <TabsList className="bg-white/5 p-1 rounded-2xl">
+                   <TabsTrigger value="editor" className="px-8 rounded-xl font-bold">المحرر الأساسي</TabsTrigger>
+                   <TabsTrigger value="templates" className="px-8 rounded-xl font-bold">الأقسام الجاهزة (Templates)</TabsTrigger>
+                   <TabsTrigger value="all" className="px-8 rounded-xl font-bold">كل الأقسام الحالية</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="editor">
+                   <Card className="p-10 glass-card rounded-[50px] space-y-10 border-white/5">
+                      <div className="flex justify-between items-center border-b border-white/5 pb-8">
+                        <h2 className="text-3xl font-black">بناء قسم جديد</h2>
+                        <div className="flex gap-4">
+                          <Button variant="outline" onClick={handleSaveAsTemplate} disabled={isSubmitting} className="h-14 px-8 rounded-2xl font-bold border-white/10">حفظ كقالب جاهز 💾</Button>
+                          <Button onClick={handleSaveSection} disabled={isSubmitting} className="h-14 px-12 bg-primary text-white font-black rounded-2xl">نشر القسم 🚀</Button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <div className="space-y-3">
+                          <label className="text-xs font-bold uppercase text-primary">رقم القسم</label>
+                          <Input type="number" value={newSection.id || ''} onChange={(e) => setNewSection(p => ({ ...p, id: parseInt(e.target.value) }))} className="h-14 bg-black border-white/10" />
+                        </div>
+                        <div className="md:col-span-2 space-y-3">
+                          <label className="text-xs font-bold uppercase text-primary">عنوان القسم</label>
+                          <Input value={newSection.title || ''} onChange={(e) => setNewSection(p => ({ ...p, title: e.target.value }))} className="h-14 bg-black border-white/10" />
+                        </div>
+                      </div>
+                      <div className="space-y-8">
+                        <div className="flex justify-between items-center">
+                          <h3 className="text-xl font-black flex items-center gap-3"><HelpCircle className="text-primary" /> الأسئلة</h3>
+                          <Button onClick={() => setNewSection(prev => ({ ...prev, questions: [...(prev.questions || []), { id: `q-${Date.now()}`, question: '', options: ['', '', '', ''], correct: '', type: 'analogy' }] }))} variant="secondary" className="bg-primary/10 text-primary">إضافة سؤال</Button>
+                        </div>
+                        {newSection.questions?.map((q, i) => (
+                          <Card key={i} className="p-8 bg-black/50 border-white/5 rounded-[30px] space-y-6">
+                            <Input placeholder="نص السؤال" value={q.question} onChange={(e) => {
+                               const qs = [...(newSection.questions || [])];
+                               qs[i].question = e.target.value;
+                               setNewSection(p => ({ ...p, questions: qs }));
+                            }} className="text-xl font-black h-14 bg-black border-white/10" />
+                          </Card>
+                        ))}
+                      </div>
+                   </Card>
+                </TabsContent>
+
+                <TabsContent value="templates">
+                   <Card className="p-10 glass-card rounded-[50px] space-y-10 border-white/5">
+                      <h2 className="text-3xl font-black flex items-center gap-4"><Layers className="text-primary" /> قوالب الأقسام الجاهزة</h2>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {templates.map((t) => (
+                          <Card key={t.firebaseId} className="p-6 bg-white/[0.02] border-white/5 rounded-3xl space-y-4 hover:border-primary/40 transition-all">
+                             <div className="flex justify-between items-start">
+                               <Badge className="bg-primary/20 text-primary border-none">Template</Badge>
+                               <div className="flex gap-2">
+                                  <Button onClick={() => useTemplate(t)} size="icon" variant="ghost" className="text-blue-500"><Copy className="w-4 h-4" /></Button>
+                                  <Button onClick={() => handleDeleteTemplate(t.firebaseId)} size="icon" variant="ghost" className="text-rose-500"><Trash2 className="w-4 h-4" /></Button>
+                               </div>
+                             </div>
+                             <h3 className="text-xl font-black">{t.title}</h3>
+                             <p className="text-sm text-white/40">{t.questions?.length || 0} سؤال جاهز</p>
+                             <Button onClick={() => useTemplate(t)} className="w-full bg-primary/10 text-primary hover:bg-primary hover:text-white font-bold h-12 rounded-xl">استخدام القالب</Button>
+                          </Card>
+                        ))}
+                        {templates.length === 0 && <div className="col-span-full py-20 text-center text-white/20 font-black">لا توجد قوالب جاهزة حالياً</div>}
+                      </div>
+                   </Card>
+                </TabsContent>
+
+                <TabsContent value="all">
+                    <Card className="p-10 glass-card rounded-[50px] space-y-6 border-white/5">
+                       <h2 className="text-3xl font-black">الأقسام النشطة</h2>
+                       <div className="grid gap-4">
+                          {sections.map((s) => (
+                            <div key={s.id} className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl flex justify-between items-center">
+                               <div className="flex items-center gap-4">
+                                  <Badge className="bg-primary/20 text-primary">{s.id}</Badge>
+                                  <span className="font-black text-lg">{s.title}</span>
+                               </div>
+                               <div className="flex gap-2">
+                                  <Button variant="ghost" size="icon" className="text-white/20 hover:text-destructive"><Trash2 className="w-4 h-4" /></Button>
+                               </div>
+                            </div>
+                          ))}
+                       </div>
+                    </Card>
+                </TabsContent>
+             </Tabs>
+          </TabsContent>
+
           <TabsContent value="logs">
             <Card className="p-10 glass-card rounded-[50px] space-y-10 border-white/5">
-              <h2 className="text-3xl font-black flex items-center gap-4">
-                <History className="text-primary" /> سجل نشاط الأدمن
-              </h2>
+              <h2 className="text-3xl font-black flex items-center gap-4"><History className="text-primary" /> سجل النشاط</h2>
               <div className="space-y-4">
                 {activityLogs.map((log, i) => (
                   <div key={i} className="p-6 bg-white/[0.02] border border-white/5 rounded-3xl flex justify-between items-center">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-3">
-                        <Badge className={cn("border-none text-white", 
-                          log.action === 'BAN' ? "bg-rose-500" : 
-                          log.action === 'UNBAN' ? "bg-green-500" : "bg-blue-500"
-                        )}>
-                          {log.action === 'BAN' ? "حظر" : log.action === 'UNBAN' ? "فك حظر" : "تغيير اسم"}
-                        </Badge>
-                        <span className="font-black text-lg">{log.userName}</span>
-                      </div>
-                      <p className="text-sm text-white/40">السبب: {log.reason}</p>
-                      {log.duration && <p className="text-[10px] text-primary font-bold">المدة: {log.duration}</p>}
+                    <div className="flex items-center gap-3">
+                      <Badge className={cn("text-white", log.action === 'BAN' ? "bg-rose-500" : "bg-blue-500")}>{log.action}</Badge>
+                      <span className="font-black">{log.userName}</span>
+                      <span className="text-white/40"> - {log.reason}</span>
                     </div>
                     <p className="text-xs text-white/20">{log.timestamp?.toDate()?.toLocaleString()}</p>
                   </div>
@@ -430,163 +441,27 @@ export default function AdminPage() {
               </div>
             </Card>
           </TabsContent>
-
-          {/* ... بقية محتويات التابات (Content, Errors) كما هي ... */}
-          <TabsContent value="content" className="space-y-10">
-             <Card className="p-10 glass-card rounded-[50px] space-y-10 border-white/5">
-                <div className="flex justify-between items-center border-b border-white/5 pb-8">
-                  <h2 className="text-3xl font-black">إضافة نموذج جديد</h2>
-                  <Button onClick={handleSaveSection} disabled={isSubmitting} className="h-16 px-12 bg-primary text-white font-black rounded-2xl">
-                    {isSubmitting ? <Loader2 className="animate-spin" /> : "نشر النموذج 🚀"}
-                  </Button>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                  <div className="space-y-3">
-                    <label className="text-xs font-bold uppercase text-primary">رقم النموذج</label>
-                    <Input type="number" value={newSection.id || ''} onChange={(e) => setNewSection(p => ({ ...p, id: parseInt(e.target.value) }))} className="h-14 bg-black border-white/10" />
-                  </div>
-                  <div className="md:col-span-2 space-y-3">
-                    <label className="text-xs font-bold uppercase text-primary">عنوان النموذج</label>
-                    <Input value={newSection.title || ''} onChange={(e) => setNewSection(p => ({ ...p, title: e.target.value }))} className="h-14 bg-black border-white/10" />
-                  </div>
-                </div>
-                <div className="space-y-8">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-xl font-black flex items-center gap-3"><HelpCircle className="text-primary" /> الأسئلة</h3>
-                    <Button onClick={() => setNewSection(prev => ({ ...prev, questions: [...(prev.questions || []), { id: `q-${Date.now()}`, question: '', options: ['', '', '', ''], correct: '', type: 'analogy' }] }))} variant="secondary" className="bg-primary/10 text-primary">إضافة سؤال</Button>
-                  </div>
-                  {newSection.questions?.map((q, i) => (
-                    <Card key={i} className="p-8 bg-black/50 border-white/5 rounded-[30px] space-y-6">
-                      <Input placeholder="نص السؤال" value={q.question} onChange={(e) => {
-                         const qs = [...(newSection.questions || [])];
-                         qs[i].question = e.target.value;
-                         setNewSection(p => ({ ...p, questions: qs }));
-                      }} className="text-xl font-black h-14 bg-black border-white/10" />
-                      <div className="grid grid-cols-2 gap-4">
-                        {q.options.map((opt, oi) => (
-                          <Input key={oi} placeholder={`الخيار ${['أ', 'ب', 'ج', 'د'][oi]}`} value={opt} onChange={(e) => {
-                            const qs = [...(newSection.questions || [])];
-                            qs[i].options[oi] = e.target.value;
-                            setNewSection(p => ({ ...p, questions: qs }));
-                          }} className="bg-black border-white/10" />
-                        ))}
-                      </div>
-                      <Select value={q.correct} onValueChange={(val) => {
-                        const qs = [...(newSection.questions || [])];
-                        qs[i].correct = val;
-                        setNewSection(p => ({ ...p, questions: qs }));
-                      }}>
-                        <SelectTrigger className="h-12 bg-black border-green-500/20 text-green-500"><SelectValue placeholder="اختر الإجابة الصحيحة" /></SelectTrigger>
-                        <SelectContent>{q.options.map((o, idx) => o && <SelectItem key={idx} value={o}>{o}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </Card>
-                  ))}
-                </div>
-             </Card>
-          </TabsContent>
-
-          <TabsContent value="errors">
-            <Card className="p-10 glass-card rounded-[50px] space-y-10 border-white/5">
-               <h2 className="text-3xl font-black">مراجعة أخطاء الطلاب العامة</h2>
-               <div className="space-y-6">
-                 {errorLogs.map((log, i) => (
-                   <Card key={i} className="p-6 bg-white/[0.02] border-white/5 rounded-3xl space-y-4">
-                      <div className="flex justify-between">
-                         <Badge className="bg-rose-500/10 text-rose-500 border-none">خطأ {log.count || 1}</Badge>
-                         <p className="text-xs text-white/30">{log.lastOccurred?.toDate()?.toLocaleString()}</p>
-                      </div>
-                      <p className="text-xl font-black text-white">{log.questionData?.question}</p>
-                      <div className="p-4 rounded-xl bg-green-500/10 text-green-500 text-sm font-bold">
-                        الصحيح: {log.questionData?.correct}
-                      </div>
-                   </Card>
-                 ))}
-               </div>
-            </Card>
-          </TabsContent>
         </Tabs>
       </div>
 
-      {/* --- Ban Modal --- */}
       <Dialog open={banModalOpen} onOpenChange={setBanModalOpen}>
         <DialogContent className="glass-card border-rose-500/20 text-white rounded-[35px] max-w-lg p-10">
           <DialogHeader className="text-center space-y-4">
-            <div className="w-20 h-20 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto ring-4 ring-rose-500/20">
-              <Ban className="w-10 h-10 text-rose-500" />
-            </div>
             <DialogTitle className="text-3xl font-black">حظر طالب 🚫</DialogTitle>
-            <DialogDescription className="text-white/40 font-bold">
-              أنت على وشك حظر الطالب: <span className="text-white">{selectedUser?.displayName}</span>
-            </DialogDescription>
+            <DialogDescription className="text-white/40 font-bold">حظر: {selectedUser?.displayName}</DialogDescription>
           </DialogHeader>
           <div className="space-y-6 py-8">
-            <div className="space-y-3">
-              <label className="text-xs font-black uppercase text-rose-500 tracking-widest">مدة الحظر</label>
-              <Select value={banDuration} onValueChange={setBanDuration}>
-                <SelectTrigger className="h-14 bg-black/40 border-white/10 rounded-2xl">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1h">1 ساعة</SelectItem>
-                  <SelectItem value="1d">1 يوم</SelectItem>
-                  <SelectItem value="7d">7 أيام</SelectItem>
-                  <SelectItem value="perm">حظر نهائي ♾️</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-3">
-              <label className="text-xs font-black uppercase text-rose-500 tracking-widest">سبب الحظر (إجباري)</label>
-              <Textarea 
-                placeholder="اكتب سبب الحظر هنا..." 
-                value={banReason} 
-                onChange={(e) => setBanReason(e.target.value)}
-                className="min-h-[120px] bg-black/40 border-white/10 rounded-2xl p-4 text-lg"
-              />
-            </div>
+            <Select value={banDuration} onValueChange={setBanDuration}>
+              <SelectTrigger className="h-14 bg-black/40 border-white/10 rounded-2xl"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1h">1 ساعة</SelectItem>
+                <SelectItem value="1d">1 يوم</SelectItem>
+                <SelectItem value="perm">نهائي</SelectItem>
+              </SelectContent>
+            </Select>
+            <Textarea placeholder="سبب الحظر..." value={banReason} onChange={(e) => setBanReason(e.target.value)} className="min-h-[120px] bg-black/40 border-white/10 rounded-2xl" />
           </div>
-          <DialogFooter className="flex-col sm:flex-row gap-4">
-            <Button onClick={handleBanUser} className="w-full h-14 bg-rose-500 hover:bg-rose-600 text-white font-black text-lg rounded-2xl">
-              تأكيد الحظر 🛡️
-            </Button>
-            <Button onClick={() => setBanModalOpen(false)} variant="ghost" className="w-full h-14 text-white/40 font-black">إلغاء</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* --- Edit Name Modal --- */}
-      <Dialog open={editNameModalOpen} onOpenChange={setEditNameModalOpen}>
-        <DialogContent className="glass-card border-blue-500/20 text-white rounded-[35px] max-w-lg p-10">
-          <DialogHeader className="text-center space-y-4">
-            <div className="w-20 h-20 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto ring-4 ring-blue-500/20">
-              <Edit2 className="w-10 h-10 text-blue-500" />
-            </div>
-            <DialogTitle className="text-3xl font-black">تعديل اسم الطالب ✏️</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-6 py-8">
-            <div className="space-y-3">
-              <label className="text-xs font-black uppercase text-blue-500 tracking-widest">الاسم الجديد</label>
-              <Input 
-                value={newName} 
-                onChange={(e) => setNewName(e.target.value)}
-                className="h-14 bg-black/40 border-white/10 rounded-2xl"
-              />
-            </div>
-            <div className="space-y-3">
-              <label className="text-xs font-black uppercase text-blue-500 tracking-widest">سبب التعديل (إجباري)</label>
-              <Textarea 
-                placeholder="لماذا يتم تغيير الاسم؟" 
-                value={nameChangeReason} 
-                onChange={(e) => setNameChangeReason(e.target.value)}
-                className="min-h-[100px] bg-black/40 border-white/10 rounded-2xl"
-              />
-            </div>
-          </div>
-          <DialogFooter className="flex-col sm:flex-row gap-4">
-            <Button onClick={handleEditName} className="w-full h-14 bg-blue-500 hover:bg-blue-600 text-white font-black text-lg rounded-2xl">
-              حفظ التغييرات ✅
-            </Button>
-            <Button onClick={() => setEditNameModalOpen(false)} variant="ghost" className="w-full h-14 text-white/40 font-black">إلغاء</Button>
-          </DialogFooter>
+          <DialogFooter><Button onClick={handleBanUser} className="w-full h-14 bg-rose-500 text-white font-black rounded-2xl">تأكيد الحظر</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </main>

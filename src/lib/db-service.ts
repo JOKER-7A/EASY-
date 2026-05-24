@@ -14,12 +14,13 @@ import {
   updateDoc,
   increment,
   deleteDoc,
+  addDoc,
   Timestamp
 } from "firebase/firestore";
 import { Section, Question, sections as staticSections } from "./practice-data";
 
 /**
- * جلب الأقسام مع دمج البيانات الثابتة والمرفوعة
+ * جلب الأقسام مع دمج البيانات واستبعاد الأقسام المؤرشفة (216-219)
  */
 export const getSectionsFromDb = async (): Promise<Section[]> => {
   try {
@@ -31,31 +32,77 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
       dbSections = querySnapshot.docs.map(doc => ({
         firebaseId: doc.id,
         ...doc.data(),
-        // تحويل تاريخ الإنشاء إذا كان موجوداً أو وضع تاريخ افتراضي قديم للبيانات الثابتة
         createdAt: doc.data().createdAt || Timestamp.now()
       } as any));
     }
     
+    // IDs المطلوب أرشفتها وإخفاؤها من القائمة الأساسية
+    const archivedIds = [216, 217, 218, 219];
+    
     const combined = [...dbSections];
     staticSections.forEach(s => {
-      if (!combined.find(c => Number(c.id) === Number(s.id))) {
+      // لا تضف القسم إذا كان موجوداً في DB أو إذا كان من ضمن الـ IDs المطلوب إخفاؤها
+      if (!combined.find(c => Number(c.id) === Number(s.id)) && !archivedIds.includes(Number(s.id))) {
         combined.push({
           ...s,
-          createdAt: Timestamp.fromDate(new Date('2024-01-01')) // تاريخ قديم للأقسام الثابتة
+          createdAt: Timestamp.fromDate(new Date('2024-01-01'))
         });
       }
     });
     
-    return combined.sort((a, b) => Number(b.id) - Number(a.id));
+    // تصفية نهائية للأقسام الحية فقط
+    return combined
+      .filter(s => !archivedIds.includes(Number(s.id)))
+      .sort((a, b) => Number(b.id) - Number(a.id));
   } catch (error) {
     console.warn("Firestore error, falling back to static data", error);
-    return staticSections.map(s => ({ ...s, createdAt: Timestamp.fromDate(new Date('2024-01-01')) }));
+    const archivedIds = [216, 217, 218, 219];
+    return staticSections
+      .filter(s => !archivedIds.includes(Number(s.id)))
+      .map(s => ({ ...s, createdAt: Timestamp.fromDate(new Date('2024-01-01')) }));
+  }
+};
+
+/**
+ * نظام الأقسام الجاهزة (Templates)
+ */
+export const getTemplatesFromDb = async () => {
+  try {
+    const templatesRef = collection(db, "sectionTemplates");
+    const snapshot = await getDocs(query(templatesRef, orderBy("createdAt", "desc")));
+    return snapshot.docs.map(doc => ({ firebaseId: doc.id, ...doc.data() }));
+  } catch (e) {
+    console.error("Error fetching templates:", e);
+    return [];
+  }
+};
+
+export const saveTemplateToDb = async (template: any) => {
+  try {
+    const templatesRef = collection(db, "sectionTemplates");
+    const data = { 
+      ...template, 
+      isTemplate: true, 
+      createdAt: serverTimestamp() 
+    };
+    const docRef = await addDoc(templatesRef, data);
+    return docRef.id;
+  } catch (e) {
+    console.error("Error saving template:", e);
+    throw e;
+  }
+};
+
+export const deleteTemplateFromDb = async (templateId: string) => {
+  try {
+    await deleteDoc(doc(db, "sectionTemplates", templateId));
+  } catch (e) {
+    console.error("Error deleting template:", e);
   }
 };
 
 /**
  * تحديث XP المستخدم فوراً عند الإجابة
- * +10 للصواب، +5 للخطأ
  */
 export const updateUserXP = async (userId: string, isCorrect: boolean) => {
   try {
@@ -65,7 +112,7 @@ export const updateUserXP = async (userId: string, isCorrect: boolean) => {
     const userSnap = await getDoc(userRef);
     if (userSnap.exists()) {
       const currentXp = (userSnap.data().xp || 0) + xpGain;
-      const newLevel = Math.floor(currentXp / 500) + 1; // كل 500 نقطة مستوى جديد
+      const newLevel = Math.floor(currentXp / 500) + 1;
       
       await updateDoc(userRef, {
         xp: currentXp,
@@ -79,7 +126,7 @@ export const updateUserXP = async (userId: string, isCorrect: boolean) => {
 };
 
 /**
- * إدارة ملف المستخدم والسمات (Themes)
+ * إدارة ملف المستخدم
  */
 export const getUserProfile = async (userId: string, email?: string) => {
   if (!userId) return null;
@@ -184,7 +231,7 @@ export const toggleFavoriteInDb = async (userId: string, question: Question, sec
     if (existsIndex > -1) {
       const updated = favorites.filter((f: any) => f.id !== question.id);
       await updateDoc(userRef, { favorites: updated });
-      return false; // Removed
+      return false;
     } else {
       const newFav = {
         id: question.id,
@@ -197,7 +244,7 @@ export const toggleFavoriteInDb = async (userId: string, question: Question, sec
       };
       const updated = [...favorites, newFav];
       await updateDoc(userRef, { favorites: updated });
-      return true; // Added
+      return true;
     }
   } catch (e) { 
     console.error("Error toggling favorite:", e);
