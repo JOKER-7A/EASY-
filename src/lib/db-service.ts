@@ -261,13 +261,9 @@ export const saveAttemptToDb = async (userId: string | undefined, attempt: any) 
   } catch (e) {}
 };
 
-/**
- * تسجيل الأخطاء - نسخة محسنة ومستقرة ومضمونة الحفظ
- */
 export const saveErrorLogToDb = async (userId: string, question: Question, sectionTitle: string, userAnswer: string) => {
   if (!userId || !question?.id) return;
   try {
-    // إنشاء معرف فريد يمنع تكرار نفس السؤال في السجل لنفس المستخدم ويضمن التحديث
     const errorId = `err_${userId}_${question.id}`.replace(/[^a-zA-Z0-9_]/g, '_');
     const errorRef = doc(db, "errorLogs", errorId);
 
@@ -320,9 +316,6 @@ export const deleteErrorLog = async (logId: string) => {
   } catch (e) { return false; }
 };
 
-/**
- * تبديل المفضلة - نسخة نهائية ومضمونة الحفظ في Firebase
- */
 export const toggleFavoriteInDb = async (userId: string, question: Question, sectionTitle: string) => {
   if (!userId || !question?.id) return false;
   try {
@@ -334,14 +327,12 @@ export const toggleFavoriteInDb = async (userId: string, question: Question, sec
     const existingIndex = currentFavorites.findIndex((f: any) => String(f.id) === String(question.id));
     
     if (existingIndex !== -1) {
-      // إزالة دقيقة عن طريق فلترة المصفوفة بالكامل لضمان المزامنة
       const updatedFavorites = currentFavorites.filter((f: any) => String(f.id) !== String(question.id));
       await updateDoc(userRef, {
         favorites: updatedFavorites
       });
       return false;
     } else {
-      // إضافة كائن نظيف وبسيط يحتوي على كافة تفاصيل السؤال
       const newFav = {
         id: String(question.id),
         question: String(question.question),

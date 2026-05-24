@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -233,7 +234,7 @@ export default function AdminPage() {
     const userToChange = adminsList.find(a => a.id === userId) || usersList.find(u => u.id === userId);
     
     if (!canManageRole(currentUserRole, userToChange?.role || 'user')) {
-      toast({ title: "لا تملك صلاحية تعديل رتبة هذا المستخدم", variant: "destructive" });
+      toast({ title: "لا تملك صلاحية تعديل رتية هذا المستخدم", variant: "destructive" });
       return;
     }
 
