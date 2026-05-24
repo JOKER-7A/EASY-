@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
@@ -107,8 +108,8 @@ export default function Home() {
     const unsubAuth = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
+        const profileData = await getUserProfile(u.uid, u.email || '');
         const userRef = doc(db, "userProfiles", u.uid);
-        await getUserProfile(u.uid, u.email || '');
         
         const unsubProfile = onSnapshot(userRef, (docSnap) => {
           if (docSnap.exists()) {
@@ -159,11 +160,12 @@ export default function Home() {
     );
   }, [searchQuery, sections]);
 
-  const isNewSection = (section: Section) => {
-    if (!section.createdAt) return false;
-    const createdAt = section.createdAt.toDate ? section.createdAt.toDate() : new Date(section.createdAt);
-    return (new Date().getTime() - createdAt.getTime()) / (1000 * 3600) < 72;
-  };
+  const levelProgress = useMemo(() => {
+    if (!profile) return 0;
+    const currentXp = profile.xp || 0;
+    const progressInLevel = currentXp % 500;
+    return (progressInLevel / 500) * 100;
+  }, [profile]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -206,7 +208,7 @@ export default function Home() {
 
   const isAdmin = useMemo(() => {
     if (!profile) return false;
-    return ['owner', 'superAdmin', 'admin', 'editor', 'helper'].includes(profile.role);
+    return ['rootOwner', 'owner', 'superAdmin', 'admin', 'editor', 'helper'].includes(profile.role);
   }, [profile]);
 
   const isApproved = useMemo(() => {
@@ -284,7 +286,8 @@ export default function Home() {
     );
   }
 
-  if (user && (!profile?.displayName || !profile?.phoneNumber)) {
+  // شاشة الـ Onboarding الإجبارية
+  if (user && (!profile?.displayName || !profile?.phoneNumber || profile?.status === 'onboarding')) {
     return (
       <main className="min-h-screen bg-black flex items-center justify-center p-4 relative overflow-hidden">
         <div className="absolute inset-0 bg-mesh opacity-20" />
@@ -324,7 +327,7 @@ export default function Home() {
           </div>
           <div className="space-y-4">
             <h1 className="text-4xl font-black text-white">طلبك قيد المراجعة ⏳</h1>
-            <p className="text-xl text-white/60 leading-relaxed">أهلاً بك يا {profile.displayName}، لقد استلمنا طلبك وجاري مراجعته من قبل الدكتور محمود. سيتم تفعيل حسابك قريباً.</p>
+            <p className="text-xl text-white/60 leading-relaxed">أهلاً بك يا {profile?.displayName}، لقد استلمنا طلبك وجاري مراجعته من قبل الدكتور محمود. سيتم تفعيل حسابك قريباً.</p>
           </div>
           <div className="pt-6">
             <Button onClick={() => signOut(auth)} variant="outline" className="h-14 px-10 rounded-2xl border-white/10 text-white font-black">
@@ -363,78 +366,89 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-background text-white flex flex-col relative overflow-x-hidden bg-mesh" dir="rtl">
       <nav className="fixed top-0 left-0 w-full z-[100] px-4 md:px-8 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between p-3 glass-card rounded-[30px]">
+        <div className="max-w-7xl mx-auto flex items-center justify-between p-3 glass-card rounded-[30px] border-primary/20">
           <div className="flex items-center gap-4">
-            <Avatar className="w-12 h-12 border-2 border-primary/30">
+            <Avatar className="w-14 h-14 border-2 border-primary/30 ring-2 ring-primary/10">
               <AvatarImage src={user.photoURL || ''} />
-              <AvatarFallback className="bg-primary/20 text-primary font-black">{profile?.displayName?.[0] || 'U'}</AvatarFallback>
+              <AvatarFallback className="bg-primary/20 text-primary font-black text-xl">{profile?.displayName?.[0] || 'U'}</AvatarFallback>
             </Avatar>
-            <div className="hidden sm:block">
-              <p className="font-black text-white/90 text-sm flex items-center gap-2">
-                {profile?.displayName || 'طالب EASY'} <RoleBadgeUI role={profile?.role || 'user'} />
-              </p>
+            <div>
               <div className="flex items-center gap-2">
-                 <Badge className="bg-primary text-white text-[9px] px-1.5 py-0">LVL {profile?.level || 1}</Badge>
-                 <span className="text-[9px] text-white/30">{profile?.xp || 0} XP</span>
+                <p className="font-black text-white/90 text-sm md:text-lg flex items-center gap-2">
+                  {profile?.displayName || 'طالب EASY'} <RoleBadgeUI role={profile?.role || 'user'} />
+                </p>
+              </div>
+              <div className="flex flex-col gap-1 mt-1">
+                <div className="flex items-center gap-3">
+                   <Badge className="bg-primary text-white text-[10px] font-black px-2 h-5">LEVEL {profile?.level || 1}</Badge>
+                   <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{profile?.xp || 0} / {(profile?.level || 1) * 500} XP</span>
+                </div>
+                <div className="w-32 md:w-48">
+                  <Progress value={levelProgress} className="h-1.5 bg-white/5 border-none" />
+                </div>
               </div>
             </div>
           </div>
           <div className="flex items-center gap-1 sm:gap-2">
-            <Button onClick={() => openOverlay('themes')} variant="ghost" size="icon" className="w-9 h-9 rounded-xl text-primary"><Palette className="w-4 h-4" /></Button>
-            <Button onClick={() => openOverlay('leaderboard')} variant="ghost" size="icon" className="w-9 h-9 rounded-xl text-amber-500"><Trophy className="w-4 h-4" /></Button>
-            <Button onClick={() => openOverlay('favorites')} variant="ghost" size="icon" className="w-9 h-9 rounded-xl text-rose-500"><Heart className="w-4 h-4" /></Button>
-            <Button onClick={() => openOverlay('errors')} variant="ghost" size="icon" className="w-9 h-9 rounded-xl text-blue-500"><History className="w-4 h-4" /></Button>
+            <Button onClick={() => openOverlay('themes')} variant="ghost" size="icon" className="w-10 h-10 rounded-xl text-primary hover:bg-primary/10"><Palette className="w-5 h-5" /></Button>
+            <Button onClick={() => openOverlay('leaderboard')} variant="ghost" size="icon" className="w-10 h-10 rounded-xl text-amber-500 hover:bg-amber-500/10"><Trophy className="w-5 h-5" /></Button>
+            <Button onClick={() => openOverlay('favorites')} variant="ghost" size="icon" className="w-10 h-10 rounded-xl text-rose-500 hover:bg-rose-500/10"><Heart className="w-5 h-5" /></Button>
+            <Button onClick={() => openOverlay('errors')} variant="ghost" size="icon" className="w-10 h-10 rounded-xl text-blue-500 hover:bg-blue-500/10"><History className="w-5 h-5" /></Button>
             {isAdmin && (
-              <Button onClick={() => window.location.href = '/admin'} variant="ghost" size="icon" className="w-9 h-9 rounded-xl text-emerald-400 border border-emerald-500/20"><ShieldCheck className="w-4 h-4" /></Button>
+              <Button onClick={() => window.location.href = '/admin'} variant="ghost" size="icon" className="w-10 h-10 rounded-xl text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/10"><ShieldCheck className="w-5 h-5" /></Button>
             )}
-            <Button onClick={() => signOut(auth)} variant="ghost" size="icon" className="w-9 h-9 rounded-xl text-destructive"><LogOut className="w-4 h-4" /></Button>
+            <Button onClick={() => signOut(auth)} variant="ghost" size="icon" className="w-10 h-10 rounded-xl text-destructive hover:bg-destructive/10"><LogOut className="w-5 h-5" /></Button>
           </div>
         </div>
       </nav>
 
-      <div className="container mx-auto px-4 pt-32 md:pt-48 pb-10 text-center space-y-6 relative z-10">
-        <h1 className="text-6xl sm:text-8xl md:text-[10rem] text-easy-premium animate-in fade-in slide-in-from-top-10 duration-1000">
-          EASY
-        </h1>
-        <p className="text-lg md:text-2xl font-black text-white/40 tracking-wide animate-pulse">تغلّب على نفسك <span className="text-white glow-text italic">كل يوم</span> 💎</p>
+      <div className="container mx-auto px-4 pt-40 md:pt-56 pb-10 text-center space-y-8 relative z-10">
+        <div className="space-y-2">
+          <h1 className="text-7xl sm:text-9xl md:text-[12rem] text-easy-premium animate-in fade-in slide-in-from-top-10 duration-1000 select-none">
+            EASY
+          </h1>
+          <p className="text-xl md:text-3xl font-black text-white/40 tracking-tight animate-pulse">تغلّب على نفسك <span className="text-white glow-text italic">كل يوم</span> 💎</p>
+        </div>
         
         {isApproved && whatsappLink && (
           <div className="pt-4 animate-in fade-in zoom-in duration-700">
             <Button 
               onClick={() => window.open(whatsappLink, '_blank')}
-              className="h-16 px-8 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xl flex gap-3 mx-auto shadow-[0_0_30px_rgba(16,185,129,0.4)]"
+              className="h-18 px-10 rounded-3xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xl flex gap-4 mx-auto shadow-[0_0_40px_rgba(16,185,129,0.5)] transition-all hover:scale-105 active:scale-95"
             >
-              <MessageCircle className="w-6 h-6" /> انضم لمجموعة الواتساب الرسمية
+              <MessageCircle className="w-7 h-7" /> انضم لمجموعة الواتساب الرسمية
             </Button>
           </div>
         )}
 
         <div className="max-w-2xl mx-auto pt-6 relative group px-4">
-          <Search className="absolute right-10 top-1/2 -translate-y-1/2 text-white/20 w-5 h-5" />
-          <Input placeholder="ابحث عن نموذج تدريبي..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="h-14 w-full rounded-2xl bg-white/[0.02] border-white/10 pr-14 text-lg font-bold transition-all focus:border-primary/40" />
+          <Search className="absolute right-10 top-1/2 -translate-y-1/2 text-white/20 w-6 h-6" />
+          <Input placeholder="ابحث عن نموذج تدريبي..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="h-16 w-full rounded-2xl bg-white/[0.03] border-white/10 pr-16 text-xl font-bold transition-all focus:border-primary/40 focus:bg-white/[0.05]" />
         </div>
       </div>
 
-      <section className="container mx-auto px-4 md:px-8 pb-20 grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
+      <section className="container mx-auto px-4 md:px-8 pb-32 grid grid-cols-1 md:grid-cols-2 gap-8">
         {filteredSections.map((section) => (
-          <Card key={section.firebaseId || section.id} className="group glass-card rounded-[35px] p-6 md:p-8 relative overflow-hidden border-white/5">
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-6 relative z-10">
-              <div className="text-center sm:text-right space-y-3">
-                <div className="flex items-center justify-center sm:justify-start gap-2">
-                  <Badge className="bg-primary/20 text-primary border-none font-black text-[10px]">نموذج {section.id}</Badge>
-                  {isNewSection(section) && <Badge className="bg-amber-500/20 text-amber-500 border-none animate-pulse text-[10px]">جديد ✨</Badge>}
+          <Card key={section.firebaseId || section.id} className="group glass-card rounded-[40px] p-8 md:p-10 relative overflow-hidden border-white/5 hover:border-primary/30">
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-8 relative z-10">
+              <div className="text-center sm:text-right space-y-4">
+                <div className="flex items-center justify-center sm:justify-start gap-3">
+                  <Badge className="bg-primary/20 text-primary border-none font-black text-xs px-3">نموذج {section.id}</Badge>
+                  {section.createdAt && (new Date().getTime() - (section.createdAt.toDate ? section.createdAt.toDate() : new Date(section.createdAt)).getTime()) / (1000 * 3600) < 72 && (
+                    <Badge className="bg-amber-500/20 text-amber-500 border-none animate-pulse text-xs px-3 font-black">جديد ✨</Badge>
+                  )}
                 </div>
-                <div className="flex flex-col">
-                  <h2 className="text-xl md:text-3xl font-black group-hover:text-primary transition-colors">{section.title}</h2>
-                  {section.description && <p className="text-white/40 text-xs font-bold mt-1 line-clamp-1">{section.description}</p>}
+                <div className="space-y-1">
+                  <h2 className="text-2xl md:text-4xl font-black group-hover:text-primary transition-colors leading-tight">{section.title}</h2>
+                  {section.description && <p className="text-white/30 text-sm font-bold mt-1 line-clamp-1">{section.description}</p>}
                 </div>
-                <div className="flex justify-center sm:justify-start items-center gap-4 text-white/20 text-xs font-bold">
-                  <span className="flex items-center gap-1.5"><Zap className="w-3.5 h-3.5" /> {section.questions?.length || 0} سؤال</span>
-                  <span className="flex items-center gap-1.5"><History className="w-3.5 h-3.5" /> {section.duration} دقيقة</span>
+                <div className="flex justify-center sm:justify-start items-center gap-6 text-white/20 text-sm font-black uppercase tracking-wider">
+                  <span className="flex items-center gap-2"><Zap className="w-4 h-4 text-amber-500/50" /> {section.questions?.length || 0} سؤال</span>
+                  <span className="flex items-center gap-2"><Clock className="w-4 h-4 text-blue-500/50" /> {section.duration} دقيقة</span>
                 </div>
               </div>
-              <Button onClick={() => { setSelectedSection(section); setActiveView('landing'); setTimeout(() => setActiveView('practice'), 50); }} className="w-full sm:w-auto h-16 px-8 rounded-2xl text-xl font-black bg-primary text-white shadow-xl hover:scale-105 transition-all">
-                ابدأ <ArrowRight className="mr-2 w-6 h-6" />
+              <Button onClick={() => { setSelectedSection(section); setActiveView('landing'); setTimeout(() => setActiveView('practice'), 50); }} className="w-full sm:w-auto h-20 px-10 rounded-3xl text-2xl font-black bg-primary text-white shadow-2xl hover:scale-110 active:scale-95 transition-all shadow-primary/20">
+                ابدأ <ArrowRight className="mr-3 w-8 h-8" />
               </Button>
             </div>
           </Card>
@@ -444,50 +458,52 @@ export default function Home() {
       {activeOverlay && (
         <div className="fixed inset-0 z-[500] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={() => setActiveOverlay(null)} />
-          <Card className="w-full max-w-4xl max-h-[85vh] glass-card rounded-[40px] relative z-10 flex flex-col border-primary/20">
-            <div className="p-8 border-b border-white/5 flex items-center justify-between">
-              <h2 className="text-2xl font-black">{activeOverlay === 'themes' ? "مركز الثيمات" : activeOverlay === 'leaderboard' ? "نخبة EASY" : activeOverlay === 'errors' ? "سجل الأخطاء" : "المفضلة"}</h2>
-              <Button variant="ghost" size="icon" className="rounded-full w-10 h-10" onClick={() => setActiveOverlay(null)}><X className="w-6 h-6" /></Button>
+          <Card className="w-full max-w-4xl max-h-[85vh] glass-card rounded-[50px] relative z-10 flex flex-col border-primary/20">
+            <div className="p-10 border-b border-white/5 flex items-center justify-between">
+              <h2 className="text-3xl font-black">{activeOverlay === 'themes' ? "مركز الثيمات" : activeOverlay === 'leaderboard' ? "نخبة EASY" : activeOverlay === 'errors' ? "سجل الأخطاء" : "المفضلة"}</h2>
+              <Button variant="ghost" size="icon" className="rounded-full w-12 h-12 hover:bg-white/5" onClick={() => setActiveOverlay(null)}><X className="w-7 h-7" /></Button>
             </div>
-            <ScrollArea className="flex-1 p-8">
+            <ScrollArea className="flex-1 p-10">
               {activeOverlay === 'themes' ? (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
                   {THEMES.map((t) => (
-                    <button key={t.name} onClick={() => changeTheme(t.value)} className={cn("p-4 rounded-[25px] glass-card flex flex-col items-center gap-3 transition-all hover:scale-105", profile?.theme === t.value && "border-primary shadow-glow")}>
-                      <div className="w-12 h-12 rounded-full" style={{ backgroundColor: t.color }} />
-                      <span className="font-black text-xs">{t.name}</span>
+                    <button key={t.name} onClick={() => changeTheme(t.value)} className={cn("p-6 rounded-[35px] glass-card flex flex-col items-center gap-4 transition-all hover:scale-105", profile?.theme === t.value && "border-primary shadow-[0_0_30px_rgba(147,51,234,0.3)]")}>
+                      <div className="w-16 h-16 rounded-full ring-4 ring-white/10" style={{ backgroundColor: t.color }} />
+                      <span className="font-black text-sm uppercase tracking-widest">{t.name}</span>
                     </button>
                   ))}
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {overlayData.length === 0 ? (
-                    <div className="text-center py-20 text-white/20 font-black">لا يوجد بيانات حالياً</div>
+                    <div className="text-center py-24 text-white/10 font-black text-2xl">لا يوجد بيانات حالياً</div>
                   ) : (
                     overlayData.map((item, idx) => (
-                      <Card key={idx} className="p-6 glass-card rounded-[30px] border-white/5 space-y-4">
+                      <Card key={idx} className="p-8 glass-card rounded-[35px] border-white/5 space-y-6 hover:border-primary/20">
                         <div className="flex justify-between items-start">
-                          <div className="flex gap-4">
-                             <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-black text-xs">{idx + 1}</div>
+                          <div className="flex gap-6">
+                             <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-black text-lg shadow-inner">{idx + 1}</div>
                              <div>
-                                <p className="font-black text-lg leading-tight flex items-center gap-2">
+                                <p className="font-black text-xl leading-tight flex items-center gap-3">
                                   {item.displayName || item.questionData?.question || item.question}
                                   {item.role && <RoleBadgeUI role={item.role} />}
                                 </p>
-                                <p className="text-white/20 text-[10px] mt-1">{item.xp ? `${item.xp} XP` : item.questionData?.sectionTitle || "مراجعة"}</p>
+                                <p className="text-white/20 text-xs font-bold mt-2 tracking-widest uppercase">
+                                  {item.xp !== undefined ? `${item.xp} XP | LEVEL ${item.level || 1}` : item.questionData?.sectionTitle || "مراجعة"}
+                                </p>
                              </div>
                           </div>
-                          {activeOverlay === 'errors' && <Button variant="ghost" size="icon" onClick={() => deleteErrorLog(item.id)} className="text-destructive"><Trash2 className="w-4 h-4" /></Button>}
-                          {activeOverlay === 'favorites' && <Badge className="bg-primary/20 text-primary border-none">⭐</Badge>}
+                          {activeOverlay === 'errors' && <Button variant="ghost" size="icon" onClick={() => deleteErrorLog(item.id)} className="text-destructive hover:bg-destructive/10 rounded-xl"><Trash2 className="w-5 h-5" /></Button>}
+                          {activeOverlay === 'favorites' && <Badge className="bg-primary/20 text-primary border-none text-lg">⭐</Badge>}
                         </div>
                         {(activeOverlay === 'errors' || activeOverlay === 'favorites') && (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
                             {(item.questionData?.options || item.options)?.map((opt: string, i: number) => (
                               <div key={i} className={cn(
-                                "p-3 rounded-xl text-xs font-bold border",
-                                opt === (item.questionData?.correct || item.correct) ? "bg-green-500/10 border-green-500/30 text-green-500" : "bg-white/5 border-white/5 text-white/40"
+                                "p-4 rounded-2xl text-sm font-black border-2 transition-all",
+                                opt === (item.questionData?.correct || item.correct) ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : "bg-white/[0.02] border-white/5 text-white/30"
                               )}>
-                                {['أ', 'ب', 'ج', 'د'][i]}. {opt}
+                                <span className="opacity-40 ml-3">{['أ', 'ب', 'ج', 'د'][i]}</span> {opt}
                               </div>
                             ))}
                           </div>
@@ -502,20 +518,20 @@ export default function Home() {
         </div>
       )}
 
-      <footer className="text-center py-24 opacity-60 space-y-6">
-        <div className="flex flex-col items-center gap-2">
-          <p className="text-dr-mahmoud">DR. MAHMOUD ABD EL RAZEK</p>
-          <div className="h-0.5 w-20 bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
+      <footer className="text-center py-32 opacity-60 space-y-8 bg-black/40 backdrop-blur-3xl mt-20 border-t border-white/5">
+        <div className="flex flex-col items-center gap-3">
+          <p className="text-dr-mahmoud text-3xl md:text-5xl">DR. MAHMOUD ABD EL RAZEK</p>
+          <div className="h-0.5 w-32 bg-gradient-to-r from-transparent via-amber-400/50 to-transparent" />
           
           <button 
             onClick={() => window.location.href = '/admin'}
-            className="mt-4 p-2 rounded-full hover:bg-white/5 transition-all group focus:outline-none"
+            className="mt-6 p-3 rounded-2xl hover:bg-white/5 transition-all group focus:outline-none"
             title="Admin Panel"
           >
-            <ShieldCheck className="w-5 h-5 text-primary/40 group-hover:text-primary transition-colors filter drop-shadow(0 0 8px hsla(var(--primary), 0.3))" />
+            <ShieldCheck className="w-6 h-6 text-primary/30 group-hover:text-primary transition-colors filter drop-shadow(0 0 10px hsla(var(--primary), 0.4))" />
           </button>
         </div>
-        <p className="text-[10px] font-bold uppercase tracking-[0.5em] text-white/30">Easy Prep Master &copy; 2024</p>
+        <p className="text-[11px] font-black uppercase tracking-[0.6em] text-white/20">Easy Prep Master &copy; 2024</p>
       </footer>
     </main>
   );

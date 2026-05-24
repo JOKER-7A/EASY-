@@ -253,6 +253,11 @@ export default function AdminPage() {
       if (snap.empty) {
         toast({ title: "المستخدم غير موجود", variant: "destructive" });
       } else {
+        const targetUser = snap.docs[0].data();
+        if (targetUser.role === 'rootOwner') {
+          toast({ title: "لا يمكن تعديل المالك الجذري", variant: "destructive" });
+          return;
+        }
         const userId = snap.docs[0].id;
         await handleRoleChange(userId, 'admin');
         setAdminSearchEmail('');
@@ -380,7 +385,11 @@ export default function AdminPage() {
 
   const handleBanUser = async () => {
     if (!banReason.trim()) {
-      toast({ title: "يرجى إدخال سبب الحظر", variant: "destructive" });
+      toast({ title: "يرجى إدخل سبب الحظر", variant: "destructive" });
+      return;
+    }
+    if (selectedUser.role === 'rootOwner') {
+      toast({ title: "لا يمكن حظر المالك الجذري", variant: "destructive" });
       return;
     }
     setIsSubmitting(true);
@@ -420,6 +429,10 @@ export default function AdminPage() {
     if (!newName.trim() || !nameChangeReason.trim()) {
       toast({ title: "يرجى إكمال الحقول الإجبارية", variant: "destructive" });
       return;
+    }
+    if (selectedUser.role === 'rootOwner' && currentUserRole !== 'rootOwner') {
+       toast({ title: "لا تملك صلاحية تعديل بيانات المالك الجذري", variant: "destructive" });
+       return;
     }
     setIsSubmitting(true);
     try {
@@ -573,22 +586,26 @@ export default function AdminPage() {
             <Card className="p-6 md:p-10 glass-card rounded-[40px] md:rounded-[50px] space-y-10 border-white/5">
               <h2 className="text-2xl md:text-3xl font-black flex items-center gap-4">المستخدمين الجدد ⏳</h2>
               <div className="grid gap-6">
-                {pendingUsers.map((u) => (
-                  <div key={u.id} className="flex flex-col md:flex-row justify-between items-center p-6 md:p-8 bg-white/[0.02] border border-white/5 rounded-3xl gap-6">
-                    <div className="flex items-center gap-6 w-full">
-                      <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center font-black text-xl md:text-2xl text-amber-500 shrink-0">{u.displayName?.[0] || '?' }</div>
-                      <div className="overflow-hidden">
-                        <p className="font-black text-lg md:text-xl truncate">{u.displayName || 'مستكشف جديد'}</p>
-                        <p className="text-white/30 font-bold text-xs md:text-sm truncate">{u.email}</p>
-                        <p className="text-amber-500/60 font-black text-[10px] md:text-xs mt-1">📞 {u.phoneNumber || 'لا يوجد رقم'}</p>
+                {pendingUsers.length === 0 ? (
+                  <div className="py-20 text-center text-white/20 font-black">لا يوجد طلبات معلقة</div>
+                ) : (
+                  pendingUsers.map((u) => (
+                    <div key={u.id} className="flex flex-col md:flex-row justify-between items-center p-6 md:p-8 bg-white/[0.02] border border-white/5 rounded-3xl gap-6">
+                      <div className="flex items-center gap-6 w-full">
+                        <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center font-black text-xl md:text-2xl text-amber-500 shrink-0">{u.displayName?.[0] || '?' }</div>
+                        <div className="overflow-hidden">
+                          <p className="font-black text-lg md:text-xl truncate">{u.displayName || 'مستكشف جديد'}</p>
+                          <p className="text-white/30 font-bold text-xs md:text-sm truncate">{u.email}</p>
+                          <p className="text-amber-500/60 font-black text-[10px] md:text-xs mt-1">📞 {u.phoneNumber || 'لا يوجد رقم'}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-4 w-full md:w-auto">
+                        <Button onClick={() => handleUserApproval(u.id, 'approved')} className="flex-1 md:flex-none h-12 md:h-14 px-6 md:px-8 rounded-2xl bg-emerald-500 text-white font-black hover:bg-emerald-600 text-sm"><CheckCircle className="ml-2 w-4 h-4 md:w-5 md:h-5" /> قبول</Button>
+                        <Button onClick={() => handleUserApproval(u.id, 'rejected')} variant="ghost" className="flex-1 md:flex-none h-12 md:h-14 px-6 md:px-8 rounded-2xl text-rose-500 hover:bg-rose-500/10 font-black text-sm"><XIcon className="ml-2 w-4 h-4 md:w-5 md:h-5" /> رفض</Button>
                       </div>
                     </div>
-                    <div className="flex gap-4 w-full md:w-auto">
-                       <Button onClick={() => handleUserApproval(u.id, 'approved')} className="flex-1 md:flex-none h-12 md:h-14 px-6 md:px-8 rounded-2xl bg-emerald-500 text-white font-black hover:bg-emerald-600 text-sm"><CheckCircle className="ml-2 w-4 h-4 md:w-5 md:h-5" /> قبول</Button>
-                       <Button onClick={() => handleUserApproval(u.id, 'rejected')} variant="ghost" className="flex-1 md:flex-none h-12 md:h-14 px-6 md:px-8 rounded-2xl text-rose-500 hover:bg-rose-500/10 font-black text-sm"><XIcon className="ml-2 w-4 h-4 md:w-5 md:h-5" /> رفض</Button>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </Card>
           </TabsContent>

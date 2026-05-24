@@ -43,6 +43,9 @@ export const canManageRole = (currentUserRole: string, targetUserRole: string) =
   const currentPower = ROLE_HIERARCHY[currentUserRole] || 0;
   const targetPower = ROLE_HIERARCHY[targetUserRole] || 0;
   
+  // حماية الـ Root Owner من أي محاولة تعديل من رتبة أدنى
+  if (targetUserRole === 'rootOwner') return false;
+  
   // لا يمكن لأي رتبة أخرى إدارة من هم في نفس مستواها أو أعلى
   return currentPower > targetPower;
 };
@@ -183,9 +186,9 @@ export const getUserProfile = async (userId: string, email?: string) => {
         return { id: userSnap.id, ...userData, role: 'rootOwner', status: 'approved' };
       }
       
-      // تحويل أي صاحب رتبة rootOwner أو owner قديم ليس المالك الأساسي إلى رتبة أدنى
-      if (!isRootOwner && (userData.role === 'rootOwner' || userData.role === 'owner')) {
-        await updateDoc(userRef, { role: 'superAdmin' });
+      // حماية الـ Root Owner من أي محاولة تغيير في بياناته
+      if (!isRootOwner && (userData.role === 'rootOwner')) {
+        await updateDoc(userRef, { role: 'superAdmin' }); // تحويل أي رتبة rootOwner غير حقيقية
         return { id: userSnap.id, ...userData, role: 'superAdmin' };
       }
       
@@ -198,7 +201,7 @@ export const getUserProfile = async (userId: string, email?: string) => {
         phoneNumber: '', 
         email: lowerEmail,
         createdAt: serverTimestamp(),
-        status: isRootOwner ? 'approved' : 'pending', 
+        status: isRootOwner ? 'approved' : 'onboarding', 
         role: isRootOwner ? 'rootOwner' : 'user',
         favorites: [],
         isBanned: false,
@@ -227,8 +230,12 @@ export const updateOnboardingData = async (userId: string, name: string, phone: 
   }
 };
 
-export const updateUserStatus = async (userId: string, status: 'approved' | 'rejected' | 'pending') => {
+export const updateUserStatus = async (userId: string, status: 'approved' | 'rejected' | 'pending' | 'onboarding') => {
   try {
+    // التحقق من أن المستخدم المراد تعديل حالته ليس الـ Root Owner
+    const userSnap = await getDoc(doc(db, "userProfiles", userId));
+    if (userSnap.exists() && userSnap.data().role === 'rootOwner') return false;
+
     const userRef = doc(db, "userProfiles", userId);
     await updateDoc(userRef, { status });
     return true;
@@ -239,6 +246,10 @@ export const updateUserStatus = async (userId: string, status: 'approved' | 'rej
 
 export const updateUserRole = async (userId: string, role: string) => {
   try {
+    // حماية الـ Root Owner من تعديل رتبته
+    const userSnap = await getDoc(doc(db, "userProfiles", userId));
+    if (userSnap.exists() && userSnap.data().role === 'rootOwner') return false;
+
     const userRef = doc(db, "userProfiles", userId);
     await updateDoc(userRef, { 
       role,
