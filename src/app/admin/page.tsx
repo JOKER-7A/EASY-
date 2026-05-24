@@ -409,6 +409,10 @@ export default function AdminPage() {
     }
   };
 
+  const isOwnerOrSuper = useMemo(() => {
+    return currentUserRole === 'owner' || currentUserRole === 'superAdmin';
+  }, [currentUserRole]);
+
   if (loading) return (
     <div className="min-h-screen bg-black flex items-center justify-center">
       <Loader2 className="animate-spin text-primary w-12 h-12" />
@@ -447,8 +451,6 @@ export default function AdminPage() {
       </main>
     );
   }
-
-  const isOwnerOrSuper = currentUserRole === 'owner' || currentUserRole === 'superAdmin';
 
   return (
     <main className="min-h-screen bg-black p-4 md:p-8 lg:p-12 text-white bg-mesh" dir="rtl">
@@ -490,7 +492,7 @@ export default function AdminPage() {
         </div>
 
         <Tabs defaultValue="requests" className="space-y-10">
-          <TabsList className="bg-white/5 border border-white/5 p-1.5 h-auto rounded-[25px] md:rounded-[30px] w-full flex flex-wrap justify-start md:justify-center overflow-hidden">
+          <TabsList className="bg-white/5 border border-white/5 p-1.5 h-auto rounded-[25px] md:rounded-[30px] w-full flex flex-wrap justify-start md:justify-center">
             <TabsTrigger value="requests" className="px-4 md:px-8 py-2 md:py-4 font-black rounded-[15px] md:rounded-[20px] text-sm md:text-lg flex gap-2">الطلبات {stats.requests > 0 && <Badge className="bg-amber-500 text-[10px]">{stats.requests}</Badge>}</TabsTrigger>
             <TabsTrigger value="users" className="px-4 md:px-8 py-2 md:py-4 font-black rounded-[15px] md:rounded-[20px] text-sm md:text-lg">الطلاب</TabsTrigger>
             <TabsTrigger value="content" className="px-4 md:px-8 py-2 md:py-4 font-black rounded-[15px] md:rounded-[20px] text-sm md:text-lg">إدارة المحتوى</TabsTrigger>
@@ -861,6 +863,65 @@ export default function AdminPage() {
               </div>
             </Card>
           </TabsContent>
+
+          <TabsContent value="admins">
+            <Card className="p-6 md:p-10 glass-card rounded-[40px] md:rounded-[50px] space-y-10 border-white/5">
+              <div className="flex flex-col md:flex-row justify-between items-center border-b border-white/5 pb-8 gap-6">
+                <h2 className="text-2xl md:text-3xl font-black flex items-center gap-4"><Crown className="text-primary" /> إدارة المشرفين</h2>
+                <div className="flex gap-4 w-full md:w-auto">
+                  <Input 
+                    placeholder="إيميل المستخدم لإضافته..." 
+                    value={adminSearchEmail} 
+                    onChange={(e) => setAdminSearchEmail(e.target.value)}
+                    className="h-14 rounded-2xl bg-black border-white/10 flex-1 md:w-64" 
+                  />
+                  <Button onClick={handleAddAdminByEmail} disabled={isSubmitting} className="h-14 px-8 bg-primary rounded-2xl font-black">ترقية مشرف 🚀</Button>
+                </div>
+              </div>
+              
+              <div className="grid gap-6">
+                {adminsList.map((admin) => (
+                  <div key={admin.id} className="flex flex-col md:flex-row justify-between items-center p-6 md:p-8 bg-white/[0.02] border border-white/5 rounded-3xl gap-6">
+                    <div className="flex items-center gap-6 w-full">
+                      <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-primary/20 flex items-center justify-center shrink-0">
+                        {admin.role === 'owner' ? <Crown className="text-amber-500 w-6 h-6 md:w-8 md:h-8" /> : <ShieldCheck className="text-primary w-6 h-6 md:w-8 md:h-8" />}
+                      </div>
+                      <div className="overflow-hidden">
+                        <div className="flex items-center gap-2">
+                           <p className="font-black text-lg md:text-xl truncate">{admin.displayName || 'مشرف'}</p>
+                           {admin.role === 'owner' && <Badge className="bg-amber-500/20 text-amber-500 border-none text-[10px]">المالك</Badge>}
+                        </div>
+                        <p className="text-white/30 font-bold text-xs md:text-sm truncate">{admin.email}</p>
+                        <div className="flex items-center gap-2 mt-1 text-white/20 text-[10px] font-bold">
+                          <Calendar className="w-3 h-3" />
+                          <span>تاريخ التعيين: {admin.createdAt?.toDate ? admin.createdAt.toDate().toLocaleDateString('ar-SA') : 'غير معروف'}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col items-end gap-2 w-full md:w-auto">
+                      <label className="text-[10px] font-bold text-white/40 uppercase">الصلاحية الحالية</label>
+                      <Select 
+                        disabled={admin.role === 'owner' || (admin.role === 'superAdmin' && currentUserRole !== 'owner') || isSubmitting}
+                        value={admin.role} 
+                        onValueChange={(val) => handleRoleChange(admin.id, val)}
+                      >
+                        <SelectTrigger className="h-12 w-full md:w-48 bg-black border-white/10 text-white rounded-xl">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-black border-white/10 text-white">
+                          <SelectItem value="owner" disabled={currentUserRole !== 'owner'}>المالك (Owner)</SelectItem>
+                          <SelectItem value="superAdmin" disabled={currentUserRole !== 'owner'}>مشرف عام (Super Admin)</SelectItem>
+                          <SelectItem value="admin">مشرف محتوى (Admin)</SelectItem>
+                          <SelectItem value="student" className="text-rose-500">إزالة الصلاحيات</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
 
@@ -944,3 +1005,4 @@ export default function AdminPage() {
     </main>
   );
 }
+
