@@ -83,6 +83,15 @@
   }
 }
 
+@keyframes celebration-glow {
+  0%, 100% { box-shadow: 0 0 20px hsla(45, 100%, 50%, 0.2); }
+  50% { box-shadow: 0 0 80px hsla(45, 100%, 50%, 0.7); }
+}
+
+.celebration-glow {
+  animation: celebration-glow 2s infinite ease-in-out;
+}
+
 .glow-text {
   filter: drop-shadow(0 0 10px hsla(var(--primary), 0.5));
 }

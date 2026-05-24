@@ -1,4 +1,3 @@
-
 import { db } from "./firebase";
 import { 
   collection, 
@@ -72,7 +71,7 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
       }
     });
     
-    // ترتيب تنازلي حقيقي حسب المعرف لضمان ظهور 220 قبل 206 وهكذا
+    // ترتيب تنازلي حقيقي حسب المعرف لضمان ظهور الأحدث دائماً في المقدمة
     return combined
       .filter(s => !archivedIds.includes(Number(s.id)))
       .sort((a, b) => Number(b.id) - Number(a.id));
@@ -177,10 +176,6 @@ export const getUserProfile = async (userId: string, email?: string) => {
         await updateDoc(userRef, { role: 'rootOwner', status: 'approved' });
         return { id: userSnap.id, ...userData, role: 'rootOwner', status: 'approved' };
       }
-      if (!isRootOwner && (userData.role === 'rootOwner')) {
-        await updateDoc(userRef, { role: 'superAdmin' });
-        return { id: userSnap.id, ...userData, role: 'superAdmin' };
-      }
       return { id: userSnap.id, ...userData };
     } else {
       const initialProfile = {
@@ -284,7 +279,9 @@ export const saveErrorLogToDb = async (userId: string, question: Question, secti
       lastOccurred: serverTimestamp(),
       count: increment(1)
     }, { merge: true });
-  } catch (e) {}
+  } catch (e) {
+    console.error("Error saving log:", e);
+  }
 };
 
 export const getErrorLogs = async (userId: string) => {

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -71,9 +70,7 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
     section.questions.forEach((q) => {
       const isCorrect = userAnswers[q.id] === q.correct;
       if (isCorrect) correct++;
-      else if (auth.currentUser) {
-        saveErrorLogToDb(auth.currentUser.uid, q, section.title, userAnswers[q.id] || 'بدون إجابة');
-      }
+      // No need to save errors here as we save them in handleAnswer immediately
     });
 
     if (auth.currentUser) {
@@ -110,7 +107,12 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
     
     if (auth.currentUser) {
       const isCorrect = opt === q.correct;
-      await updateUserXP(auth.currentUser.uid, isCorrect);
+      updateUserXP(auth.currentUser.uid, isCorrect);
+      
+      // Real-time error logging - SAVE IMMEDIATELY
+      if (!isCorrect) {
+        saveErrorLogToDb(auth.currentUser.uid, q, section.title, opt);
+      }
     }
   };
 
@@ -187,8 +189,11 @@ export default function PracticeSession({ section, onExit }: PracticeSessionProp
       <ScrollArea className="h-screen bg-black" dir="rtl">
         <div className="max-w-6xl mx-auto py-20 px-6 space-y-16">
           <div className="text-center space-y-10 relative">
-            <div className={cn("inline-block p-14 rounded-full bg-primary/10 border-4 border-primary/30 animate-bounce shadow-glow", score === 100 && "shadow-[0_0_100px_rgba(234,179,8,0.4)]")}>
-               <motivation.icon className={cn("w-32 h-32", motivation.color)} />
+            <div className={cn(
+              "inline-block p-14 rounded-full bg-primary/10 border-4 border-primary/30 animate-bounce", 
+              score === 100 && "celebration-glow border-amber-500/50 bg-amber-500/10"
+            )}>
+               <motivation.icon className={cn("w-32 h-32", motivation.color, score === 100 && "animate-pulse")} />
             </div>
             <div className="space-y-4">
                <h1 className="text-6xl md:text-8xl font-black tracking-tighter text-glow">{motivation.text}</h1>
