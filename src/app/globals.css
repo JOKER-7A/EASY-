@@ -33,60 +33,32 @@
     @apply bg-background text-foreground overflow-x-hidden antialiased;
     direction: rtl;
     background-image: 
-      radial-gradient(circle at 50% -20%, hsla(var(--primary), 0.12), transparent 50%),
-      radial-gradient(circle at 0% 100%, hsla(var(--primary), 0.05), transparent 40%);
+      radial-gradient(circle at 50% -20%, hsla(var(--primary), 0.15), transparent 50%),
+      radial-gradient(circle at 0% 100%, hsla(var(--primary), 0.08), transparent 40%);
     background-attachment: fixed;
   }
 }
 
-/* شعار EASY الاحترافي المتفاعل */
+/* شعار EASY المطور - ضمان الظهور التام */
 .text-easy-premium {
-  @apply font-black tracking-tighter text-center block w-full select-none relative py-2;
+  @apply font-black tracking-tighter text-center block w-full select-none relative;
+  display: block;
   background: linear-gradient(
-    180deg, 
-    #ffffff 20%, 
-    hsla(var(--primary), 1) 100%
+    to bottom,
+    #ffffff 30%,
+    hsl(var(--primary)) 100%
   );
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 20px hsla(var(--primary), 0.6));
-  line-height: 0.85;
+  color: white; /* Fallback */
+  filter: drop-shadow(0 0 15px hsla(var(--primary), 0.4));
+  padding: 0.2em 0;
   z-index: 50;
-  text-shadow: 0 0 30px hsla(var(--primary), 0.3);
 }
 
 .glow-text {
   filter: drop-shadow(0 0 10px hsla(var(--primary), 0.5));
-}
-
-/* تأثير الشيمر shimmer */
-.shimmer-text {
-  position: relative;
-  overflow: hidden;
-}
-.shimmer-text::after {
-  content: "";
-  position: absolute;
-  top: 0; left: -150%;
-  width: 100%; height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-  transform: skewX(-25deg);
-  animation: shimmer-anim 4s infinite ease-in-out;
-}
-
-@keyframes shimmer-anim {
-  0% { left: -150%; }
-  30% { left: 150%; }
-  100% { left: 150%; }
-}
-
-@keyframes float-soft {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
-}
-
-.animate-float-soft {
-  animation: float-soft 5s ease-in-out infinite;
 }
 
 .glass-card {
@@ -97,24 +69,20 @@
   @apply border-primary/40 bg-white/[0.04] -translate-y-1 shadow-[0_12px_40px_rgba(0,0,0,0.7)];
 }
 
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-  @apply bg-transparent;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  @apply bg-primary/20 rounded-full hover:bg-primary/40 transition-all;
-}
-
 .bg-mesh {
   background-image: 
-    radial-gradient(at 0% 0%, hsla(var(--primary), 0.08) 0, transparent 40%), 
-    radial-gradient(at 100% 0%, hsla(var(--primary), 0.08) 0, transparent 40%);
+    radial-gradient(at 0% 0%, hsla(var(--primary), 0.1) 0, transparent 50%), 
+    radial-gradient(at 100% 0%, hsla(var(--primary), 0.1) 0, transparent 50%);
 }
 
-/* Typography Hierarchy Fixes */
-h1 { @apply text-4xl md:text-5xl lg:text-6xl font-black tracking-tight; }
-h2 { @apply text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight; }
-h3 { @apply text-xl md:text-2xl font-bold; }
+@keyframes float-soft {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-float-soft {
+  animation: float-soft 4s ease-in-out infinite;
+}
+
+h1 { @apply text-4xl md:text-5xl lg:text-7xl font-black tracking-tight; }
 p { @apply text-base md:text-lg leading-relaxed; }
