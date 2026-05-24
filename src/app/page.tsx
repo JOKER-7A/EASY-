@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -115,6 +114,7 @@ export default function Home() {
     }
   }, []);
 
+  // تأمين تحميل الحالة الأولية لمنع Hydration Errors
   useEffect(() => {
     setHasMounted(true);
     const savedTheme = (localStorage.getItem('theme') as 'light' | 'dark' | 'auto') || 'auto';
@@ -124,10 +124,11 @@ export default function Home() {
     applyTheme(savedTheme, savedColor);
 
     getSectionsFromDb().then((data) => {
-      setSections(data);
+      setSections(Array.isArray(data) ? data : []);
     });
   }, [applyTheme]);
 
+  // مراقبة حالة تسجيل الدخول والملف الشخصي
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, async (u) => {
       setUser(u);
@@ -137,7 +138,12 @@ export default function Home() {
           if (docSnap.exists()) {
             const data = docSnap.data();
             setProfile({ id: docSnap.id, ...data });
+          } else {
+            // إنشاء بروفايل إذا لم يوجد
+            getUserProfile(u.uid, u.email || '').then(p => setProfile(p));
           }
+        }, (err) => {
+          console.error("Profile sync error:", err);
         });
         
         setIsLoading(false);
@@ -151,6 +157,7 @@ export default function Home() {
     return () => unsubAuth();
   }, []);
 
+  // تحديث الثيم عند تغير بيانات البروفايل
   useEffect(() => {
     if (profile?.theme && profile.theme !== primaryColor) {
       setPrimaryColor(profile.theme);
@@ -158,42 +165,53 @@ export default function Home() {
     }
   }, [profile?.theme, primaryColor, theme, applyTheme]);
 
+  // تحديث بيانات المفضلة لحظياً عند فتح الـ Overlay
   useEffect(() => {
     if (activeOverlay === 'favorites' && profile) {
-      setOverlayData(profile.favorites || []);
+      setOverlayData(Array.isArray(profile.favorites) ? profile.favorites : []);
     }
   }, [activeOverlay, profile]);
 
   const handleThemeChange = (t: 'light' | 'dark' | 'auto') => {
     setTheme(t);
-    localStorage.setItem('theme', t);
-    applyTheme(t, primaryColor);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('theme', t);
+      applyTheme(t, primaryColor);
+    }
   };
 
   const handleColorChange = async (color: string) => {
     setPrimaryColor(color);
-    localStorage.setItem('primaryColor', color);
-    applyTheme(theme, color);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('primaryColor', color);
+      applyTheme(theme, color);
+    }
     if (user) {
-      const userRef = doc(db, "userProfiles", user.uid);
-      updateDoc(userRef, { theme: color });
+      try {
+        const userRef = doc(db, "userProfiles", user.uid);
+        await updateDoc(userRef, { theme: color });
+      } catch (e) {
+        console.error("Theme update error:", e);
+      }
     }
     toast({ title: "تم تحديث اللون بنجاح ✨" });
   };
 
   const filteredSections = useMemo(() => {
-    const q = searchQuery.toLowerCase().trim();
+    if (!Array.isArray(sections)) return [];
+    const q = (searchQuery || '').toLowerCase().trim();
     if (!q) return sections;
     return sections.filter(s => {
-      const title = s.title || '';
-      const id = s.id ? s.id.toString() : '';
-      return title.toLowerCase().includes(q) || id.includes(q);
+      if (!s) return false;
+      const title = (s.title || '').toString().toLowerCase();
+      const id = (s.id || '').toString();
+      return title.includes(q) || id.includes(q);
     });
   }, [searchQuery, sections]);
 
   const levelProgress = useMemo(() => {
     if (!profile) return 0;
-    const currentXp = profile.xp || 0;
+    const currentXp = Number(profile.xp || 0);
     return ((currentXp % 500) / 500) * 100;
   }, [profile]);
 
@@ -227,15 +245,16 @@ export default function Home() {
     try {
       if (type === 'leaderboard') setOverlayData(await getLeaderboard());
       else if (type === 'errors' && user) setOverlayData(await getErrorLogs(user.uid));
-      else if (type === 'favorites' && profile) setOverlayData(profile.favorites || []);
+      else if (type === 'favorites' && profile) setOverlayData(Array.isArray(profile.favorites) ? profile.favorites : []);
     } catch (e) { console.error("Overlay fetch error:", e); }
   };
 
   const isAdmin = useMemo(() => {
-    if (!profile) return false;
+    if (!profile || !profile.role) return false;
     return ['rootOwner', 'owner', 'superAdmin', 'admin', 'editor', 'helper'].includes(profile.role);
   }, [profile]);
 
+  // منع الرندر على السيرفر لتجنب Hydration Mismatch
   if (!hasMounted) return null;
 
   if (isLoading) {
@@ -315,7 +334,7 @@ export default function Home() {
           <div className="space-y-4">
             <h2 className="text-3xl font-black italic">طلبك قيد المراجعة...</h2>
             <p className="text-white/40 font-bold leading-relaxed">
-              يا {profile.displayName}، طلبك وصل للإدارة وسيتم تفعيل حسابك قريباً جداً.
+              يا {profile.displayName || 'مستكشف'}, طلبك وصل للإدارة وسيتم تفعيل حسابك قريباً جداً.
             </p>
           </div>
           <div className="pt-6">
@@ -415,7 +434,7 @@ export default function Home() {
               <Badge variant="secondary" className="bg-primary/10 text-primary font-black px-4 py-1.5 rounded-2xl border-none">#{section.id}</Badge>
               <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest opacity-30">
                 <span className="flex items-center gap-1.5"><Zap className="w-3.5 h-3.5" /> {section.questions?.length || 0}</span>
-                <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {section.duration} MIN</span>
+                <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {section.duration || 13} MIN</span>
               </div>
             </div>
             <h3 className="text-2xl md:text-3xl font-black mb-8 leading-tight group-hover:text-primary transition-colors">{section.title}</h3>
@@ -493,11 +512,12 @@ export default function Home() {
                     <div className="text-center py-32 opacity-10 font-black italic text-4xl">فارغ...</div>
                   ) : (
                     overlayData.map((item, idx) => {
-                      const displayTitle = typeof item.question === 'string' 
+                      // تأمين استخراج العنوان لمنع Runtime Errors
+                      const displayTitle = item && typeof item.question === 'string' 
                         ? item.question 
-                        : (item.questionData?.question || item.displayName || 'بدون عنوان');
+                        : (item?.questionData?.question || item?.displayName || 'بدون عنوان');
                       
-                      const typeLabel = (item.questionData?.type || item.type || 'ITEM').toString().toUpperCase();
+                      const typeLabel = (item?.questionData?.type || item?.type || 'ITEM').toString().toUpperCase();
 
                       return (
                         <div key={item.id || idx} className="p-6 rounded-[30px] bg-white/[0.02] border border-white/5 group hover:border-primary/20 transition-all">
@@ -526,7 +546,7 @@ export default function Home() {
                                  </p>
                                )}
                                {item.questionData?.sectionTitle && (
-                                  <p className="text-[10px] font-bold text-white/20">القسم: {item.questionData.sectionTitle}</p>
+                                  <p className="text-[10px] font-bold text-white/20">القسم: {String(item.questionData.sectionTitle)}</p>
                                )}
                             </div>
                           )}

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -128,10 +127,10 @@ export default function AdminPage() {
   const fetchData = useCallback(async () => {
     try {
       const sectionsData = await getSectionsFromDb();
-      setSections(sectionsData);
+      setSections(Array.isArray(sectionsData) ? sectionsData : []);
       
       const templatesData = await getTemplatesFromDb();
-      setTemplates(templatesData);
+      setTemplates(Array.isArray(templatesData) ? templatesData : []);
       
       const usersSnap = await getDocs(collection(db, "userProfiles"));
       const allUsers = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -140,7 +139,7 @@ export default function AdminPage() {
       setPendingUsers(allUsers.filter((u: any) => u.status === 'pending'));
 
       const adminsData = await getAdminsFromDb();
-      setAdminsList(adminsData);
+      setAdminsList(Array.isArray(adminsData) ? adminsData : []);
 
       const errorsSnap = await getDocs(collection(db, "errorLogs"));
       const errorsData = errorsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -149,51 +148,49 @@ export default function AdminPage() {
       setActivityLogs(logsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       
       const settings = await getGlobalSettings();
-      if (settings.whatsappLink) setWhatsappLink(settings.whatsappLink);
+      if (settings?.whatsappLink) setWhatsappLink(settings.whatsappLink);
 
       setStats({
         students: allUsers.filter((u: any) => (u.role === 'user' || !u.role) && u.status === 'approved').length,
         sections: sectionsData.length,
-        questions: sectionsData.reduce((acc, s) => acc + (s.questions?.length || 0), 0),
+        questions: sectionsData.reduce((acc, s) => acc + (s?.questions?.length || 0), 0),
         errors: errorsData.length,
         banned: allUsers.filter((u: any) => u.isBanned).length,
-        active: allUsers.filter((u: any) => u.xp > 0).length,
+        active: allUsers.filter((u: any) => Number(u.xp || 0) > 0).length,
         requests: allUsers.filter((u: any) => u.status === 'pending').length
       });
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error("Error fetching admin data:", error);
     }
   }, []);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
-      setLoading(true);
       if (user) {
         try {
-          const userRef = doc(db, "userProfiles", user.uid);
-          onSnapshot(userRef, (snap) => {
-            if (snap.exists()) {
-              const data = snap.data();
-              if (data.theme) {
-                document.documentElement.style.setProperty('--primary', data.theme);
-              }
-            }
-          });
-
           const profile = await getUserProfile(user.uid, user.email || '');
           const role = profile?.role || 'user';
           setCurrentUserRole(role);
           
           const authorizedRoles = ['rootOwner', 'owner', 'superAdmin'];
           const hasAccess = authorizedRoles.includes(role);
-          
           setIsAuthorized(hasAccess);
-          
+
           if (hasAccess) {
             await fetchData();
+            // تفعيل المزامنة للثيم
+            const userRef = doc(db, "userProfiles", user.uid);
+            onSnapshot(userRef, (snap) => {
+              if (snap.exists()) {
+                const data = snap.data();
+                if (data.theme) {
+                  document.documentElement.style.setProperty('--primary', data.theme);
+                }
+              }
+            });
           }
         } catch (error) {
-          console.error("Auth Guard Error:", error);
+          console.error("Admin Auth Guard Error:", error);
           setIsAuthorized(false);
         }
       } else {
@@ -207,11 +204,13 @@ export default function AdminPage() {
   }, [fetchData]);
 
   const handleAdminLogout = () => {
-    signOut(auth);
-    window.location.href = '/';
+    signOut(auth).then(() => {
+      window.location.href = '/';
+    });
   };
 
   const handleUserApproval = async (userId: string, status: 'approved' | 'rejected') => {
+    if (!userId) return;
     setIsSubmitting(true);
     try {
       await updateUserStatus(userId, status);
@@ -243,7 +242,7 @@ export default function AdminPage() {
       await updateUserRole(userId, newRole);
       await addDoc(collection(db, "userActivityLogs"), {
         userId,
-        userName: userToChange?.displayName,
+        userName: userToChange?.displayName || 'Unknown',
         adminId: auth.currentUser?.uid,
         action: 'ROLE_CHANGE',
         newRole,
@@ -259,10 +258,11 @@ export default function AdminPage() {
   };
 
   const handleAddAdminByEmail = async () => {
-    if (!adminSearchEmail.trim()) return;
+    const email = adminSearchEmail.trim().toLowerCase();
+    if (!email) return;
     setIsSubmitting(true);
     try {
-      const q = query(collection(db, "userProfiles"), where("email", "==", adminSearchEmail.trim().toLowerCase()));
+      const q = query(collection(db, "userProfiles"), where("email", "==", email));
       const snap = await getDocs(q);
       if (snap.empty) {
         toast({ title: "المستخدم غير موجود", variant: "destructive" });
@@ -347,12 +347,13 @@ export default function AdminPage() {
   };
 
   const editSection = (section: Section) => {
+    if (!section) return;
     setNewSection({
       id: section.id,
       title: section.title,
       description: section.description || '',
-      questions: section.questions || [],
-      readingPassages: section.readingPassages || [],
+      questions: Array.isArray(section.questions) ? section.questions : [],
+      readingPassages: Array.isArray(section.readingPassages) ? section.readingPassages : [],
       duration: section.duration || 13
     });
     setEditorMode('edit-section');
@@ -361,12 +362,13 @@ export default function AdminPage() {
   };
 
   const useTemplate = (template: any) => {
+    if (!template) return;
     setNewSection({
-      id: sections.length > 0 ? Math.max(...sections.map(s => Number(s.id))) + 1 : 1,
-      title: template.title,
+      id: sections.length > 0 ? Math.max(...sections.map(s => Number(s.id || 0))) + 1 : 1,
+      title: template.title || '',
       description: template.description || '',
-      questions: template.questions || [],
-      readingPassages: template.readingPassages || [],
+      questions: Array.isArray(template.questions) ? template.questions : [],
+      readingPassages: Array.isArray(template.readingPassages) ? template.readingPassages : [],
       duration: template.duration || 13
     });
     setEditorMode('create');
@@ -375,12 +377,13 @@ export default function AdminPage() {
   };
 
   const editTemplate = (template: any) => {
+    if (!template) return;
     setNewSection({
       id: template.id || 0,
-      title: template.title,
+      title: template.title || '',
       description: template.description || '',
-      questions: template.questions || [],
-      readingPassages: template.readingPassages || [],
+      questions: Array.isArray(template.questions) ? template.questions : [],
+      readingPassages: Array.isArray(template.readingPassages) ? template.readingPassages : [],
       duration: template.duration || 13
     });
     setEditorMode('edit-template');
@@ -389,15 +392,15 @@ export default function AdminPage() {
   };
 
   const handleDeleteTemplate = async (id: string) => {
-    if (!confirm("هل تريد حذف هذا القالب؟")) return;
+    if (!id || !confirm("هل تريد حذف هذا القالب؟")) return;
     await deleteTemplateFromDb(id);
     fetchData();
     toast({ title: "تم حذف القالب" });
   };
 
   const handleBanUser = async () => {
-    if (!banReason.trim()) {
-      toast({ title: "يرجى إدخال سبب الحظر", variant: "destructive" });
+    if (!selectedUser || !banReason.trim()) {
+      toast({ title: "يرجى إكمال البيانات", variant: "destructive" });
       return;
     }
     if (selectedUser.role === 'rootOwner') {
@@ -421,7 +424,7 @@ export default function AdminPage() {
       });
       await addDoc(collection(db, "userActivityLogs"), {
         userId: selectedUser.id,
-        userName: selectedUser.displayName,
+        userName: selectedUser.displayName || 'Unknown',
         action: 'BAN',
         reason: banReason,
         timestamp: serverTimestamp()
@@ -438,7 +441,7 @@ export default function AdminPage() {
   };
 
   const handleEditName = async () => {
-    if (!newName.trim() || !nameChangeReason.trim()) {
+    if (!selectedUser || !newName.trim() || !nameChangeReason.trim()) {
       toast({ title: "يرجى إكمال الحقول الإجبارية", variant: "destructive" });
       return;
     }
@@ -454,10 +457,10 @@ export default function AdminPage() {
       });
       await addDoc(collection(db, "userActivityLogs"), {
         userId: selectedUser.id,
-        userName: selectedUser.displayName,
+        userName: selectedUser.displayName || 'Unknown',
         action: 'NAME_CHANGE',
         reason: nameChangeReason,
-        oldName: selectedUser.displayName,
+        oldName: selectedUser.displayName || 'Unknown',
         newName: newName,
         timestamp: serverTimestamp()
       });
@@ -472,7 +475,7 @@ export default function AdminPage() {
   };
 
   const isOwnerOrSuper = useMemo(() => {
-    return currentUserRole === 'rootOwner' || currentUserRole === 'owner' || currentUserRole === 'superAdmin';
+    return ['rootOwner', 'owner', 'superAdmin'].includes(currentUserRole);
   }, [currentUserRole]);
 
   const addQuestion = () => {
@@ -499,7 +502,9 @@ export default function AdminPage() {
   const updateQuestion = (index: number, updates: Partial<Question>) => {
     setNewSection(prev => {
       const qs = [...(prev.questions || [])];
-      qs[index] = { ...qs[index], ...updates };
+      if (qs[index]) {
+        qs[index] = { ...qs[index], ...updates };
+      }
       return { ...prev, questions: qs };
     });
   };
@@ -522,7 +527,9 @@ export default function AdminPage() {
   const updatePassage = (index: number, updates: Partial<ReadingPassage>) => {
     setNewSection(prev => {
       const ps = [...(prev.readingPassages || [])];
-      ps[index] = { ...ps[index], ...updates };
+      if (ps[index]) {
+        ps[index] = { ...ps[index], ...updates };
+      }
       return { ...prev, readingPassages: ps };
     });
   };
@@ -660,11 +667,11 @@ export default function AdminPage() {
                   pendingUsers.map((u) => (
                     <div key={u.id} className="flex flex-col md:flex-row justify-between items-center p-6 md:p-8 bg-white/[0.02] border border-white/5 rounded-3xl gap-6">
                       <div className="flex items-center gap-6 w-full">
-                        <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center font-black text-xl md:text-2xl text-amber-500 shrink-0">{u.displayName?.[0] || '?' }</div>
+                        <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center font-black text-xl md:text-2xl text-amber-500 shrink-0">{String(u.displayName || '?')[0]}</div>
                         <div className="overflow-hidden">
-                          <p className="font-black text-lg md:text-xl truncate">{u.displayName || 'مستكشف جديد'}</p>
-                          <p className="text-white/30 font-bold text-xs md:text-sm truncate">{u.email}</p>
-                          <p className="text-amber-500/60 font-black text-[10px] md:text-xs mt-1">📞 {u.phoneNumber || 'لا يوجد رقم'}</p>
+                          <p className="font-black text-lg md:text-xl truncate">{String(u.displayName || 'مستكشف جديد')}</p>
+                          <p className="text-white/30 font-bold text-xs md:text-sm truncate">{String(u.email || '')}</p>
+                          <p className="text-amber-500/60 font-black text-[10px] md:text-xs mt-1">📞 {String(u.phoneNumber || 'لا يوجد رقم')}</p>
                         </div>
                       </div>
                       <div className="flex gap-4 w-full md:w-auto">
@@ -694,17 +701,17 @@ export default function AdminPage() {
                   usersList.map((u) => (
                     <div key={u.id} className="flex flex-col md:flex-row justify-between items-center p-6 md:p-8 bg-white/[0.02] border border-white/5 rounded-3xl gap-6">
                       <div className="flex items-center gap-6 w-full">
-                        <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-primary/10 flex items-center justify-center font-black text-xl md:text-2xl text-primary shrink-0">{u.displayName?.[0] || 'U'}</div>
+                        <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-primary/10 flex items-center justify-center font-black text-xl md:text-2xl text-primary shrink-0">{String(u.displayName || 'U')[0]}</div>
                         <div className="overflow-hidden">
                           <div className="font-black text-lg md:text-xl flex flex-wrap items-center gap-3">
-                            <span className="truncate max-w-[150px] md:max-w-none">{u.displayName || 'بدون اسم'} <RoleBadgeUI role={u.role || 'user'} /></span>
+                            <span className="truncate max-w-[150px] md:max-w-none">{String(u.displayName || 'بدون اسم')} <RoleBadgeUI role={u.role || 'user'} /></span>
                             {u.isBanned && <Badge className="bg-destructive text-white border-none text-[10px]">محظور</Badge>}
                           </div>
-                          <p className="text-white/30 font-bold text-xs md:text-sm truncate">{u.email} | {u.phoneNumber}</p>
+                          <p className="text-white/30 font-bold text-xs md:text-sm truncate">{String(u.email || '')} | {String(u.phoneNumber || '')}</p>
                         </div>
                       </div>
                       <div className="flex gap-3 w-full md:w-auto">
-                         <Button onClick={() => { setSelectedUser(u); setNewName(u.displayName || ''); setEditNameModalOpen(true); }} variant="ghost" className="flex-1 md:flex-none h-12 px-4 md:px-6 rounded-xl font-black text-primary hover:bg-primary/10 text-xs md:text-sm"><Edit2 className="w-4 h-4 ml-2" /> تعديل الاسم</Button>
+                         <Button onClick={() => { setSelectedUser(u); setNewName(String(u.displayName || '')); setEditNameModalOpen(true); }} variant="ghost" className="flex-1 md:flex-none h-12 px-4 md:px-6 rounded-xl font-black text-primary hover:bg-primary/10 text-xs md:text-sm"><Edit2 className="w-4 h-4 ml-2" /> تعديل الاسم</Button>
                          <Button onClick={() => { setSelectedUser(u); setBanModalOpen(true); }} variant="ghost" className="flex-1 md:flex-none h-12 px-4 md:px-6 rounded-xl font-black text-destructive hover:bg-destructive/10 text-xs md:text-sm"><Ban className="w-4 h-4 ml-2" /> حظر</Button>
                       </div>
                     </div>
@@ -741,9 +748,9 @@ export default function AdminPage() {
                           </div>
                           <div className="overflow-hidden">
                             <div className="flex items-center gap-2">
-                               <p className="font-black text-lg md:text-xl truncate">{admin.displayName || 'مشرف'} <RoleBadgeUI role={admin.role} /></p>
+                               <p className="font-black text-lg md:text-xl truncate">{String(admin.displayName || 'مشرف')} <RoleBadgeUI role={admin.role} /></p>
                             </div>
-                            <p className="text-white/30 font-bold text-xs md:text-sm truncate">{admin.email}</p>
+                            <p className="text-white/30 font-bold text-xs md:text-sm truncate">{String(admin.email || '')}</p>
                           </div>
                         </div>
                         
@@ -751,7 +758,7 @@ export default function AdminPage() {
                           <label className="text-[10px] font-bold text-white/40 uppercase">تعيين رتبة جديدة</label>
                           <Select 
                             disabled={!canEditThisAdmin || isSubmitting}
-                            value={admin.role} 
+                            value={admin.role || 'user'} 
                             onValueChange={(val) => handleRoleChange(admin.id, val)}
                           >
                             <SelectTrigger className="h-12 w-full md:w-48 bg-black border-white/10 text-white rounded-xl">
@@ -806,7 +813,7 @@ export default function AdminPage() {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                           <div className="space-y-3">
                             <label className="text-[10px] md:text-xs font-bold uppercase text-primary">رقم القسم (ID)</label>
-                            <input type="number" value={newSection.id || ''} onChange={(e) => setNewSection(p => ({ ...p, id: parseInt(e.target.value) }))} className="h-14 bg-black border-white/10 rounded-xl px-4 outline-none w-full" />
+                            <input type="number" value={newSection.id || ''} onChange={(e) => setNewSection(p => ({ ...p, id: parseInt(e.target.value) || 0 }))} className="h-14 bg-black border-white/10 rounded-xl px-4 outline-none w-full" />
                           </div>
                           <div className="md:col-span-2 space-y-3">
                             <label className="text-[10px] md:text-xs font-bold uppercase text-primary">عنوان القسم</label>
@@ -826,8 +833,8 @@ export default function AdminPage() {
                                   <Badge className="bg-primary/20 text-primary">نص #{idx + 1}</Badge>
                                   <Button onClick={() => removePassage(idx)} variant="ghost" size="icon" className="text-rose-500"><Trash2 className="w-4 h-4" /></Button>
                                 </div>
-                                <Input placeholder="عنوان النص..." value={p.title} onChange={(e) => updatePassage(idx, { title: e.target.value })} className="h-12 bg-black/40 border-white/10" />
-                                <Textarea placeholder="محتوى النص..." value={p.text} onChange={(e) => updatePassage(idx, { text: e.target.value })} className="min-h-[150px] bg-black/40 border-white/10" />
+                                <Input placeholder="عنوان النص..." value={p.title || ''} onChange={(e) => updatePassage(idx, { title: e.target.value })} className="h-12 bg-black/40 border-white/10" />
+                                <Textarea placeholder="محتوى النص..." value={p.text || ''} onChange={(e) => updatePassage(idx, { text: e.target.value })} className="min-h-[150px] bg-black/40 border-white/10" />
                               </Card>
                             ))}
                           </div>
@@ -849,7 +856,7 @@ export default function AdminPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                   <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase opacity-40">نوع السؤال</label>
-                                    <Select value={q.type} onValueChange={(val: any) => updateQuestion(idx, { type: val })}>
+                                    <Select value={q.type || 'analogy'} onValueChange={(val: any) => updateQuestion(idx, { type: val })}>
                                       <SelectTrigger className="h-12 bg-black border-white/10">
                                         <SelectValue />
                                       </SelectTrigger>
@@ -865,7 +872,7 @@ export default function AdminPage() {
                                   {q.type === 'reading' && (
                                     <div className="space-y-2">
                                       <label className="text-[10px] font-black uppercase opacity-40">النص المرتبط</label>
-                                      <Select value={q.passageTitle || ''} onValueChange={(val) => updateQuestion(idx, { passageTitle: val })}>
+                                      <Select value={q.passageTitle || 'none'} onValueChange={(val) => updateQuestion(idx, { passageTitle: val })}>
                                         <SelectTrigger className="h-12 bg-black border-white/10">
                                           <SelectValue placeholder="اختر النص..." />
                                         </SelectTrigger>
@@ -873,23 +880,24 @@ export default function AdminPage() {
                                           {(newSection.readingPassages || []).map((p, pIdx) => (
                                             <SelectItem key={pIdx} value={p.title || `passage-${pIdx}`}>{p.title || `نص #${pIdx+1}`}</SelectItem>
                                           ))}
+                                          <SelectItem value="none">بدون نص</SelectItem>
                                         </SelectContent>
                                       </Select>
                                     </div>
                                   )}
                                 </div>
 
-                                <Input placeholder="نص السؤال..." value={q.question} onChange={(e) => updateQuestion(idx, { question: e.target.value })} className="h-12 bg-black/40 border-white/10" />
+                                <Input placeholder="نص السؤال..." value={q.question || ''} onChange={(e) => updateQuestion(idx, { question: e.target.value })} className="h-12 bg-black/40 border-white/10" />
                                 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  {q.options.map((opt, optIdx) => (
+                                  {(q.options || ['', '', '', '']).map((opt, optIdx) => (
                                     <div key={optIdx} className="flex gap-2 items-center">
                                       <span className="text-xs font-black opacity-30">{['أ', 'ب', 'ج', 'د'][optIdx]}</span>
                                       <Input 
                                         placeholder={`خيار ${['أ', 'ب', 'ج', 'د'][optIdx]}`} 
-                                        value={opt} 
+                                        value={opt || ''} 
                                         onChange={(e) => {
-                                          const newOpts = [...q.options];
+                                          const newOpts = [...(q.options || ['', '', '', ''])];
                                           newOpts[optIdx] = e.target.value;
                                           updateQuestion(idx, { options: newOpts });
                                         }} 
@@ -901,14 +909,15 @@ export default function AdminPage() {
 
                                 <div className="space-y-2">
                                   <label className="text-[10px] font-black uppercase text-emerald-500">الإجابة الصحيحة</label>
-                                  <Select value={q.correct || ''} onValueChange={(val) => updateQuestion(idx, { correct: val })}>
+                                  <Select value={q.correct || 'none'} onValueChange={(val) => updateQuestion(idx, { correct: val })}>
                                     <SelectTrigger className="h-12 bg-black border-emerald-500/20 text-emerald-500">
                                       <SelectValue placeholder="حدد الإجابة الصحيحة..." />
                                     </SelectTrigger>
                                     <SelectContent className="bg-black border-white/10 text-white">
-                                      {q.options.map((opt, optIdx) => (
+                                      {(q.options || []).map((opt, optIdx) => (
                                         <SelectItem key={optIdx} value={opt || `opt-${optIdx}`}>{opt || `خيار ${['أ', 'ب', 'ج', 'د'][optIdx]}`}</SelectItem>
                                       ))}
+                                      <SelectItem value="none">غير محدد</SelectItem>
                                     </SelectContent>
                                   </Select>
                                 </div>
@@ -934,7 +943,7 @@ export default function AdminPage() {
                                   <Button onClick={() => handleDeleteTemplate(t.firebaseId)} size="icon" variant="ghost" className="text-rose-500"><Trash2 className="w-4 h-4" /></Button>
                                </div>
                              </div>
-                             <h3 className="text-lg md:text-xl font-black truncate">{t.title}</h3>
+                             <h3 className="text-lg md:text-xl font-black truncate">{String(t.title || 'No Title')}</h3>
                              <div className="flex gap-3 opacity-40 text-[10px] font-bold">
                                 <span>{t.questions?.length || 0} سؤال</span>
                                 <span>{t.readingPassages?.length || 0} نصوص</span>
@@ -954,7 +963,7 @@ export default function AdminPage() {
                                <div className="flex items-center gap-4 w-full">
                                   <Badge className="bg-primary/20 text-primary shrink-0">{s.id}</Badge>
                                   <div className="overflow-hidden">
-                                     <span className="font-black text-base md:text-lg truncate block">{s.title}</span>
+                                     <span className="font-black text-base md:text-lg truncate block">{String(s.title || 'Untitled')}</span>
                                      <div className="flex gap-3 opacity-40 text-[10px] font-bold mt-1">
                                         <span>{s.questions?.length || 0} سؤال</span>
                                         <span>{s.readingPassages?.length || 0} نصوص</span>
@@ -984,13 +993,13 @@ export default function AdminPage() {
                         log.action === 'BAN' ? "bg-rose-500" : 
                         log.action === 'ROLE_CHANGE' ? "bg-amber-500" : 
                         log.action === 'NAME_CHANGE' ? "bg-emerald-500" : "bg-blue-500")}>
-                        {log.action}
+                        {String(log.action || 'LOG')}
                       </Badge>
                       <span className="font-black truncate flex items-center gap-2">
-                        {log.userName || log.userId}
+                        {String(log.userName || log.userId || 'Unknown')}
                       </span>
                     </div>
-                    <p className="text-[10px] md:text-xs text-white/20 shrink-0 w-full sm:w-auto text-left sm:text-right">{log.timestamp?.toDate()?.toLocaleString('ar-SA')}</p>
+                    <p className="text-[10px] md:text-xs text-white/20 shrink-0 w-full sm:w-auto text-left sm:text-right">{log.timestamp?.toDate()?.toLocaleString('ar-SA') || 'Unknown Date'}</p>
                   </div>
                 ))}
               </div>
@@ -1004,7 +1013,7 @@ export default function AdminPage() {
         <DialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] glass-card border-rose-500/20 text-white rounded-[35px] max-w-lg w-[90vw] md:w-full p-6 md:p-10 outline-none z-[600]">
           <DialogHeader className="text-center space-y-4">
             <DialogTitle className="text-2xl md:text-3xl font-black">حظر طالب 🚫</DialogTitle>
-            <DialogDescription className="text-white/40 font-bold">اسم الطالب: {selectedUser?.displayName}</DialogDescription>
+            <DialogDescription className="text-white/40 font-bold">اسم الطالب: {String(selectedUser?.displayName || 'Unknown')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-6 py-6 md:py-8">
             <div className="space-y-2">
