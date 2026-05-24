@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -124,7 +125,6 @@ export default function Home() {
     } catch (e) { console.error(e); }
   };
 
-  // صلاحيات الأدمن الدقيقة كما طلب الدكتور
   const isAdmin = useMemo(() => {
     if (user?.email === 'admin@easy.com') return true;
     if (!profile) return false;
@@ -238,7 +238,6 @@ export default function Home() {
         ))}
       </section>
 
-      {/* زر الأدمن الفاخر في أسفل الصفحة كما طلب الدكتور */}
       {user && isAdmin && (
         <div className="container mx-auto px-4 py-20 flex flex-col items-center gap-10 border-t border-white/5">
           <div className="text-center space-y-2">
@@ -309,6 +308,15 @@ export default function Home() {
         <div className="flex flex-col items-center gap-2">
           <p className="text-dr-mahmoud">DR. MAHMOUD ABD EL RAZEK</p>
           <div className="h-0.5 w-20 bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
+          
+          {/* أيقونة دخول سريعة للأدمن */}
+          <button 
+            onClick={() => window.location.href = '/admin'}
+            className="mt-4 p-2 rounded-full hover:bg-white/5 transition-all group focus:outline-none"
+            title="Admin Panel"
+          >
+            <ShieldCheck className="w-5 h-5 text-primary/40 group-hover:text-primary transition-colors filter drop-shadow(0 0 8px hsla(var(--primary), 0.3))" />
+          </button>
         </div>
         <p className="text-[10px] font-bold uppercase tracking-[0.5em] text-white/30">Easy Prep Master &copy; 2024</p>
       </footer>
