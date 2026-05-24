@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -20,7 +19,7 @@ import {
   canManageRole
 } from '@/lib/db-service';
 import { 
-  collection, getDocs, addDoc, doc, deleteDoc, updateDoc, serverTimestamp, query, orderBy, limit, where 
+  collection, getDocs, addDoc, doc, deleteDoc, updateDoc, serverTimestamp, query, orderBy, limit, where, onSnapshot
 } from 'firebase/firestore';
 import { Section, Question, ReadingPassage } from '@/lib/practice-data';
 import { Button } from '@/components/ui/button';
@@ -36,11 +35,9 @@ import {
 } from "@/components/ui/dialog";
 import { 
   Trash2, ShieldCheck, Database, Ban, AlertCircle, TrendingUp,
-  XCircle, Lock, Edit2, History, Copy, Layers, Loader2, Search, FileText, UserCheck, X as XIcon, CheckCircle, PlusCircle, Save, BookOpen, ListTree, Crown, Users, Calendar, MessageCircle, Home, FilePlus, HelpCircle
+  XCircle, Lock, Edit2, History, Copy, Layers, Loader2, Search, FileText, UserCheck, X as XIcon, CheckCircle, PlusCircle, Save, BookOpen, Crown, Users, MessageCircle, Home, FilePlus, HelpCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-type EditorMode = 'create' | 'edit-section' | 'edit-template';
 
 const RoleBadgeUI = ({ role }: { role: string }) => {
   const badges: Record<string, React.ReactNode> = {
@@ -107,7 +104,7 @@ export default function AdminPage() {
   
   const { toast } = useToast();
 
-  const [editorMode, setEditorMode] = useState<EditorMode>('create');
+  const [editorMode, setEditorMode] = useState<'create' | 'edit-section' | 'edit-template'>('create');
   const [activeFirebaseId, setActiveFirebaseId] = useState<string | null>(null);
   const [newSection, setNewSection] = useState<Partial<Section>>({
     id: 0,
@@ -167,10 +164,21 @@ export default function AdminPage() {
     }
   }, []);
 
+  // Theme Sync Logic for Admin Panel
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
       setLoading(true);
       if (user) {
+        const userRef = doc(db, "userProfiles", user.uid);
+        onSnapshot(userRef, (snap) => {
+          if (snap.exists()) {
+            const data = snap.data();
+            if (data.theme) {
+              document.documentElement.style.setProperty('--primary', data.theme);
+            }
+          }
+        });
+
         const profile = await getUserProfile(user.uid, user.email || '');
         const role = profile?.role || 'user';
         setCurrentUserRole(role);
@@ -292,25 +300,6 @@ export default function AdminPage() {
       fetchData();
     } catch (error) {
       toast({ title: "حدث خطأ أثناء الحفظ", variant: "destructive" });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleSaveAsTemplate = async () => {
-    if (!newSection.title) {
-      toast({ title: "يرجى إدخال عنوان للقالب", variant: "destructive" });
-      return;
-    }
-    setIsSubmitting(true);
-    try {
-      const templateData = { ...newSection };
-      delete (templateData as any).firebaseId;
-      await saveTemplateToDb(templateData);
-      toast({ title: "تم حفظ القالب بنجاح! 💾" });
-      fetchData();
-    } catch (error) {
-      toast({ title: "حدث خطأ أثناء حفظ القالب", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -462,7 +451,7 @@ export default function AdminPage() {
     return currentUserRole === 'rootOwner' || currentUserRole === 'owner' || currentUserRole === 'superAdmin';
   }, [currentUserRole]);
 
-  // وظائف إدارة الأسئلة والنصوص داخل المحرر
+  // Editor Functions
   const addQuestion = () => {
     const newQ: Question = {
       id: `q-${Date.now()}`,
@@ -601,7 +590,7 @@ export default function AdminPage() {
             <Card className="p-8 md:p-14 glass-card rounded-[40px] md:rounded-[60px] border-primary/20 text-center space-y-10 relative overflow-hidden">
                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary/0 via-primary/40 to-primary/0" />
                <div className="space-y-6">
-                 <div className="w-24 h-24 md:w-32 md:h-32 bg-primary/10 rounded-[40px] flex items-center justify-center mx-auto ring-4 ring-primary/20 animate-float-soft">
+                 <div className="w-24 h-24 md:w-32 md:h-32 bg-primary/10 rounded-[40px] flex items-center justify-center mx-auto ring-4 ring-primary/20">
                    <Crown className="w-12 h-12 md:w-16 md:h-16 text-primary" />
                  </div>
                  <h2 className="text-3xl md:text-6xl font-black text-white flex items-center justify-center gap-4">أهلاً بك يا دكتور محمود <RoleBadgeUI role="rootOwner" /></h2>
@@ -783,7 +772,6 @@ export default function AdminPage() {
                       </div>
 
                       <div className="space-y-8">
-                        {/* البيانات الأساسية */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                           <div className="space-y-3">
                             <label className="text-[10px] md:text-xs font-bold uppercase text-primary">رقم القسم</label>
@@ -795,7 +783,6 @@ export default function AdminPage() {
                           </div>
                         </div>
 
-                        {/* قسم استيعاب المقروء (Passages) */}
                         <div className="space-y-6">
                           <div className="flex items-center justify-between">
                             <h3 className="text-xl font-black flex items-center gap-2"><BookOpen className="text-primary w-5 h-5" /> النصوص القرائية (Reading Passages)</h3>
@@ -815,7 +802,6 @@ export default function AdminPage() {
                           </div>
                         </div>
 
-                        {/* قسم الأسئلة */}
                         <div className="space-y-6">
                           <div className="flex items-center justify-between">
                             <h3 className="text-xl font-black flex items-center gap-2"><HelpCircle className="text-primary w-5 h-5" /> بنك الأسئلة (Questions)</h3>
@@ -1041,4 +1027,3 @@ export default function AdminPage() {
     </main>
   );
 }
-
