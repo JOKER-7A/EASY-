@@ -169,7 +169,6 @@ export default function AdminPage() {
       setLoading(true);
       if (user) {
         try {
-          // المزامنة الحية للسمة
           const userRef = doc(db, "userProfiles", user.uid);
           onSnapshot(userRef, (snap) => {
             if (snap.exists()) {
@@ -180,12 +179,10 @@ export default function AdminPage() {
             }
           });
 
-          // التحقق من الرتبة بشكل صارم
           const profile = await getUserProfile(user.uid, user.email || '');
           const role = profile?.role || 'user';
           setCurrentUserRole(role);
           
-          // الأدوار المسموح لها بدخول لوحة الإدارة (قصرها على OWNER و ROOT OWNER و SUPER ADMIN)
           const authorizedRoles = ['rootOwner', 'owner', 'superAdmin'];
           const hasAccess = authorizedRoles.includes(role);
           
@@ -477,7 +474,6 @@ export default function AdminPage() {
     return currentUserRole === 'rootOwner' || currentUserRole === 'owner' || currentUserRole === 'superAdmin';
   }, [currentUserRole]);
 
-  // Editor Functions
   const addQuestion = () => {
     const newQ: Question = {
       id: `q-${Date.now()}`,
@@ -539,7 +535,6 @@ export default function AdminPage() {
     </div>
   );
 
-  // شاشة الحماية في حالة عدم وجود صلاحية
   if (isAuthorized === false) {
     return (
       <main className="min-h-screen bg-black flex items-center justify-center p-4 overflow-hidden relative" dir="rtl">
@@ -871,7 +866,7 @@ export default function AdminPage() {
                                         </SelectTrigger>
                                         <SelectContent className="bg-black border-white/10 text-white">
                                           {(newSection.readingPassages || []).map((p, pIdx) => (
-                                            <SelectItem key={pIdx} value={p.title}>{p.title || `نص بدون عنوان #${pIdx+1}`}</SelectItem>
+                                            <SelectItem key={pIdx} value={p.title || `passage-${pIdx}`}>{p.title || `نص بدون عنوان #${pIdx+1}`}</SelectItem>
                                           ))}
                                         </SelectContent>
                                       </Select>
@@ -901,13 +896,13 @@ export default function AdminPage() {
 
                                 <div className="space-y-2">
                                   <label className="text-[10px] font-black uppercase text-emerald-500">الإجابة الصحيحة</label>
-                                  <Select value={q.correct} onValueChange={(val) => updateQuestion(idx, { correct: val })}>
+                                  <Select value={q.correct || ''} onValueChange={(val) => updateQuestion(idx, { correct: val })}>
                                     <SelectTrigger className="h-12 bg-black border-emerald-500/20 text-emerald-500">
                                       <SelectValue placeholder="اختر الإجابة الصحيحة..." />
                                     </SelectTrigger>
                                     <SelectContent className="bg-black border-white/10 text-white">
                                       {q.options.map((opt, optIdx) => (
-                                        <SelectItem key={optIdx} value={opt || `خيار ${optIdx+1}`}>{opt || `خيار ${optIdx+1}`}</SelectItem>
+                                        <SelectItem key={optIdx} value={opt || `opt-${optIdx}`}>{opt || `خيار ${optIdx+1}`}</SelectItem>
                                       ))}
                                     </SelectContent>
                                   </Select>
