@@ -19,7 +19,7 @@ import {
 import { 
   collection, getDocs, addDoc, doc, deleteDoc, updateDoc, serverTimestamp, query, orderBy, limit, where 
 } from 'firebase/firestore';
-import { Section, ReadingPassage, Question } from '@/lib/practice-data';
+import { Section, Question } from '@/lib/practice-data';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -101,7 +101,7 @@ export default function AdminPage() {
       
       const usersSnap = await getDocs(collection(db, "userProfiles"));
       const allUsers = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setUsersList(allUsers.filter((u: any) => u.status !== 'pending'));
+      setUsersList(allUsers.filter((u: any) => u.status !== 'pending' && u.role === 'student'));
       setPendingUsers(allUsers.filter((u: any) => u.status === 'pending'));
 
       const adminsData = await getAdminsFromDb();
@@ -119,7 +119,7 @@ export default function AdminPage() {
       }
 
       setStats({
-        students: allUsers.filter((u: any) => u.status !== 'pending').length,
+        students: allUsers.filter((u: any) => u.role === 'student' && u.status === 'approved').length,
         sections: sectionsData.length,
         questions: sectionsData.reduce((acc, s) => acc + (s.questions?.length || 0), 0),
         errors: errorsData.length,
@@ -143,6 +143,13 @@ export default function AdminPage() {
       if (user) {
         const profile = await getUserProfile(user.uid);
         setCurrentUserRole(profile?.role || 'student');
+        if (profile?.role === 'student') {
+          // إذا كان طالباً، لا نسمح له بالبقاء هنا حتى لو كان الكود صحيحاً
+          setIsAuthorized(false);
+          localStorage.removeItem(AUTH_KEY);
+        }
+      } else {
+        setIsAuthorized(false);
       }
     });
 

@@ -25,7 +25,7 @@ import { auth, db } from '@/lib/firebase';
 import { 
   onAuthStateChanged, User as FirebaseUser, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut 
 } from 'firebase/auth';
-import { doc, updateDoc, onSnapshot, getDoc } from 'firebase/firestore';
+import { doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -55,7 +55,6 @@ export default function Home() {
   const [activeOverlay, setActiveOverlay] = useState<'leaderboard' | 'errors' | 'themes' | 'favorites' | null>(null);
   const [overlayData, setOverlayData] = useState<any[]>([]);
   
-  // Onboarding State
   const [onboardingName, setOnboardingName] = useState('');
   const [onboardingPhone, setOnboardingPhone] = useState('');
   const [isOnboardingSubmitting, setIsOnboardingSubmitting] = useState(false);
@@ -68,7 +67,6 @@ export default function Home() {
       setUser(u);
       if (u) {
         const userRef = doc(db, "userProfiles", u.uid);
-        // التحقق من وجود الملف أو إنشاؤه
         await getUserProfile(u.uid, u.email || '');
         
         const unsubProfile = onSnapshot(userRef, (docSnap) => {
@@ -161,15 +159,9 @@ export default function Home() {
   };
 
   const isAdmin = useMemo(() => {
-    if (user?.email === 'admin@easy.com') return true;
     if (!profile) return false;
-    return (
-      profile.role === 'admin' || 
-      profile.role === 'superAdmin' || 
-      profile.status === 'admin' || 
-      profile.isAdmin === true
-    );
-  }, [profile, user]);
+    return ['owner', 'superAdmin', 'admin'].includes(profile.role);
+  }, [profile]);
 
   const isBanned = useMemo(() => {
     if (!profile?.isBanned) return false;
@@ -180,7 +172,6 @@ export default function Home() {
 
   if (!hasMounted) return null;
 
-  // 1. شاشة التحميل
   if (isLoading) {
     return (
       <div className="fixed inset-0 z-[1000] bg-black flex items-center justify-center">
@@ -192,7 +183,6 @@ export default function Home() {
     );
   }
 
-  // 2. شاشة الحظر
   if (isBanned) {
     return (
       <main className="min-h-screen bg-black flex items-center justify-center p-6 text-center" dir="rtl">
@@ -220,7 +210,6 @@ export default function Home() {
     );
   }
 
-  // 3. شاشة تسجيل الدخول
   if (!user) {
     return (
       <main className="min-h-screen bg-black flex items-center justify-center p-4 overflow-hidden relative">
@@ -245,7 +234,6 @@ export default function Home() {
     );
   }
 
-  // 4. شاشة Onboarding (إكمال البيانات)
   if (user && (!profile?.displayName || !profile?.phoneNumber)) {
     return (
       <main className="min-h-screen bg-black flex items-center justify-center p-4 relative overflow-hidden">
@@ -277,7 +265,6 @@ export default function Home() {
     );
   }
 
-  // 5. شاشة انتظار الموافقة (Pending)
   if (user && profile?.status === 'pending' && !isAdmin) {
     return (
       <main className="min-h-screen bg-black flex items-center justify-center p-4 text-center">
@@ -299,7 +286,6 @@ export default function Home() {
     );
   }
 
-  // 6. شاشة الرفض (Rejected)
   if (user && profile?.status === 'rejected' && !isAdmin) {
     return (
       <main className="min-h-screen bg-black flex items-center justify-center p-4 text-center">
@@ -320,7 +306,6 @@ export default function Home() {
     );
   }
 
-  // 7. الواجهة الرئيسية (Approved / Admin)
   if (activeView === 'practice' && selectedSection) {
     return <PracticeSession section={selectedSection} onExit={() => setActiveView('landing')} />;
   }

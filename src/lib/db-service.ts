@@ -174,11 +174,11 @@ export const getUserProfile = async (userId: string, email?: string) => {
       const initialProfile = {
         level: 1,
         xp: 0,
-        displayName: '', // فارغ ليطلب من المستخدم في الـ Onboarding
-        phoneNumber: '', // فارغ ليطلب من المستخدم في الـ Onboarding
+        displayName: '', 
+        phoneNumber: '', 
         email: email || '',
         createdAt: serverTimestamp(),
-        status: 'pending', // الحالة الافتراضية قيد الانتظار
+        status: 'pending', 
         role: email === 'admin@easy.com' ? 'owner' : 'student',
         favorites: [],
         isBanned: false,
@@ -201,7 +201,7 @@ export const updateOnboardingData = async (userId: string, name: string, phone: 
     await updateDoc(userRef, {
       displayName: name,
       phoneNumber: phone,
-      status: 'pending' // التأكيد على حالة الانتظار بعد إرسال البيانات
+      status: 'pending' 
     });
     return true;
   } catch (e) {
