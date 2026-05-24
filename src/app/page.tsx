@@ -1,13 +1,13 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Section, sections as staticSections } from '@/lib/practice-data';
+import { Section, Question, sections as staticSections } from '@/lib/practice-data';
 import { 
   getSectionsFromDb, 
   getUserProfile, 
   getLeaderboard, 
-  getErrorLogs
+  getErrorLogs,
+  deleteErrorLog
 } from '@/lib/db-service';
 import PracticeSession from '@/components/PracticeSession';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Zap,
   Search,
@@ -32,7 +33,9 @@ import {
   Palette,
   LogOut,
   ArrowRight,
-  Heart
+  Heart,
+  Trash2,
+  AlertCircle
 } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
 import { 
@@ -78,7 +81,8 @@ export default function Home() {
 
   useEffect(() => {
     setHasMounted(true);
-    const safetyTimer = setTimeout(() => setIsLoading(false), 3000);
+    // Safety timer to prevent stuck loading
+    const safetyTimer = setTimeout(() => setIsLoading(false), 2500);
 
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
@@ -151,35 +155,19 @@ export default function Home() {
       } else if (type === 'errors' && user) {
         const data = await getErrorLogs(user.uid);
         setOverlayData(data || []);
-      } else if (type === 'favorites' && profile?.favorites) {
-        setOverlayData(profile.favorites);
+      } else if (type === 'favorites' && user) {
+        const p = await getUserProfile(user.uid);
+        setOverlayData(p?.favorites || []);
       }
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e) { console.error(e); }
   };
 
-  // وظيفة لاستخراج النص بأمان ومنع خطأ Objects are not valid as React child
-  const renderItemTitle = (item: any) => {
-    if (activeOverlay === 'leaderboard') return String(item.displayName || 'مستكشف EASY');
-    
-    // للتعامل مع سجل الأخطاء
-    if (item.questionData) {
-      return typeof item.questionData.question === 'string' 
-        ? item.questionData.question 
-        : 'سؤال محفوظ';
+  const handleRemoveError = async (id: string) => {
+    const success = await deleteErrorLog(id);
+    if (success) {
+      setOverlayData(prev => prev.filter(item => item.id !== id));
+      toast({ title: "تم حذف السجل" });
     }
-
-    // للمفضلة أو النسخ القديمة
-    if (typeof item.question === 'string') return item.question;
-    
-    return 'سؤال محفوظ';
-  };
-
-  const renderItemSubtitle = (item: any) => {
-    if (activeOverlay === 'leaderboard') return `@${item.email?.split('@')[0] || 'easy_user'}`;
-    if (item.questionData?.sectionTitle) return String(item.questionData.sectionTitle);
-    return 'قسم غير محدد';
   };
 
   if (!hasMounted) return null;
@@ -187,11 +175,8 @@ export default function Home() {
   if (isLoading) {
     return (
       <div className="fixed inset-0 bg-background flex flex-col items-center justify-center z-[500] bg-mesh">
-        <div className="relative mb-8">
-          <div className="absolute inset-0 bg-primary/20 blur-[40px] animate-pulse rounded-full" />
-          <Loader2 className="w-12 h-12 text-primary animate-spin relative z-10" />
-        </div>
-        <h2 className="text-2xl font-black text-white tracking-[0.4em] animate-pulse">EASY PREP</h2>
+        <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
+        <h2 className="text-xl font-black text-white tracking-widest animate-pulse">EASY PREP</h2>
       </div>
     );
   }
@@ -203,33 +188,18 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-background text-white flex flex-col relative overflow-x-hidden bg-mesh">
       
+      {/* Auth Screen */}
       {!user && (
-        <div className="fixed inset-0 z-[400] bg-black/95 backdrop-blur-2xl flex items-center justify-center p-4">
-          <Card className="w-full max-w-lg p-10 glass-card rounded-[40px] relative overflow-hidden border-primary/20">
+        <div className="fixed inset-0 z-[400] bg-black/95 backdrop-blur-3xl flex items-center justify-center p-4">
+          <Card className="w-full max-w-lg p-10 glass-card rounded-[40px] border-primary/20">
             <div className="text-center mb-10 space-y-2">
               <h1 className="text-7xl md:text-8xl text-easy-premium animate-float-soft">EASY</h1>
-              <p className="text-sm text-primary font-black tracking-[0.3em] uppercase opacity-70">Elite Prep Master</p>
+              <p className="text-sm text-primary font-black tracking-[0.3em] uppercase opacity-60">Elite Training System</p>
             </div>
             <form onSubmit={handleAuth} className="space-y-4">
-              <Input 
-                type="email" 
-                placeholder="البريد الإلكتروني" 
-                value={email} 
-                onChange={(e) => setEmail(e.target.value)} 
-                className="h-14 rounded-2xl bg-white/5 border-white/10 text-lg px-6 focus:border-primary/50" 
-              />
-              <Input 
-                type="password" 
-                placeholder="كلمة المرور" 
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)} 
-                className="h-14 rounded-2xl bg-white/5 border-white/10 text-lg px-6 focus:border-primary/50" 
-              />
-              <Button 
-                type="submit" 
-                disabled={isAuthLoading}
-                className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl hover:scale-105 transition-all shadow-[0_10px_30px_rgba(var(--primary),0.2)]"
-              >
+              <Input type="email" placeholder="البريد الإلكتروني" value={email} onChange={(e) => setEmail(e.target.value)} className="h-14 rounded-2xl bg-white/5 border-white/10 text-lg px-6" />
+              <Input type="password" placeholder="كلمة المرور" value={password} onChange={(e) => setPassword(e.target.value)} className="h-14 rounded-2xl bg-white/5 border-white/10 text-lg px-6" />
+              <Button type="submit" disabled={isAuthLoading} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl hover:scale-105 transition-all">
                 {isAuthLoading ? <Loader2 className="animate-spin" /> : (authMode === 'login' ? "دخول 🚀" : "انضم الآن ✨")}
               </Button>
             </form>
@@ -240,15 +210,14 @@ export default function Home() {
         </div>
       )}
 
+      {/* Header Navigation */}
       {user && (
         <nav className="fixed top-0 left-0 w-full z-[100] px-4 md:px-8 py-4">
           <div className="max-w-7xl mx-auto flex items-center justify-between p-3 glass-card rounded-full">
             <div className="flex items-center gap-4">
               <Avatar className="w-12 h-12 border-2 border-primary/30">
                 <AvatarImage src={user.photoURL || ''} />
-                <AvatarFallback className="bg-primary/20 text-primary font-black">
-                  {user.email?.[0].toUpperCase()}
-                </AvatarFallback>
+                <AvatarFallback className="bg-primary/20 text-primary font-black">{user.email?.[0].toUpperCase()}</AvatarFallback>
               </Avatar>
               <div className="hidden sm:block">
                 <p className="font-bold text-sm flex items-center gap-1">
@@ -269,23 +238,15 @@ export default function Home() {
                 { type: 'favorites', icon: Heart, color: 'text-rose-500' },
                 { type: 'errors', icon: History, color: 'text-blue-500' },
               ].map((btn) => (
-                <Button 
-                  key={btn.type}
-                  onClick={() => openOverlay(btn.type as any)} 
-                  variant="ghost" 
-                  size="icon" 
-                  className={cn("w-10 h-10 md:w-12 md:h-12 rounded-xl hover:bg-white/5", btn.color)}
-                >
+                <Button key={btn.type} onClick={() => openOverlay(btn.type as any)} variant="ghost" size="icon" className={cn("w-10 h-10 md:w-12 md:h-12 rounded-xl hover:bg-white/5", btn.color)}>
                   <btn.icon className="w-5 h-5 md:w-6 md:h-6" />
                 </Button>
               ))}
-              
               {profile?.status === 'admin' && (
                 <Button onClick={() => window.location.href = '/admin'} variant="ghost" size="icon" className="w-10 h-10 md:w-12 md:h-12 rounded-xl hover:bg-white/5 text-emerald-500">
                   <LayoutDashboard className="w-5 h-5 md:w-6 md:h-6" />
                 </Button>
               )}
-              
               <Button onClick={() => signOut(auth)} variant="ghost" size="icon" className="w-10 h-10 md:w-12 md:h-12 rounded-xl hover:bg-destructive/10 text-destructive">
                 <LogOut className="w-5 h-5 md:w-6 md:h-6" />
               </Button>
@@ -294,56 +255,38 @@ export default function Home() {
         </nav>
       )}
 
-      <div className="container mx-auto px-4 pt-32 md:pt-48 pb-20 max-w-7xl relative z-10 text-center space-y-8 md:space-y-12">
-        <div className="inline-flex items-center gap-2 px-6 py-2 rounded-full glass-card border-primary/20 text-primary font-black text-sm md:text-base animate-float-soft">
+      {/* Hero Section */}
+      <div className="container mx-auto px-4 pt-32 md:pt-48 pb-10 max-w-7xl relative z-10 text-center space-y-8">
+        <div className="inline-flex items-center gap-2 px-6 py-2 rounded-full glass-card border-primary/20 text-primary font-black text-sm animate-float-soft">
           <Zap className="w-4 h-4 fill-primary" /> EASY PREP ELITE
         </div>
-        
-        <div className="space-y-4">
-          <h1 className="text-7xl sm:text-8xl md:text-[12rem] lg:text-[16rem] text-easy-premium animate-in fade-in zoom-in duration-1000">
-            EASY
-          </h1>
-          <p className="text-xl md:text-3xl font-black text-white/40 max-w-2xl mx-auto tracking-wide">
-            تغلّب على نفسك <span className="text-white glow-text">كل يوم</span> 💎
-          </p>
+        <div className="space-y-2">
+          <h1 className="text-7xl sm:text-8xl md:text-[14rem] text-easy-premium animate-in fade-in zoom-in duration-1000">EASY</h1>
+          <p className="text-xl md:text-3xl font-black text-white/40 max-w-2xl mx-auto tracking-wide">تغلّب على نفسك <span className="text-white glow-text">كل يوم</span> 💎</p>
         </div>
-
-        <div className="max-w-2xl mx-auto pt-8">
-          <div className="relative group">
-            <Search className="absolute right-6 top-1/2 -translate-y-1/2 w-6 h-6 text-white/10 group-focus-within:text-primary transition-all" />
-            <Input 
-              placeholder="ابحث عن نموذج بالاسم أو الرقم..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-16 md:h-20 w-full rounded-full bg-white/[0.02] border-white/10 pr-16 text-xl md:text-2xl font-bold transition-all focus:border-primary/40 focus:scale-[1.01] backdrop-blur-xl"
-            />
-          </div>
+        <div className="max-w-2xl mx-auto pt-4 relative group">
+          <Search className="absolute right-6 top-1/2 -translate-y-1/2 w-6 h-6 text-white/10 group-focus-within:text-primary transition-all" />
+          <Input placeholder="ابحث عن نموذج..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="h-16 md:h-20 w-full rounded-full bg-white/[0.02] border-white/10 pr-16 text-xl font-bold transition-all focus:border-primary/40 focus:scale-[1.01]" />
         </div>
       </div>
 
+      {/* Sections Grid */}
       <section className="container mx-auto px-4 md:px-8 pb-32 grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-10">
         {filteredSections.map((section) => (
           <Card key={section.firebaseId || section.id} className="group glass-card rounded-[40px] p-8 md:p-10 relative overflow-hidden border-white/5 hover:border-primary/30">
-            <div className="absolute top-0 right-0 p-6 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity">
-              <Zap className="w-32 h-32 text-primary" />
-            </div>
-            
             <div className="flex flex-col sm:flex-row justify-between items-center gap-8 relative z-10">
               <div className="text-center sm:text-right flex-1 space-y-4">
                 <div className="flex flex-wrap justify-center sm:justify-start items-center gap-3">
                   <Badge className="bg-primary/20 text-primary px-4 py-1 rounded-lg font-black text-sm border-none">قسم {section.id}</Badge>
                   {section.id > 218 && <Badge className="bg-amber-500/20 text-amber-500 px-3 py-1 rounded-lg font-black border-none animate-pulse">جديد ✨</Badge>}
                 </div>
-                <h2 className="text-2xl md:text-3xl lg:text-4xl font-black text-white group-hover:text-primary transition-colors">{section.title}</h2>
-                <div className="flex justify-center sm:justify-start items-center gap-6 text-white/30 font-bold text-sm md:text-base">
+                <h2 className="text-2xl md:text-4xl font-black text-white group-hover:text-primary transition-colors">{section.title}</h2>
+                <div className="flex justify-center sm:justify-start items-center gap-6 text-white/30 font-bold text-sm">
                   <span className="flex items-center gap-2"><Zap className="w-4 h-4" /> {section.questions?.length || 0} سؤال</span>
                   <span className="flex items-center gap-2"><History className="w-4 h-4" /> {section.duration} دقيقة</span>
                 </div>
               </div>
-              <Button 
-                onClick={() => { setSelectedSection(section); setActiveView('practice'); }} 
-                className="w-full sm:w-auto h-20 px-10 rounded-[25px] text-2xl font-black bg-primary text-white hover:scale-105 transition-all shadow-[0_15px_40px_rgba(var(--primary),0.3)] active:scale-95 group/btn"
-              >
+              <Button onClick={() => { setSelectedSection(section); setActiveView('practice'); }} className="w-full sm:w-auto h-20 px-10 rounded-[25px] text-2xl font-black bg-primary text-white hover:scale-105 transition-all shadow-xl group/btn">
                 ابدأ <ArrowRight className="mr-2 w-8 h-8 transition-transform group-hover/btn:translate-x-1" />
               </Button>
             </div>
@@ -351,83 +294,92 @@ export default function Home() {
         ))}
       </section>
 
+      {/* Overlays (Favorites, Errors, Leaderboard) */}
       {activeOverlay && (
         <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={() => setActiveOverlay(null)} />
           <Card className="w-full max-w-4xl max-h-[85vh] overflow-hidden glass-card rounded-[40px] relative z-10 flex flex-col border-primary/20">
             <div className="p-8 border-b border-white/5 flex items-center justify-between">
-              <h2 className="text-3xl md:text-4xl font-black text-white flex items-center gap-4">
+              <h2 className="text-3xl font-black text-white flex items-center gap-4">
                 {activeOverlay === 'leaderboard' && <Trophy className="w-8 h-8 text-amber-500" />}
                 {activeOverlay === 'errors' && <History className="w-8 h-8 text-blue-500" />}
                 {activeOverlay === 'themes' && <Palette className="w-8 h-8 text-primary" />}
                 {activeOverlay === 'favorites' && <Heart className="w-8 h-8 text-rose-500" />}
-                {activeOverlay === 'leaderboard' ? "نخبة EASY" : 
-                 activeOverlay === 'errors' ? "سجل الأخطاء" : 
-                 activeOverlay === 'themes' ? "مركز الثيمات" : "المفضلة"}
+                {activeOverlay === 'leaderboard' ? "نخبة EASY" : activeOverlay === 'errors' ? "سجل الأخطاء" : activeOverlay === 'themes' ? "مركز الثيمات" : "المفضلة"}
               </h2>
-              <Button variant="ghost" size="icon" className="rounded-full w-12 h-12 hover:bg-white/10" onClick={() => setActiveOverlay(null)}>
-                <X className="w-8 h-8" />
-              </Button>
+              <Button variant="ghost" size="icon" className="rounded-full w-12 h-12 hover:bg-white/10" onClick={() => setActiveOverlay(null)}><X className="w-8 h-8" /></Button>
             </div>
             
-            <div className="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar">
+            <ScrollArea className="flex-1 p-6 md:p-10">
               {activeOverlay === 'themes' ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
                   {THEMES.map((t) => (
-                    <button
-                      key={t.name}
-                      onClick={() => changeTheme(t.value)}
-                      className="group p-6 rounded-3xl glass-card flex flex-col items-center gap-4 transition-all hover:scale-105 border-transparent"
-                      style={{ borderColor: t.value === profile?.theme ? t.color : 'transparent' }}
-                    >
+                    <button key={t.name} onClick={() => changeTheme(t.value)} className={cn("group p-6 rounded-3xl glass-card flex flex-col items-center gap-4 transition-all hover:scale-105 border-transparent", profile?.theme === t.value && "border-primary")}>
                       <div className="w-16 h-16 rounded-full shadow-2xl" style={{ backgroundColor: t.color }} />
                       <span className="text-lg font-black group-hover:text-primary">{t.name}</span>
                     </button>
                   ))}
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {overlayData.length === 0 ? (
-                    <div className="text-center py-20 opacity-20 text-2xl font-black">لا توجد بيانات متاحة حالياً</div>
+                    <div className="text-center py-20 opacity-20 text-2xl font-black">لا توجد بيانات متاحة</div>
                   ) : (
                     overlayData.map((item, idx) => (
-                      <div key={idx} className="p-6 rounded-3xl glass-card flex justify-between items-center group border-white/5">
-                        <div className="flex items-center gap-6">
-                          {activeOverlay === 'leaderboard' && (
-                            <div className={cn(
-                              "w-12 h-12 rounded-xl flex items-center justify-center font-black text-2xl",
-                              idx === 0 ? "bg-amber-500 text-black" : "bg-white/5"
-                            )}>{idx + 1}</div>
-                          )}
-                          <div>
-                            <p className="font-black text-xl text-white group-hover:text-primary transition-colors">
-                              {renderItemTitle(item)}
-                            </p>
-                            <p className="text-white/30 font-bold text-sm mt-1">
-                              {renderItemSubtitle(item)}
-                            </p>
+                      <div key={idx}>
+                        {activeOverlay === 'leaderboard' ? (
+                          <div className="p-6 rounded-3xl glass-card flex justify-between items-center group border-white/5">
+                            <div className="flex items-center gap-6">
+                              <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center font-black text-2xl", idx === 0 ? "bg-amber-500 text-black" : "bg-white/5")}>{idx + 1}</div>
+                              <div>
+                                <p className="font-black text-xl text-white group-hover:text-primary transition-colors">{item.displayName}</p>
+                                <p className="text-white/30 font-bold text-sm">LVL {item.level || 1}</p>
+                              </div>
+                            </div>
+                            <p className="text-2xl font-black text-primary">{item.xp || 0} XP</p>
                           </div>
-                        </div>
-                        <div className="text-left shrink-0">
-                          <p className="text-xl md:text-2xl font-black text-primary">
-                            {activeOverlay === 'leaderboard' ? `${item.xp || 0} XP` : 
-                             activeOverlay === 'errors' ? `${item.count || 1} أخطاء` : "★"}
-                          </p>
-                        </div>
+                        ) : (
+                          <Card className="p-8 glass-card border-white/5 rounded-[30px] space-y-6">
+                             <div className="flex justify-between items-start gap-4">
+                               <div className="space-y-1">
+                                  <Badge className="bg-primary/10 text-primary border-none text-[10px]">{item.questionData?.sectionTitle || "مراجعة"}</Badge>
+                                  <h3 className="text-xl md:text-2xl font-black leading-tight text-white">{item.questionData?.question || item.question}</h3>
+                               </div>
+                               {activeOverlay === 'errors' && (
+                                 <Button variant="ghost" size="icon" onClick={() => handleRemoveError(item.id)} className="text-destructive hover:bg-destructive/10"><Trash2 className="w-5 h-5" /></Button>
+                               )}
+                             </div>
+                             
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {item.questionData?.options?.map((opt: string, oi: number) => {
+                                  const isCorrect = opt === item.questionData.correct;
+                                  const isUserAns = opt === item.userAnswer;
+                                  return (
+                                    <div key={oi} className={cn(
+                                      "p-4 rounded-2xl border-2 font-bold text-sm",
+                                      isCorrect ? "bg-green-500/10 border-green-500/30 text-green-500" :
+                                      isUserAns ? "bg-red-500/10 border-red-500/30 text-red-500" :
+                                      "bg-white/5 border-white/5 text-white/40"
+                                    )}>
+                                      {['أ', 'ب', 'ج', 'د'][oi]}. {opt}
+                                    </div>
+                                  );
+                                })}
+                             </div>
+                          </Card>
+                        )}
                       </div>
                     ))
                   )}
                 </div>
               )}
-            </div>
+            </ScrollArea>
           </Card>
         </div>
       )}
 
       <footer className="text-center py-20 border-t border-white/5 mt-20 space-y-4 bg-black/40 backdrop-blur-3xl">
-        <p className="text-3xl md:text-4xl tracking-[0.4em] uppercase font-black opacity-10 hover:opacity-100 transition-all duration-700 cursor-default">
-          DR.MAHMOUD ABD EL RAZEK
-        </p>
+        <p className="text-3xl tracking-[0.4em] uppercase font-black opacity-10">DR.MAHMOUD ABD EL RAZEK</p>
         <p className="text-primary font-black text-sm opacity-40">Elite Training System &copy; 2024</p>
       </footer>
     </main>
