@@ -1,3 +1,4 @@
+
 import { db } from "./firebase";
 import { 
   collection, 
@@ -15,6 +16,9 @@ import {
 } from "firebase/firestore";
 import { Section, Question, sections as staticSections } from "./practice-data";
 
+/**
+ * دالة جلب الأقسام: تضمن العودة بالبيانات الثابتة في حالة فشل الاتصال
+ */
 export const getSectionsFromDb = async (): Promise<Section[]> => {
   try {
     const sectionsRef = collection(db, "sections");
@@ -28,6 +32,7 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
       } as any));
     }
     
+    // دمج البيانات من Firestore مع البيانات الثابتة لضمان عدم وجود فراغ
     const combined = [...dbSections];
     staticSections.forEach(s => {
       if (!combined.find(c => Number(c.id) === Number(s.id))) {
@@ -37,11 +42,14 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
     
     return combined.sort((a, b) => Number(b.id) - Number(a.id));
   } catch (error) {
-    console.warn("Firestore access error, returning static data", error);
+    console.warn("Firestore error, falling back to static data", error);
     return [...staticSections];
   }
 };
 
+/**
+ * جلب أو إنشاء ملف المستخدم
+ */
 export const getUserProfile = async (userId: string, email?: string) => {
   if (!userId) return null;
   try {
@@ -77,7 +85,7 @@ export const saveAttemptToDb = async (userId: string | undefined, attempt: any) 
 
 export const getLeaderboard = async () => {
   try {
-    const q = query(collection(db, "userProfiles"), orderBy("xp", "desc"), limit(5));
+    const q = query(collection(db, "userProfiles"), orderBy("xp", "desc"), limit(10));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (e) { return []; }

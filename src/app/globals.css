@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -18,8 +19,6 @@
     --muted-foreground: 240 5% 65%;
     --accent: 190 90% 50%;
     --accent-foreground: 240 10% 4%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
     --border: 240 10% 12%;
     --input: 240 10% 12%;
     --ring: 260 80% 60%;
@@ -45,41 +44,61 @@
   @apply bg-white/[0.03] backdrop-blur-3xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.8)];
 }
 
+/* شعار EASY الاحترافي الديناميكي */
 .text-easy-premium {
-  @apply font-black tracking-tighter text-center block w-full;
-  background: linear-gradient(180deg, #ffffff 0%, hsla(var(--primary), 1) 100%);
+  @apply font-black tracking-tighter text-center block w-full select-none relative;
+  background: linear-gradient(
+    180deg, 
+    #ffffff 0%, 
+    hsla(var(--primary), 1) 100%
+  );
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 20px hsla(var(--primary), 0.4));
+  filter: drop-shadow(0 0 25px hsla(var(--primary), 0.5));
+  animation: glow-pulse 4s ease-in-out infinite;
 }
 
-.text-shine {
+@keyframes glow-pulse {
+  0%, 100% { filter: drop-shadow(0 0 15px hsla(var(--primary), 0.4)); transform: scale(1); }
+  50% { filter: drop-shadow(0 0 35px hsla(var(--primary), 0.8)); transform: scale(1.02); }
+}
+
+/* تأثير اللمعان Shimmer */
+.text-easy-shimmer {
   position: relative;
   overflow: hidden;
 }
 
-.text-shine::after {
+.text-easy-shimmer::after {
   content: "";
   position: absolute;
-  top: 0; left: -100%;
-  width: 50%; height: 100%;
-  background: linear-gradient(to right, transparent, rgba(255,255,255,0.4), transparent);
-  transform: skewX(-25deg);
-  animation: shine 5s infinite;
+  top: 0; 
+  left: -150%;
+  width: 100%; 
+  height: 100%;
+  background: linear-gradient(
+    90deg, 
+    transparent, 
+    rgba(255,255,255,0.3), 
+    transparent
+  );
+  transform: skewX(-20deg);
+  animation: shimmer-swipe 6s infinite;
 }
 
-@keyframes shine {
+@keyframes shimmer-swipe {
   0% { left: -150%; }
-  20%, 100% { left: 150%; }
+  30% { left: 150%; }
+  100% { left: 150%; }
 }
 
 @keyframes float {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+  50% { transform: translateY(-12px); }
 }
 
 .animate-float {
-  animation: float 4s ease-in-out infinite;
+  animation: float 5s ease-in-out infinite;
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -90,4 +109,12 @@
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
   @apply bg-primary/20 rounded-full hover:bg-primary/40 transition-colors;
+}
+
+.bg-mesh {
+  background-color: black;
+  background-image: 
+    radial-gradient(at 0% 0%, hsla(var(--primary), 0.1) 0, transparent 50%), 
+    radial-gradient(at 50% 0%, hsla(var(--accent), 0.05) 0, transparent 50%), 
+    radial-gradient(at 100% 0%, hsla(var(--primary), 0.1) 0, transparent 50%);
 }

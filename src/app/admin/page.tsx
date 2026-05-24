@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -209,15 +210,15 @@ export default function AdminPage() {
           <TabsContent value="content" className="space-y-10">
             <Card className="p-6 md:p-12 glass border-white/5 rounded-[40px] space-y-10">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-white/5 pb-8">
-                <h2 className="text-3xl font-black">إضافة نموذج جديد</h2>
+                <h2 className="text-3xl font-black text-white">إضافة نموذج جديد</h2>
                 <Button onClick={handleSaveSection} disabled={isSubmitting} className="h-16 px-12 bg-primary text-white font-black rounded-2xl">
                   {isSubmitting ? <Loader2 className="animate-spin" /> : "نشر النموذج 🚀"}
                 </Button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <Input type="number" placeholder="رقم النموذج" value={newSection.id || ''} onChange={(e) => setNewSection(prev => ({ ...prev, id: parseInt(e.target.value) }))} className="bg-black border-white/10 h-16 text-xl rounded-2xl" />
-                <Input placeholder="عنوان النموذج" value={newSection.title || ''} onChange={(e) => setNewSection(prev => ({ ...prev, title: e.target.value }))} className="md:col-span-2 bg-black border-white/10 h-16 text-xl rounded-2xl" />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-white">
+                <Input type="number" placeholder="رقم النموذج" value={newSection.id || ''} onChange={(e) => setNewSection(prev => ({ ...prev, id: parseInt(e.target.value) }))} className="bg-black border-white/10 h-16 text-xl rounded-2xl text-white" />
+                <Input placeholder="عنوان النموذج" value={newSection.title || ''} onChange={(e) => setNewSection(prev => ({ ...prev, title: e.target.value }))} className="md:col-span-2 bg-black border-white/10 h-16 text-xl rounded-2xl text-white" />
               </div>
 
               <div className="space-y-8">
@@ -246,14 +247,14 @@ export default function AdminPage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <Input placeholder="نص السؤال" value={q.question} onChange={(e) => updateQuestion(qIndex, 'question', e.target.value)} className="text-2xl font-black" />
+                    <Input placeholder="نص السؤال" value={q.question} onChange={(e) => updateQuestion(qIndex, 'question', e.target.value)} className="text-2xl font-black text-white" />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {q.options.map((opt, oIndex) => (
                         <Input key={oIndex} placeholder={`الخيار ${['أ', 'ب', 'ج', 'د'][oIndex]}`} value={opt} onChange={(e) => {
                           const opts = [...q.options];
                           opts[oIndex] = e.target.value;
                           updateQuestion(qIndex, 'options', opts);
-                        }} />
+                        }} className="text-white" />
                       ))}
                     </div>
                     <Select 
@@ -289,7 +290,10 @@ export default function AdminPage() {
                         <p className="text-white/40">{u.email}</p>
                       </div>
                     </div>
-                    <Badge className="bg-primary/20 text-primary">{u.level || 1} LVL</Badge>
+                    <div className="flex items-center gap-4">
+                      {u.status === 'admin' && <Crown className="text-goldenrod w-6 h-6" />}
+                      <Badge className="bg-primary/20 text-primary">{u.level || 1} LVL</Badge>
+                    </div>
                   </div>
                 ))}
               </div>
