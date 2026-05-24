@@ -48,7 +48,6 @@ export const getSectionsFromDb = async (): Promise<Section[]> => {
       }
     });
     
-    // الترتيب التنازلي التلقائي (من الأكبر للأصغر)
     return combined
       .filter(s => !archivedIds.includes(Number(s.id)))
       .sort((a, b) => Number(b.id) - Number(a.id));
@@ -155,7 +154,7 @@ export const getUserProfile = async (userId: string, email?: string) => {
         email: email || '',
         createdAt: serverTimestamp(),
         status: 'pending', 
-        role: email === 'admin@easy.com' ? 'owner' : 'user', // تم تغيير الافتراضي إلى user
+        role: email === 'admin@easy.com' ? 'owner' : 'user',
         favorites: [],
         isBanned: false,
         theme: '270 95% 60%'
@@ -207,7 +206,10 @@ export const updateUserRole = async (userId: string, role: string) => {
 
 export const getAdminsFromDb = async () => {
   try {
-    const q = query(collection(db, "userProfiles"), where("role", "in", ["owner", "superAdmin", "admin", "editor", "helper"]));
+    const q = query(
+      collection(db, "userProfiles"), 
+      where("role", "in", ["owner", "superAdmin", "admin", "editor", "helper"])
+    );
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (e) {
@@ -304,9 +306,6 @@ export const getLeaderboard = async () => {
   } catch (e) { return []; }
 };
 
-/**
- * نظام الإعدادات العامة (مثل رابط الواتساب)
- */
 export const updateGlobalSetting = async (key: string, value: any) => {
   try {
     const settingsRef = doc(db, "appSettings", "global");

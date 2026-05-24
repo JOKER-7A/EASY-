@@ -21,7 +21,7 @@ import {
 import { 
   collection, getDocs, addDoc, doc, deleteDoc, updateDoc, serverTimestamp, query, orderBy, limit, where 
 } from 'firebase/firestore';
-import { Section, Question } from '@/lib/practice-data';
+import { Section } from '@/lib/practice-data';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -39,16 +39,13 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const ADMIN_SECRET_CODE = "EASY77100";
-const AUTH_KEY = "easy_admin_authorized";
-
 type EditorMode = 'create' | 'edit-section' | 'edit-template';
 
 export default function AdminPage() {
   const [isAuthorized, setIsAuthorized] = useState(false);
-  const [adminCodeInput, setAdminCodeInput] = useState('');
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentUserRole, setCurrentUserRole] = useState<string>('user');
   
   const [sections, setSections] = useState<Section[]>([]);
   const [templates, setTemplates] = useState<any[]>([]);
@@ -56,7 +53,6 @@ export default function AdminPage() {
   const [pendingUsers, setPendingUsers] = useState<any[]>([]);
   const [adminsList, setAdminsList] = useState<any[]>([]);
   const [activityLogs, setActivityLogs] = useState<any[]>([]);
-  const [currentUserRole, setCurrentUserRole] = useState<string>('user');
   const [adminSearchEmail, setAdminSearchEmail] = useState('');
   const [whatsappLink, setWhatsappLink] = useState('');
   
@@ -118,11 +114,6 @@ export default function AdminPage() {
       const settings = await getGlobalSettings();
       if (settings.whatsappLink) setWhatsappLink(settings.whatsappLink);
 
-      if (auth.currentUser) {
-        const profile = await getUserProfile(auth.currentUser.uid);
-        setCurrentUserRole(profile?.role || 'user');
-      }
-
       setStats({
         students: allUsers.filter((u: any) => (u.role === 'user' || !u.role) && u.status === 'approved').length,
         sections: sectionsData.length,
@@ -138,48 +129,29 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
-    const authStatus = localStorage.getItem(AUTH_KEY);
-    if (authStatus === 'true') {
-      setIsAuthorized(true);
-      fetchData();
-    }
-    
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        const profile = await getUserProfile(user.uid);
-        setCurrentUserRole(profile?.role || 'user');
-        if (profile?.role === 'user' && !isAuthorized) {
+        const profile = await getUserProfile(user.uid, user.email || '');
+        const role = profile?.role || 'user';
+        setCurrentUserRole(role);
+        
+        if (['owner', 'superAdmin', 'admin'].includes(role)) {
+          setIsAuthorized(true);
+          fetchData();
+        } else {
           setIsAuthorized(false);
-          localStorage.removeItem(AUTH_KEY);
         }
       } else {
         setIsAuthorized(false);
+        setCurrentUserRole('user');
       }
+      setLoading(false);
     });
 
-    setLoading(false);
     return () => unsub();
-  }, [fetchData, isAuthorized]);
-
-  const handleAdminLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (adminCodeInput === ADMIN_SECRET_CODE) {
-      setIsAuthorized(true);
-      localStorage.setItem(AUTH_KEY, 'true');
-      fetchData();
-      toast({ title: "تم الدخول بنجاح ✅", description: "أهلاً بك في لوحة الإدارة" });
-    } else {
-      toast({ 
-        title: "كود خاطئ ❌", 
-        description: "يرجى التأكد من الكود السري للأدمن", 
-        variant: "destructive" 
-      });
-    }
-  };
+  }, [fetchData]);
 
   const handleAdminLogout = () => {
-    setIsAuthorized(false);
-    localStorage.removeItem(AUTH_KEY);
     signOut(auth);
     toast({ title: "تم تسجيل الخروج" });
   };
@@ -445,32 +417,16 @@ export default function AdminPage() {
 
   if (!isAuthorized) {
     return (
-      <main className="min-h-screen bg-black flex items-center justify-center p-4 overflow-hidden relative">
+      <main className="min-h-screen bg-black flex items-center justify-center p-4 overflow-hidden relative" dir="rtl">
         <div className="absolute inset-0 bg-mesh opacity-20" />
-        <Card className="w-full max-w-md p-10 glass-card rounded-[40px] border-primary/20 relative z-10">
-          <div className="text-center mb-10">
-            <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mx-auto mb-6 ring-2 ring-primary/20">
-              <Lock className="w-10 h-10 text-primary" />
-            </div>
-            <h1 className="text-4xl font-black text-white">بوابة الإدارة 🔐</h1>
-            <p className="text-primary/60 font-bold mt-2 uppercase tracking-widest text-[10px]">EASY Administrative Access</p>
+        <Card className="w-full max-w-md p-10 glass-card rounded-[40px] border-primary/20 relative z-10 text-center space-y-6">
+          <div className="w-20 h-20 bg-rose-500/10 rounded-3xl flex items-center justify-center mx-auto ring-2 ring-rose-500/20">
+            <Lock className="w-10 h-10 text-rose-500" />
           </div>
-          <form onSubmit={handleAdminLogin} className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-white/40 uppercase mr-4">Admin Security Code</label>
-              <Input 
-                type="password" 
-                placeholder="Enter Secret Code" 
-                value={adminCodeInput} 
-                onChange={(e) => setAdminCodeInput(e.target.value)} 
-                className="h-16 rounded-2xl bg-white/5 border-white/10 text-center text-2xl tracking-[0.5em] focus:border-primary/50" 
-                required 
-              />
-            </div>
-            <button type="submit" disabled={isSubmitting} className="w-full h-16 bg-primary text-white font-black text-xl rounded-2xl shadow-xl hover:scale-[1.02] transition-transform">
-              تحقق 🚀
-            </button>
-          </form>
+          <h1 className="text-3xl font-black text-white">دخول غير مصرح ⛔</h1>
+          <p className="text-white/40 font-bold leading-relaxed">عذراً، لا تمتلك الصلاحيات الكافية لدخول لوحة الإدارة. إذا كنت تعتقد أن هذا خطأ، يرجى التواصل مع المالك.</p>
+          <Button onClick={() => window.location.href = '/'} className="w-full h-14 bg-primary rounded-2xl font-black">العودة للرئيسية</Button>
+          <Button onClick={handleAdminLogout} variant="ghost" className="text-rose-500 text-xs font-bold">تسجيل الخروج</Button>
         </Card>
       </main>
     );
